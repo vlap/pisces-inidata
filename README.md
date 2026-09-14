@@ -54,21 +54,32 @@ GRID_NAME="eORCA025"   # eORCA025, eORCA1, ORCA1, etc.
 SCRATCH_ROOT="/esarchive/scratch/vlapin/tmp"
 ```
 
-### Step 2: Download & Stage Sources (`download_sources.sh`)
-Run on a node with outgoing internet access (e.g. `hub02 analysis` or local machine):
+### Step 2: Sync to Cluster & Download Sources (`download_sources.sh`)
+From your local machine, copy the tool to your cluster workspace:
 ```bash
+# Sync scripts from local workstation to cluster scratch:
+rsync -av /home/volant/code/pisces/ nord4:/esarchive/scratch/vlapin/tmp/pisces-inidata/
+```
+
+Log in to **`hub02 analysis`** (which has external internet access) to download and stage the datasets:
+```bash
+ssh hub02
+cd /esarchive/scratch/vlapin/tmp/pisces-inidata
 ./download_sources.sh
 ```
-This downloads and unpacks the official baseline inputs into `${SCRATCH_ROOT}/pisces_inidata_${GRID_NAME}/raw_sources/`.
+This downloads and unpacks the raw/baseline inputs into `${SCRATCH_ROOT}/pisces_inidata_${GRID_NAME}/raw_sources/`.
 
 ### Step 3: Launch Parallel Processing on Nord4 (`launcher_pisces_inidata.sh`)
-On **Nord4**, execute the batch launcher:
+Log in to **`nord4`** and submit the formatting jobs to Slurm:
 ```bash
-# Submit all components to Slurm in parallel:
-./launcher_pisces_inidata.sh submit
+ssh nord4
+cd /esarchive/scratch/vlapin/tmp/pisces-inidata
 
-# Or preview generated batch scripts without submitting:
+# Dry-run preview:
 ./launcher_pisces_inidata.sh dry-run
+
+# Submit to Slurm:
+./launcher_pisces_inidata.sh submit
 ```
 
 The launcher will:
