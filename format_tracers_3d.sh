@@ -86,8 +86,20 @@ if [ "${MODE}" = "offline" ]; then
     # Extract target variable if multiple exist in file
     cdo ${CDO_OPTS} -selname,"${INTERNAL_VAR}" "${SRC_FILE}" "${TMP_DIR}/src_sel.nc"
 
+    # Extract target vertical levels from domain_cfg if 3D
+    echo "Extracting target vertical levels from ${DOMAIN_CFG}..."
+    TARGET_LEVELS=$(cdo -s showlevel -selname,nav_lev "${DOMAIN_CFG}" 2>/dev/null | tr -s ' ' ',' | sed 's/^,//;s/,$//' || true)
+
     # Remap horizontally to target grid using precomputed bilinear weights
-    cdo ${CDO_OPTS} ${CDO_COMPRESS} remap,"${TARGET_GRID_NC}","${WEIGHTS_BILIN}" "${TMP_DIR}/src_sel.nc" "${OUT_FILE}"
+    cdo ${CDO_OPTS} remap,"${TARGET_GRID_NC}","${WEIGHTS_BILIN}" "${TMP_DIR}/src_sel.nc" "${TMP_DIR}/hremap.nc"
+
+    # Vertical interpolation to target levels if levels exist and vertical dimension present
+    if [ -n "${TARGET_LEVELS}" ]; then
+        echo "Interpolating vertically to target ${GRID_NAME} depth levels..."
+        cdo ${CDO_OPTS} ${CDO_COMPRESS} -intlevel,"${TARGET_LEVELS}" "${TMP_DIR}/hremap.nc" "${OUT_FILE}"
+    else
+        cdo ${CDO_OPTS} ${CDO_COMPRESS} copy "${TMP_DIR}/hremap.nc" "${OUT_FILE}"
+    fi
 
     echo "Successfully generated: ${OUT_FILE}"
 

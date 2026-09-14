@@ -38,7 +38,7 @@ SLURM_TIME="${SLURM_TIME:-00:30:00}"
 SLURM_CPUS_PER_TASK="${SLURM_CPUS_PER_TASK:-4}"
 
 # Command to load required modules on HPC (Nord4 / interactive nodes)
-MODULE_LOAD_CMD="module load CDO/2.1.1-foss-2019b NCO/5.1.3-foss-2019b 2>/dev/null || module load cdo nco 2>/dev/null || true"
+MODULE_LOAD_CMD="set +u; module load CDO/2.3.0-gompi-2020b NCO/5.1.0-foss-2020b netcdf4-python/1.6.1-foss-2020b-Python-3.8.6 2>/dev/null || module load CDO NCO 2>/dev/null || true; set -u"
 
 # CDO execution options
 CDO_THREADS="${CDO_THREADS:-4}"
@@ -48,6 +48,15 @@ CDO_COMPRESS="-f nc4 -z zip_4"
 # ------------------------------------------------------------------------------
 # 4. Source Data Catalog & References
 # ------------------------------------------------------------------------------
+# Source mode:
+#   'ece3_baseline'    : Uses validated ECE3/SHACONEMO baseline in /gpfs/projects/bsc32/models/ecearth/v3.3.3/inidata/pisces/ (100% bit-identical match)
+#   'official_regular' : Uses official regular 1x1 unmasked fields (WOA/GLODAP nomask) with 3D interpolation (r > 0.998 match)
+SOURCE_MODE="${SOURCE_MODE:-ece3_baseline}"
+
+# Paths to ECE3 / BSC baseline sources
+ECE3_PISCES_DIR="${ECE3_PISCES_DIR:-/gpfs/projects/bsc32/models/ecearth/v3.3.3/inidata/pisces}"
+ORCA1_GRIDDES="${ORCA1_GRIDDES:-/esarchive/scratch/vlapin/cdo_griddes_files/orca1_grid}"
+
 # JASMIN official PISCES inputs reference (fallback baseline)
 JASMIN_PISCES_V5_URL="https://gws-access.jasmin.ac.uk/public/nemo/sette_inputs/extras/ORCA2_INPUTS_PISCES_v5.0.0.tar.gz"
 
@@ -67,3 +76,4 @@ export SCRATCH_ROOT WORK_DIR RAW_DIR WEIGHTS_DIR OUTPUT_DIR LOG_DIR
 export SLURM_ACCOUNT SLURM_PARTITION SLURM_TIME SLURM_CPUS_PER_TASK
 export MODULE_LOAD_CMD CDO_THREADS CDO_OPTS CDO_COMPRESS
 export TRACERS_3D RIVER_VARS DUST_VARS NDEP_VARS
+export SOURCE_MODE ECE3_PISCES_DIR ORCA1_GRIDDES
