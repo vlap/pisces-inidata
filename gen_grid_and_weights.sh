@@ -1,0 +1,99 @@
+#!/usr/bin/env bash
+# ==============================================================================
+# gen_grid_and_weights.sh
+# Generate target grid netCDF and precompute CDO remapping weights.
+# Uses domain_cfg.nc and maskutil.nc to define the curvilinear ocean grid.
+# ==============================================================================
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${SCRIPT_DIR}/config.sh"
+
+# Load modules
+eval "${MODULE_LOAD_CMD}"
+
+mkdir -p "${WEIGHTS_DIR}" "${LOG_DIR}"
+
+TARGET_GRID_NC="${WEIGHTS_DIR}/target_grid_${GRID_NAME}.nc"
+TARGET_AREA_NC="${WEIGHTS_DIR}/target_area_${GRID_NAME}.nc"
+GRIDDES_TXT="${WEIGHTS_DIR}/griddes_${GRID_NAME}.txt"
+
+echo "=== [1/3] Creating target grid NetCDF from domain_cfg and maskutil ==="
+echo "Target grid: ${GRID_NAME}"
+echo "Domain config: ${DOMAIN_CFG}"
+echo "Mask utility: ${MASKUTIL}"
+
+if [ ! -f "${DOMAIN_CFG}" ]; then
+    echo "ERROR: domain_cfg.nc not found at ${DOMAIN_CFG}" >&2
+    exit 1
+fi
+if [ ! -f "${MASKUTIL}" ]; then
+    echo "ERROR: maskutil.nc not found at ${MASKUTIL}" >&2
+    exit 1
+fi
+
+TMP_DIR=$(mktemp -d -p "${SCRATCH_ROOT}" tmp_grid_XXXXXX)
+trap 'rm -rf "${TMP_DIR}"' EXIT
+
+# Extract glamt (lon) and gphit (lat) from domain_cfg
+ncks -O -v glamt,gphit "${DOMAIN_CFG}" "${TMP_DIR}/grid_coords.nc"
+# Extract tmaskutil from maskutil
+ncks -A -v tmaskutil "${MASKUTIL}" "${TMP_DIR}/grid_coords.nc"
+
+# Rename variables to CF-standard names
+ncrename -v glamt,lon -v gphit,lat "${TMP_DIR}/grid_coords.nc"
+
+# Set CF coordinates and units attributes for CDO curvilinear recognition
+ncatted -O \
+    -a coordinates,tmaskutil,c,c,"lon lat" \
+    -a units,lon,c,c,"degrees_east" \
+    -a units,lat,c,c,"degrees_north" \
+    -a standard_name,lon,c,c,"longitude" \
+    -a standard_name,lat,c,c,"latitude" \
+    "${TMP_DIR}/grid_coords.nc"
+
+mv "${TMP_DIR}/grid_coords.nc" "${TARGET_GRID_NC}"
+echo "Created target grid description NetCDF: ${TARGET_GRID_NC}"
+
+# Extract text griddes for CDO
+cdo griddes "${TARGET_GRID_NC}" > "${GRIDDES_TXT}"
+echo "Dumped CDO griddes: ${GRIDDES_TXT}"
+
+# Compute horizontal cell area: area = e1t * e2t (in m^2)
+echo "=== [2/3] Computing target horizontal cell areas (e1t * e2t) ==="
+cdo ${CDO_OPTS} ${CDO_COMPRESS} -expr,'area = e1t * e2t' -selname,e1t,e2t "${DOMAIN_CFG}" "${TARGET_AREA_NC}"
+echo "Created target area file: ${TARGET_AREA_NC}"
+
+# Precompute horizontal remapping weights
+echo "=== [3/3] Precomputing CDO horizontal remapping weights ==="
+
+# 1. Bilinear weights from regular 1x1 (r360x180) to target grid
+WEIGHTS_BILIN_1DEG="${WEIGHTS_DIR}/weights_r360x180_to_${GRID_NAME}_bilin.nc"
+if [ ! -f "${WEIGHTS_BILIN_1DEG}" ]; then
+    echo "Generating bilinear weights (r360x180 -> ${GRID_NAME})..."
+    cdo ${CDO_OPTS} genbil,"${TARGET_GRID_NC}" -topo,r360x180 "${WEIGHTS_BILIN_1DEG}"
+    echo "Saved: ${WEIGHTS_BILIN_1DEG}"
+else
+    echo "Existing weights found: ${WEIGHTS_BILIN_1DEG}"
+fi
+
+# 2. Nearest-neighbor / distance-weighted weights (useful for masking or point sources)
+WEIGHTS_DIS_1DEG="${WEIGHTS_DIR}/weights_r360x180_to_${GRID_NAME}_dis.nc"
+if [ ! -f "${WEIGHTS_DIS_1DEG}" ]; then
+    echo "Generating distance-weighted weights (r360x180 -> ${GRID_NAME})..."
+    cdo ${CDO_OPTS} gendis,"${TARGET_GRID_NC}" -topo,r360x180 "${WEIGHTS_DIS_1DEG}"
+    echo "Saved: ${WEIGHTS_DIS_1DEG}"
+else
+    echo "Existing weights found: ${WEIGHTS_DIS_1DEG}"
+fi
+
+# 3. SCRIP online weights file for NEMO runtime interpolation (if needed)
+WEIGHTS_NEMO_ONLINE="${OUTPUT_DIR}/weights_3D_r360x180_bilin.nc"
+if [ ! -f "${WEIGHTS_NEMO_ONLINE}" ]; then
+    echo "Copying bilinear weights for NEMO online interpolation..."
+    mkdir -p "${OUTPUT_DIR}"
+    cp "${WEIGHTS_BILIN_1DEG}" "${WEIGHTS_NEMO_ONLINE}"
+fi
+
+echo "=== Grid and weights generation complete! ==="

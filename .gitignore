@@ -1,0 +1,14 @@
+# Archives and NetCDF data
+*.tar.gz
+*.nc
+*.nc4
+
+# Extracted datasets
+ORCA2_INPUTS_PISCES_v*
+
+# Temporary and log files
+*.out
+*.err
+tmp_*
+logs/
+sbatch_scripts/
