@@ -74,9 +74,8 @@ if [ "${SOURCE_MODE}" = "modern" ]; then
             echo "[Step 3/3] Vertical interpolation to target L75 levels..."
             cdo ${CDO_OPTS} ${CDO_COMPRESS} -intlevel,"${TARGET_LEVELS}" "${TMP_DIR}/hremap.nc" "${OUT_FILE}"
 
-            # Create compatibility symlinks matching standard NEMO/ECE4 names
+            # Create symlink matching observational product
             ln -sfn "$(basename "${OUT_FILE}")" "${OUTPUT_DIR}/${VAR}_WOA23_monthly_${GRID_NAME}.nc"
-            ln -sfn "$(basename "${OUT_FILE}")" "${OUTPUT_DIR}/${VAR}_WOA2009_monthly_${GRID_NAME}.nc"
             ;;
 
         TALK|TDIC|PiDIC)
@@ -173,6 +172,21 @@ elif [ "${SOURCE_MODE}" = "ece3_baseline" ]; then
 
     cdo ${CDO_OPTS} -setgrid,"${ORCA1_GRIDDES}" "${SRC_FILE}" "${TMP_DIR}/src_grid.nc"
     cdo ${CDO_OPTS} ${CDO_COMPRESS} -remapnn,"${TARGET_GRID_NC}" "${TMP_DIR}/src_grid.nc" "${OUT_FILE}"
+fi
+
+if [ "${SOURCE_MODE}" != "modern" ]; then
+    case "${VAR}" in
+        NO3|PO4|Si|O2) LINK_NAME="${VAR}_WOA2009_monthly_${GRID_NAME}.nc" ;;
+        TALK) LINK_NAME="Alkalini_GLODAP_annual_${GRID_NAME}.nc" ;;
+        TDIC) LINK_NAME="DIC_GLODAP_annual_${GRID_NAME}.nc" ;;
+        PiDIC) LINK_NAME="PiDIC_GLODAP_annual_${GRID_NAME}.nc" ;;
+        DOC) LINK_NAME="DOC_PISCES_monthly_${GRID_NAME}.nc" ;;
+        Fer) LINK_NAME="Fer_PISCES_monthly_${GRID_NAME}.nc" ;;
+        *) LINK_NAME="" ;;
+    esac
+    if [ -n "${LINK_NAME}" ]; then
+        ln -sfn "$(basename "${OUT_FILE}")" "${OUTPUT_DIR}/${LINK_NAME}"
+    fi
 fi
 
 echo "Successfully generated: ${OUT_FILE}"
