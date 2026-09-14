@@ -19,12 +19,25 @@ MASKUTIL="${MASKUTIL:-${DOMAIN_BASE_DIR}/${GRID_NAME}/maskutil.nc}"
 # ------------------------------------------------------------------------------
 # 2. Workspaces & Scratch Directories
 # ------------------------------------------------------------------------------
-# Scratch root (Nord4 / hub02 analysis default: /esarchive/scratch/vlapin/tmp/)
-SCRATCH_ROOT="${SCRATCH_ROOT:-/esarchive/scratch/vlapin/tmp}"
+# Scratch root: auto-detect user scratch on /esarchive, otherwise fallback to local scratch
+if [ -d "/esarchive/scratch/${USER}" ]; then
+    DEFAULT_SCRATCH="/esarchive/scratch/${USER}/tmp"
+elif [ -d "/esarchive/scratch" ]; then
+    DEFAULT_SCRATCH="/esarchive/scratch/${USER}/tmp"
+else
+    DEFAULT_SCRATCH="/tmp/${USER}/pisces"
+fi
+SCRATCH_ROOT="${SCRATCH_ROOT:-${DEFAULT_SCRATCH}}"
 WORK_DIR="${WORK_DIR:-${SCRATCH_ROOT}/pisces_inidata_${GRID_NAME}}"
 
 # Subdirectories for raw data, weights, and final outputs
-RAW_DIR="${RAW_DIR:-${SCRATCH_ROOT}/pisces_raw_sources}"
+# Default to shared team raw directory if present, else user scratch
+if [ -d "/esarchive/scratch/vlapin/tmp/pisces_raw_sources" ]; then
+    DEFAULT_RAW="/esarchive/scratch/vlapin/tmp/pisces_raw_sources"
+else
+    DEFAULT_RAW="${SCRATCH_ROOT}/pisces_raw_sources"
+fi
+RAW_DIR="${RAW_DIR:-${DEFAULT_RAW}}"
 WEIGHTS_DIR="${WORK_DIR}/weights"
 OUTPUT_DIR="${WORK_DIR}/output_${GRID_NAME}"
 LOG_DIR="${WORK_DIR}/logs"
@@ -59,7 +72,12 @@ GLODAP_V2_DIR="${RAW_DIR}/glodap_v2"
 
 # Paths to ECE3 / BSC baseline sources
 ECE3_PISCES_DIR="${ECE3_PISCES_DIR:-/gpfs/projects/bsc32/models/ecearth/v3.3.3/inidata/pisces}"
-ORCA1_GRIDDES="${ORCA1_GRIDDES:-/esarchive/scratch/vlapin/cdo_griddes_files/orca1_grid}"
+if [ -f "/esarchive/scratch/vlapin/cdo_griddes_files/orca1_grid" ]; then
+    DEFAULT_ORCA1_GRIDDES="/esarchive/scratch/vlapin/cdo_griddes_files/orca1_grid"
+else
+    DEFAULT_ORCA1_GRIDDES="${RAW_DIR}/orca1_grid"
+fi
+ORCA1_GRIDDES="${ORCA1_GRIDDES:-${DEFAULT_ORCA1_GRIDDES}}"
 
 # JASMIN official PISCES inputs reference (fallback baseline)
 JASMIN_PISCES_V5_URL="https://gws-access.jasmin.ac.uk/public/nemo/sette_inputs/extras/ORCA2_INPUTS_PISCES_v5.0.0.tar.gz"

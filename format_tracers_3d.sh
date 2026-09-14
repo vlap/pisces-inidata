@@ -106,11 +106,14 @@ if [ "${SOURCE_MODE}" = "modern" ]; then
             echo "[Step 2/4] Filling missing values with cdo fillmiss..."
             cdo ${CDO_OPTS} fillmiss "${TMP_DIR}/sel.nc" "${TMP_DIR}/filled.nc"
 
-            echo "[Step 3/4] Horizontal remapping to ${GRID_NAME}..."
+            echo "[Step 3/5] Horizontal remapping to ${GRID_NAME}..."
             cdo ${CDO_OPTS} remap,"${TARGET_GRID_NC}","${WEIGHTS_BILIN}" "${TMP_DIR}/filled.nc" "${TMP_DIR}/hremap.nc"
 
-            echo "[Step 4/4] Vertical interpolation to target L75 levels..."
-            cdo ${CDO_OPTS} ${CDO_COMPRESS} -intlevel,"${TARGET_LEVELS}" "${TMP_DIR}/hremap.nc" "${OUT_FILE}"
+            echo "[Step 4/5] Extending abyssal depth to 6000m..."
+            python3 "${SCRIPT_DIR}/pad_abyssal_depth.py" "${TMP_DIR}/hremap.nc" "${TMP_DIR}/hremap_padded.nc" 6000.0
+
+            echo "[Step 5/5] Vertical interpolation to target L75 levels..."
+            cdo ${CDO_OPTS} ${CDO_COMPRESS} -intlevel,"${TARGET_LEVELS}" "${TMP_DIR}/hremap_padded.nc" "${OUT_FILE}"
 
             if [ "${SRC_VAR}" != "${OUT_VAR_NAME}" ]; then
                 ncrename -O -v "${SRC_VAR},${OUT_VAR_NAME}" "${OUT_FILE}"
@@ -126,11 +129,14 @@ if [ "${SOURCE_MODE}" = "modern" ]; then
             esac
             SRC_FILE="${RAW_DIR}/official_v5.0.0/data_${FILE_VAR}_nomask.nc"
 
-            echo "[Step 1/2] Horizontal remapping to ${GRID_NAME}..."
+            echo "[Step 1/3] Horizontal remapping to ${GRID_NAME}..."
             cdo ${CDO_OPTS} remap,"${TARGET_GRID_NC}","${WEIGHTS_BILIN}" -selname,"${VAR}" "${SRC_FILE}" "${TMP_DIR}/hremap.nc"
 
-            echo "[Step 2/2] Vertical interpolation to target L75 levels..."
-            cdo ${CDO_OPTS} ${CDO_COMPRESS} -intlevel,"${TARGET_LEVELS}" "${TMP_DIR}/hremap.nc" "${OUT_FILE}"
+            echo "[Step 2/3] Extending abyssal depth to 6000m..."
+            python3 "${SCRIPT_DIR}/pad_abyssal_depth.py" "${TMP_DIR}/hremap.nc" "${TMP_DIR}/hremap_padded.nc" 6000.0
+
+            echo "[Step 3/3] Vertical interpolation to target L75 levels..."
+            cdo ${CDO_OPTS} ${CDO_COMPRESS} -intlevel,"${TARGET_LEVELS}" "${TMP_DIR}/hremap_padded.nc" "${OUT_FILE}"
 
             ln -sfn "$(basename "${OUT_FILE}")" "${OUTPUT_DIR}/${LINK_NAME}"
             ;;
@@ -154,7 +160,8 @@ elif [ "${SOURCE_MODE}" = "official_regular" ]; then
 
     cdo ${CDO_OPTS} -selname,"${INTERNAL_VAR}" "${SRC_FILE}" "${TMP_DIR}/src_sel.nc"
     cdo ${CDO_OPTS} remap,"${TARGET_GRID_NC}","${WEIGHTS_BILIN}" "${TMP_DIR}/src_sel.nc" "${TMP_DIR}/hremap.nc"
-    cdo ${CDO_OPTS} ${CDO_COMPRESS} -intlevel,"${TARGET_LEVELS}" "${TMP_DIR}/hremap.nc" "${OUT_FILE}"
+    python3 "${SCRIPT_DIR}/pad_abyssal_depth.py" "${TMP_DIR}/hremap.nc" "${TMP_DIR}/hremap_padded.nc" 6000.0
+    cdo ${CDO_OPTS} ${CDO_COMPRESS} -intlevel,"${TARGET_LEVELS}" "${TMP_DIR}/hremap_padded.nc" "${OUT_FILE}"
 
 elif [ "${SOURCE_MODE}" = "ece3_baseline" ]; then
     case "${VAR}" in

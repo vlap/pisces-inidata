@@ -45,6 +45,14 @@ def process_tracer(var_code, woa_dir, out_file):
         n_m_levs = ds_m1.variables['depth'].shape[0]
 
     deep_data = ann_data[n_m_levs:, :, :]
+    # Abyssal padding: extend depth coordinate to 6000m by replicating the deepest
+    # level (5500m). This ensures that CDO vertical linear interpolation (-intlevel)
+    # can cleanly bracket and interpolate NEMO deep L75 levels (which reach ~5902m)
+    # without generating missing values in the abyssal ocean.
+    if depth_full[-1] < 6000.0:
+        depth_full = np.append(depth_full, np.float32(6000.0))
+        deep_data = np.concatenate([deep_data, deep_data[-1:, :, :]], axis=0)
+
     print(f"[{out_var}] Monthly levels: {n_m_levs}, Annual deep levels: {len(depth_full) - n_m_levs} (Total: {len(depth_full)})")
 
     # 2. Create output NetCDF
