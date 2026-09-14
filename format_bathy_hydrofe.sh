@@ -45,6 +45,7 @@ process_bathy() {
 
     echo "Remapping bathy shelf fraction to ${GRID_NAME}..."
     cdo ${CDO_OPTS} ${CDO_COMPRESS} remap,"${TARGET_GRID_NC}","${weights_bathy}" "${src_file}" "${out_file}"
+    ln -sfn "$(basename "${out_file}")" "${OUTPUT_DIR}/pmarge_etopo_${GRID_NAME}.nc"
     echo "Created: ${out_file}"
 }
 

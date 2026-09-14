@@ -100,15 +100,15 @@ def evaluate_fields(test_file, ref_file, var_name, mask_file=None, domain_file=N
 
     for t in range(ntimes):
         if vref.ndim == 4: # (time, depth, y, x)
-            chunk_test = np.array(vtest[t], dtype=np.float32)
             chunk_ref = np.array(vref[t], dtype=np.float32)
+            chunk_test = np.array(vtest[t] if vtest.ndim == 4 else vtest[:], dtype=np.float32)
             if mask_2d is not None:
                 mask_chunk = np.broadcast_to(mask_2d[None, :, :], chunk_ref.shape)
             else:
                 mask_chunk = np.ones(chunk_ref.shape, dtype=bool)
         elif vref.ndim == 3 and ntimes > 1: # (time, y, x)
-            chunk_test = np.array(vtest[t], dtype=np.float32)
             chunk_ref = np.array(vref[t], dtype=np.float32)
+            chunk_test = np.array(vtest[t] if vtest.ndim == 3 else vtest[:], dtype=np.float32)
             mask_chunk = mask_2d if mask_2d is not None else np.ones(chunk_ref.shape, dtype=bool)
         else: # static 3D (depth, y, x) or 2D (y, x)
             chunk_test = np.squeeze(np.array(vtest[:], dtype=np.float32))

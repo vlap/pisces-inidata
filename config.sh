@@ -6,8 +6,8 @@
 # ------------------------------------------------------------------------------
 # 1. Target Grid & Domain Configuration
 # ------------------------------------------------------------------------------
-# Grid resolution name (e.g. eORCA025, eORCA1, ORCA1, ORCA2)
-GRID_NAME="${GRID_NAME:-eORCA025}"
+# Grid resolution name (e.g. eORCA1, eORCA025, ORCA1, ORCA2)
+GRID_NAME="${GRID_NAME:-eORCA1}"
 
 # Base directory for NEMO domain files
 DOMAIN_BASE_DIR="${DOMAIN_BASE_DIR:-/gpfs/projects/bsc32/models/ecearth/ece4-trunk/inidata/nemo/domain}"
@@ -24,7 +24,7 @@ SCRATCH_ROOT="${SCRATCH_ROOT:-/esarchive/scratch/vlapin/tmp}"
 WORK_DIR="${WORK_DIR:-${SCRATCH_ROOT}/pisces_inidata_${GRID_NAME}}"
 
 # Subdirectories for raw data, weights, and final outputs
-RAW_DIR="${WORK_DIR}/raw_sources"
+RAW_DIR="${RAW_DIR:-${SCRATCH_ROOT}/pisces_raw_sources}"
 WEIGHTS_DIR="${WORK_DIR}/weights"
 OUTPUT_DIR="${WORK_DIR}/output_${GRID_NAME}"
 LOG_DIR="${WORK_DIR}/logs"
@@ -49,9 +49,13 @@ CDO_COMPRESS="-f nc4 -z zip_4"
 # 4. Source Data Catalog & References
 # ------------------------------------------------------------------------------
 # Source mode:
-#   'ece3_baseline'    : Uses validated ECE3/SHACONEMO baseline in /gpfs/projects/bsc32/models/ecearth/v3.3.3/inidata/pisces/ (100% bit-identical match)
-#   'official_regular' : Uses official regular 1x1 unmasked fields (WOA/GLODAP nomask) with 3D interpolation (r > 0.998 match)
-SOURCE_MODE="${SOURCE_MODE:-ece3_baseline}"
+#   'modern'           : Uses latest observational products: WOA23 (NO3, PO4, Si, O2) & GLODAPv2 (TALK, TDIC, PiDIC)
+#   'official_regular' : Uses official regular 1x1 unmasked fields (WOA/GLODAP nomask) with 3D interpolation
+#   'ece3_baseline'    : Uses validated ECE3/SHACONEMO baseline in /gpfs/projects/bsc32/models/ecearth/v3.3.3/inidata/pisces/
+SOURCE_MODE="${SOURCE_MODE:-modern}"
+
+WOA23_DIR="${RAW_DIR}/woa23"
+GLODAP_V2_DIR="${RAW_DIR}/glodap_v2"
 
 # Paths to ECE3 / BSC baseline sources
 ECE3_PISCES_DIR="${ECE3_PISCES_DIR:-/gpfs/projects/bsc32/models/ecearth/v3.3.3/inidata/pisces}"
@@ -77,3 +81,4 @@ export SLURM_ACCOUNT SLURM_PARTITION SLURM_TIME SLURM_CPUS_PER_TASK
 export MODULE_LOAD_CMD CDO_THREADS CDO_OPTS CDO_COMPRESS
 export TRACERS_3D RIVER_VARS DUST_VARS NDEP_VARS
 export SOURCE_MODE ECE3_PISCES_DIR ORCA1_GRIDDES
+export WOA23_DIR GLODAP_V2_DIR

@@ -98,5 +98,6 @@ done
 # 3. Merge all river variables into single target river.orca.nc
 echo "Merging all river variables into ${OUT_FILE}..."
 cdo ${CDO_OPTS} ${CDO_COMPRESS} merge "${MERGE_FILES[@]}" "${OUT_FILE}"
+ln -sfn "$(basename "${OUT_FILE}")" "${OUTPUT_DIR}/river_global_news_${GRID_NAME}.nc"
 
 echo "=== River forcings completed successfully: ${OUT_FILE} ==="

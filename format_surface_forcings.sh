@@ -50,6 +50,8 @@ process_dust() {
 
     echo "Remapping dust variables to ${GRID_NAME}..."
     cdo ${CDO_OPTS} ${CDO_COMPRESS} remap,"${TARGET_GRID_NC}","${weights_dust}" "${src_file}" "${out_file}"
+    ln -sfn "$(basename "${out_file}")" "${OUTPUT_DIR}/dust_INCA_${GRID_NAME}.nc"
+    ln -sfn "$(basename "${out_file}")" "${OUTPUT_DIR}/Solubility_T62_Mahowald_${GRID_NAME}.nc"
     echo "Created: ${out_file}"
 }
 
@@ -73,6 +75,7 @@ process_ndep() {
 
     echo "Remapping N-deposition variables to ${GRID_NAME}..."
     cdo ${CDO_OPTS} ${CDO_COMPRESS} remap,"${TARGET_GRID_NC}","${weights_ndep}" "${src_file}" "${out_file}"
+    ln -sfn "$(basename "${out_file}")" "${OUTPUT_DIR}/ndeposition_Duce_${GRID_NAME}.nc"
     echo "Created: ${out_file}"
 }
 
@@ -96,6 +99,7 @@ process_par() {
 
     echo "Remapping PAR daily climatology to ${GRID_NAME}..."
     cdo ${CDO_OPTS} ${CDO_COMPRESS} remap,"${TARGET_GRID_NC}","${weights_par}" "${src_file}" "${out_file}"
+    ln -sfn "$(basename "${out_file}")" "${OUTPUT_DIR}/par_fraction_gewex_clim90s00s_${GRID_NAME}.nc"
     echo "Created: ${out_file}"
 }
 

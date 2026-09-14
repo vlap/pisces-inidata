@@ -36,13 +36,17 @@ fi
 TMP_DIR=$(mktemp -d -p "${SCRATCH_ROOT}" tmp_grid_XXXXXX)
 trap 'rm -rf "${TMP_DIR}"' EXIT
 
-# Extract glamt (lon) and gphit (lat) from domain_cfg
-ncks -O -v glamt,gphit "${DOMAIN_CFG}" "${TMP_DIR}/grid_coords.nc"
+# Extract glamt (lon) and gphit (lat) from domain_cfg in NetCDF-4 format
+ncks -O -4 -v glamt,gphit "${DOMAIN_CFG}" "${TMP_DIR}/grid_coords.nc"
 # Extract tmaskutil from maskutil
-ncks -A -v tmaskutil "${MASKUTIL}" "${TMP_DIR}/grid_coords.nc"
+ncks -A -4 -v tmaskutil "${MASKUTIL}" "${TMP_DIR}/grid_coords.nc"
 
 # Rename variables to CF-standard names
 ncrename -v glamt,lon -v gphit,lat "${TMP_DIR}/grid_coords.nc"
+
+# Squeeze degenerate time dimensions so lon/lat are pure 2D curvilinear (y, x)
+ncwa -O -a time_counter "${TMP_DIR}/grid_coords.nc" "${TMP_DIR}/grid_coords.nc" 2>/dev/null || true
+ncwa -O -a t "${TMP_DIR}/grid_coords.nc" "${TMP_DIR}/grid_coords.nc" 2>/dev/null || true
 
 # Set CF coordinates and units attributes for CDO curvilinear recognition
 ncatted -O \
