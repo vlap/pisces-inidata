@@ -10,7 +10,6 @@ import tarfile
 import urllib.request
 from typing import Optional
 from pisces_inidata.config import load_config
-from pisces_inidata.doc import build_doc_climatology
 
 WOA23_BASE = "https://www.ncei.noaa.gov/data/oceans/woa/WOA23/DATA"
 GLODAP_V2_URL = (
@@ -175,6 +174,7 @@ def download_sources(
                 print(f"  [FETCH/BUILD] Would download CSVs and build {doc_nc}")
             else:
                 print(f"  [BUILD] Generating {doc_nc} from SEANOE CSVs...")
+                from pisces_inidata.doc import build_doc_climatology
                 build_doc_climatology(doc_dir, doc_nc)
 
     print("\n" + "=" * 78)
