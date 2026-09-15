@@ -92,14 +92,22 @@ def main():
     parser.add_argument("input", help="Path to input NetCDF file")
     parser.add_argument("output", help="Path to output padded NetCDF file")
     parser.add_argument(
+        "bottom_depth_pos",
+        nargs="?",
+        type=float,
+        default=None,
+        help="Optional positional target bottom depth in meters"
+    )
+    parser.add_argument(
         "--bottom-depth",
         type=float,
         default=6000.0,
         help="Target abyssal bottom depth in meters (default: 6000.0)"
     )
     args = parser.parse_args()
+    depth = args.bottom_depth_pos if args.bottom_depth_pos is not None else args.bottom_depth
 
-    pad_abyssal_depth(args.input, args.output, args.bottom_depth)
+    pad_abyssal_depth(args.input, args.output, depth)
 
 
 if __name__ == "__main__":

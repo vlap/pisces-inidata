@@ -155,7 +155,7 @@ if [ "${SOURCE_MODE}" = "modern" ]; then
             cdo ${CDO_OPTS} remap,"${TARGET_GRID_NC}","${WEIGHTS_BILIN}" "${TMP_DIR}/filled.nc" "${TMP_DIR}/hremap.nc"
 
             echo "[Step 4/5] Extending abyssal depth to 6000m..."
-            python3 "${SCRIPT_DIR}/pad_abyssal_depth.py" "${TMP_DIR}/hremap.nc" "${TMP_DIR}/hremap_padded.nc" 6000.0
+            python3 -m pisces_inidata.padding "${TMP_DIR}/hremap.nc" "${TMP_DIR}/hremap_padded.nc" 6000.0
 
             echo "[Step 5/5] Vertical interpolation to target L75 levels..."
             cdo ${CDO_OPTS} ${CDO_COMPRESS} -intlevel,"${TARGET_LEVELS}" "${TMP_DIR}/hremap_padded.nc" "${OUT_FILE}"
@@ -186,7 +186,7 @@ if [ "${SOURCE_MODE}" = "modern" ]; then
                 cdo ${CDO_OPTS} remap,"${TARGET_GRID_NC}","${WEIGHTS_BILIN}" "${TMP_DIR}/filled.nc" "${TMP_DIR}/hremap.nc"
 
                 echo "[Step 3/4] Extending abyssal depth to 6000m..."
-                python3 "${SCRIPT_DIR}/pad_abyssal_depth.py" "${TMP_DIR}/hremap.nc" "${TMP_DIR}/hremap_padded.nc" 6000.0
+                python3 -m pisces_inidata.padding "${TMP_DIR}/hremap.nc" "${TMP_DIR}/hremap_padded.nc" 6000.0
 
                 echo "[Step 4/4] Vertical interpolation to target levels..."
                 cdo ${CDO_OPTS} ${CDO_COMPRESS} -intlevel,"${TARGET_LEVELS}" "${TMP_DIR}/hremap_padded.nc" "${OUT_FILE}"
@@ -201,7 +201,7 @@ if [ "${SOURCE_MODE}" = "modern" ]; then
                 echo "[Step 1/3] Horizontal remapping to ${GRID_NAME}..."
                 cdo ${CDO_OPTS} remap,"${TARGET_GRID_NC}","${WEIGHTS_BILIN}" -selname,DOC "${SRC_FILE}" "${TMP_DIR}/hremap.nc"
                 echo "[Step 2/3] Extending abyssal depth to 6000m..."
-                python3 "${SCRIPT_DIR}/pad_abyssal_depth.py" "${TMP_DIR}/hremap.nc" "${TMP_DIR}/hremap_padded.nc" 6000.0
+                python3 -m pisces_inidata.padding "${TMP_DIR}/hremap.nc" "${TMP_DIR}/hremap_padded.nc" 6000.0
                 echo "[Step 3/3] Vertical interpolation to target levels..."
                 cdo ${CDO_OPTS} ${CDO_COMPRESS} -intlevel,"${TARGET_LEVELS}" "${TMP_DIR}/hremap_padded.nc" "${OUT_FILE}"
             fi
@@ -226,7 +226,7 @@ if [ "${SOURCE_MODE}" = "modern" ]; then
                     echo "[Step 1/3] Horizontal remapping to ${GRID_NAME}..."
                     cdo ${CDO_OPTS} remap,"${TARGET_GRID_NC}","${WEIGHTS_BILIN}" -selname,Fer "${SRC_FILE}" "${TMP_DIR}/hremap.nc"
                     echo "[Step 2/3] Extending abyssal depth to 6000m..."
-                    python3 "${SCRIPT_DIR}/pad_abyssal_depth.py" "${TMP_DIR}/hremap.nc" "${TMP_DIR}/hremap_padded.nc" 6000.0
+                    python3 -m pisces_inidata.padding "${TMP_DIR}/hremap.nc" "${TMP_DIR}/hremap_padded.nc" 6000.0
                     echo "[Step 3/3] Vertical interpolation to target levels..."
                     cdo ${CDO_OPTS} ${CDO_COMPRESS} -intlevel,"${TARGET_LEVELS}" "${TMP_DIR}/hremap_padded.nc" "${OUT_FILE}"
                 fi
@@ -254,7 +254,7 @@ elif [ "${SOURCE_MODE}" = "official_regular" ]; then
 
     cdo ${CDO_OPTS} -selname,"${INTERNAL_VAR}" "${SRC_FILE}" "${TMP_DIR}/src_sel.nc"
     cdo ${CDO_OPTS} remap,"${TARGET_GRID_NC}","${WEIGHTS_BILIN}" "${TMP_DIR}/src_sel.nc" "${TMP_DIR}/hremap.nc"
-    python3 "${SCRIPT_DIR}/pad_abyssal_depth.py" "${TMP_DIR}/hremap.nc" "${TMP_DIR}/hremap_padded.nc" 6000.0
+    python3 -m pisces_inidata.padding "${TMP_DIR}/hremap.nc" "${TMP_DIR}/hremap_padded.nc" 6000.0
     cdo ${CDO_OPTS} ${CDO_COMPRESS} -intlevel,"${TARGET_LEVELS}" "${TMP_DIR}/hremap_padded.nc" "${OUT_FILE}"
 
 elif [ "${SOURCE_MODE}" = "ece3_baseline" ]; then
