@@ -32,6 +32,12 @@ Assesses monotonic spatial relationships, insensitive to non-linearities and ext
 $$\rho = 1 - \frac{6 \sum_{i=1}^N d_i^2}{N(N^2 - 1)}$$
 where $d_i = \text{rank}(x_i) - \text{rank}(y_i)$.
 
+### Mass Conservation Verification (Boundary Forcings)
+For surface and lateral boundary fluxes (river DIN/DIC/DIP, atmospheric dust, and soluble iron deposition), total global mass input into the ocean must be conserved during conservative spatial remapping:
+$$\Phi = \sum_{i \in \text{Ocean}} F_i \cdot A_i$$
+where $F_i$ is the local areal flux rate (e.g. $\text{g}\cdot\text{m}^{-2}\cdot\text{yr}^{-1}$) and $A_i$ is the target grid cell horizontal area ($\text{m}^2$). The relative mass divergence must satisfy:
+$$\Delta_{\text{mass}} = \frac{|\Phi_{\text{target}} - \Phi_{\text{ref}}|}{\Phi_{\text{ref}}} \times 100\% \le \epsilon_{\text{tol}} \quad (\text{default: } 0.5\%)$$
+
 ---
 
 ## 2. Running the Validation Suite

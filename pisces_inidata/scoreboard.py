@@ -2,11 +2,12 @@
 Validation Scoreboard Module
 Computes a comprehensive validation scoreboard comparing interpolated PISCES
 inidata products on ORCA2 (or other NEMO grids) against official SETTE ground truth references.
+Also includes mass-conservation verification for boundary and surface forcings.
 """
 
 import os
 import argparse
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 import numpy as np
 import netCDF4 as nc
 from scipy.stats import spearmanr
@@ -26,7 +27,14 @@ ALIASES = {
     'par': ['fr_par'],
     'bathy': ['bathy'],
     'hydrofe': ['epsdb'],
-    'river': ['riverdin', 'riverdic']
+    'river': ['riverdin', 'riverdic'],
+    'riverdin': ['riverdin'],
+    'riverdic': ['riverdic'],
+    'riverdip': ['riverdip'],
+    'riverdon': ['riverdon'],
+    'riverdop': ['riverdop'],
+    'riverdoc': ['riverdoc'],
+    'riverdsi': ['riverdsi'],
 }
 
 UNITS = {
@@ -52,7 +60,6 @@ def find_var(ds: nc.Dataset, candidates: list) -> Optional[str]:
     for c in candidates:
         if c in ds.variables:
             return c
-    # Fallback to case-insensitive match
     for c in candidates:
         for v in ds.variables:
             if c.lower() == v.lower():
@@ -92,7 +99,6 @@ def compute_diagnostics(test_file: str, ref_file: str, var_key: str) -> Dict[str
         if data_test.shape != data_ref.shape:
             raise ValueError(f"Shape mismatch for {var_key}: test={data_test.shape} vs ref={data_ref.shape}")
 
-        # Mask invalid values
         mask_test = (
             np.ma.getmaskarray(data_test) if np.ma.is_masked(data_test)
             else np.zeros(data_test.shape, dtype=bool)
@@ -104,7 +110,6 @@ def compute_diagnostics(test_file: str, ref_file: str, var_key: str) -> Dict[str
 
         combined_mask = mask_test | mask_ref | np.isnan(data_test) | np.isnan(data_ref)
 
-        # Flatten valid cells
         valid_test = np.array(data_test[~combined_mask], dtype=np.float64)
         valid_ref = np.array(data_ref[~combined_mask], dtype=np.float64)
 
@@ -143,7 +148,6 @@ def compute_diagnostics(test_file: str, ref_file: str, var_key: str) -> Dict[str
         nrmse_pct = (rmse / abs(mean_ref) * 100.0) if abs(mean_ref) > 1e-12 else np.nan
         rel_bias_pct = (mbe / abs(mean_ref) * 100.0) if abs(mean_ref) > 1e-12 else np.nan
 
-        # Correlation
         std_test = np.std(valid_test)
         std_ref = np.std(valid_ref)
         if std_test > 1e-12 and std_ref > 1e-12:
@@ -178,12 +182,84 @@ def compute_diagnostics(test_file: str, ref_file: str, var_key: str) -> Dict[str
         }
 
 
-def generate_scoreboard(results: list, output_md_path: Optional[str] = None) -> str:
+def compute_mass_conservation(
+    test_file: str,
+    ref_file: str,
+    var_name: str,
+    test_area_file: Optional[str] = None,
+    ref_area_file: Optional[str] = None,
+    tolerance_pct: float = 0.5
+) -> Dict[str, Any]:
+    """
+    Verifies mass conservation of surface/boundary fluxes between test and reference datasets.
+    Calculates spatial integral: Integral = sum(flux * area).
+    """
+    if not os.path.exists(test_file):
+        raise FileNotFoundError(f"Test file not found: {test_file}")
+    if not os.path.exists(ref_file):
+        raise FileNotFoundError(f"Reference file not found: {ref_file}")
+
+    candidates = ALIASES.get(var_name, [var_name])
+    with nc.Dataset(test_file, 'r') as ds_test, nc.Dataset(ref_file, 'r') as ds_ref:
+        v_test = find_var(ds_test, candidates)
+        v_ref = find_var(ds_ref, candidates)
+
+        if not v_test or not v_ref:
+            raise KeyError(f"Variable '{var_name}' not found in test ({test_file}) or ref ({ref_file})")
+
+        data_test = np.squeeze(ds_test.variables[v_test][:])
+        data_ref = np.squeeze(ds_ref.variables[v_ref][:])
+
+        test_masked = np.ma.masked_invalid(data_test)
+        ref_masked = np.ma.masked_invalid(data_ref)
+
+        area_test = 1.0
+        area_ref = 1.0
+
+        if test_area_file and os.path.exists(test_area_file):
+            with nc.Dataset(test_area_file, 'r') as ds_a:
+                a_var = find_var(ds_a, ['area', 'e1t_e2t', 'cell_area'])
+                if a_var:
+                    area_test = np.squeeze(ds_a.variables[a_var][:])
+
+        if ref_area_file and os.path.exists(ref_area_file):
+            with nc.Dataset(ref_area_file, 'r') as ds_a:
+                a_var = find_var(ds_a, ['area', 'e1t_e2t', 'cell_area'])
+                if a_var:
+                    area_ref = np.squeeze(ds_a.variables[a_var][:])
+
+        integral_test = float(np.sum(test_masked * area_test))
+        integral_ref = float(np.sum(ref_masked * area_ref))
+
+        rel_diff_pct = (
+            ((integral_test - integral_ref) / abs(integral_ref) * 100.0)
+            if abs(integral_ref) > 1e-12 else 0.0
+        )
+        passed = abs(rel_diff_pct) <= tolerance_pct
+
+        return {
+            'var': var_name,
+            'integral_test': integral_test,
+            'integral_ref': integral_ref,
+            'rel_diff_pct': rel_diff_pct,
+            'tolerance_pct': tolerance_pct,
+            'passed': passed,
+            'status': "PASS" if passed else "FAIL"
+        }
+
+
+def generate_scoreboard(
+    results: List[Dict[str, Any]],
+    conservation_results: Optional[List[Dict[str, Any]]] = None,
+    output_md_path: Optional[str] = None
+) -> str:
     """
     Renders diagnostic results list into a GitHub Flavored Markdown scoreboard table.
     """
     lines = []
     lines.append("# PISCES Inidata Validation Scoreboard (ORCA2 vs SETTE Ground Truth)")
+    lines.append("")
+    lines.append("## 1. Tracers and Boundary Forcings Closeness Metrics")
     lines.append("")
     lines.append(
         "| Variable | Product Evaluated | Unit | N Valid | Pearson r | "
@@ -208,6 +284,19 @@ def generate_scoreboard(results: list, output_md_path: Optional[str] = None) -> 
             f"| **{r['var']}** | `{prod}` | {r['unit']} | {r['valid_count']} | "
             f"{r_val} | {rho_val} | {rmse_val} | {nrmse_val} | {mae_val} | {mbe_val} | {rel_bias} | {max_diff} |"
         )
+
+    if conservation_results:
+        lines.append("")
+        lines.append("## 2. Mass Conservation Verification (Boundary Forcings)")
+        lines.append("")
+        lines.append("| Variable | Target Integral | Ref Integral | Rel Diff (%) | Tolerance | Status |")
+        lines.append("| :--- | :---: | :---: | :---: | :---: | :---: |")
+        for c in conservation_results:
+            stat_str = f"**{c['status']}**" if c['passed'] else f"<span style='color:red;'>**{c['status']}**</span>"
+            lines.append(
+                f"| **{c['var']}** | {c['integral_test']:.4e} | {c['integral_ref']:.4e} | "
+                f"{c['rel_diff_pct']:+.2f}% | $\\le {c['tolerance_pct']:.1f}\\%$ | {stat_str} |"
+            )
 
     lines.append("")
     md_content = "\n".join(lines)
