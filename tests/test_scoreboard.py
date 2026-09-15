@@ -43,7 +43,7 @@ def test_compute_diagnostics():
         # Generate markdown
         md = generate_scoreboard([diag])
         assert "NO3" in md
-        assert "RMSE" in md
+        assert "Rel RMSE" in md
         assert "PASS" in md
     finally:
         for p in [path_ref, path_test]:

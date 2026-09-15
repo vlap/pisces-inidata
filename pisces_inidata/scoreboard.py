@@ -437,17 +437,16 @@ def generate_scoreboard(
     lines.append("")
     lines.append(
         "| Variable | Product Evaluated | Unit | Physical Range [min, max] | Mean Ratio | "
-        "Pearson $r$ | RMSE | Rel RMSE (%) | Status | Diagnostic Verdict |"
+        "Pearson $r$ | Rel RMSE (%) | Status |"
     )
     lines.append(
-        "| :--- | :--- | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :--- |"
+        "| :--- | :--- | :--- | :---: | :---: | :---: | :---: | :---: |"
     )
 
     for r in results:
         r_val = f"**{r['r']:.4f}**" if (not np.isnan(r['r']) and r['r'] >= 0.85) else (
             f"{r['r']:.4f}" if not np.isnan(r['r']) else "N/A"
         )
-        rmse_val = f"{r['rmse']:.3e}" if not np.isnan(r['rmse']) else "N/A"
         nrmse_val = f"{r['nrmse_pct']:.2f}%" if not np.isnan(r['nrmse_pct']) else "N/A"
         range_str = f"[{r['min_test']:.2e}, {r['max_test']:.2e}]"
         ratio_str = f"{r['scale_ratio']:.2f}x"
@@ -459,7 +458,7 @@ def generate_scoreboard(
 
         lines.append(
             f"| **{r['var']}** | `{prod}` | {r['unit']} | {range_str} | {ratio_str} | "
-            f"{r_val} | {rmse_val} | {nrmse_val} | {stat_str} | {r['issue']} |"
+            f"{r_val} | {nrmse_val} | {stat_str} |"
         )
 
     if conservation_results:

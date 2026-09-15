@@ -242,28 +242,26 @@ def format_reproduction_report(results: List[Dict[str, Any]], output_md_path: Op
     )
     lines.append("")
     lines.append(
-        "| Variable | Raw Source Grid | Mean Ref | RMSE | Rel RMSE (%) | Pearson $r$ | "
-        "$\\Delta$ Inventory (%) | Pipeline Assessment |"
+        "| Variable | Raw Source Grid | Mean Ref | Rel RMSE (%) | Pearson $r$ | "
+        "$\\Delta$ Inventory (%) | Status |"
     )
     lines.append(
-        "| :--- | :--- | :---: | :---: | :---: | :---: | :---: | :--- |"
+        "| :--- | :--- | :---: | :---: | :---: | :---: | :---: |"
     )
 
     for r in results:
         v = r['var']
         source = r.get('source_nomask', 'nomask regular')
         mean_ref_str = f"{r['mean_ref']:.4f}"
-        rmse_str = f"{r['rmse']:.4e}"
         rel_rmse_str = f"{r['rel_rmse_pct']:.2f}%"
         r_str = f"**{r['pearson_r']:.6f}**"
         inv_str = f"{r['inventory_diff_pct']:+.2f}%"
         passed = r.get('passed', True)
         stat = "**PASS**" if passed else "<span style='color:red;'>**FAIL**</span>"
-        note = r.get('note', 'High precision reconstruction')
 
         lines.append(
-            f"| **{v}** | `{source}` | {mean_ref_str} | {rmse_str} | {rel_rmse_str} | "
-            f"{r_str} | {inv_str} | {stat}: {note} |"
+            f"| **{v}** | `{source}` | {mean_ref_str} | {rel_rmse_str} | "
+            f"{r_str} | {inv_str} | {stat} |"
         )
 
     lines.append("")
