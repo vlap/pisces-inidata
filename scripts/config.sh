@@ -86,6 +86,8 @@ GLODAP_VERSION="${GLODAP_VERSION:-v2.2016b}"
 SCRIPT_DIR_CONFIG="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 if [ -f "${SCRIPT_DIR_CONFIG}/products.cfg" ]; then
     source "${SCRIPT_DIR_CONFIG}/products.cfg"
+elif [ -f "${SCRIPT_DIR_CONFIG}/../products.cfg" ]; then
+    source "${SCRIPT_DIR_CONFIG}/../products.cfg"
 fi
 
 WOA23_DIR="${RAW_DIR}/woa23"

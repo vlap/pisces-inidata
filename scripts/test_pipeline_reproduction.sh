@@ -15,7 +15,7 @@ source "${SCRIPT_DIR}/config.sh" 2>/dev/null || true
 REF_DIR="${ECE4_PISCES_REF:-/gpfs/projects/bsc32/models/ecearth/ece4-trunk/inidata/nemo/pisces}"
 RAW_NOMASK_DIR="${RAW_DIR:-${PWD}/pisces_raw_sources}/official_v5.0.0"
 VAL_OUTPUT_DIR="${WORK_DIR:-${PWD}/work_eORCA1}/reproduction_test"
-REPORT_MD="${SCRIPT_DIR}/PIPELINE_REPRODUCTION_REPORT.md"
+REPORT_MD="${REPORT_MD:-${PWD}/PIPELINE_REPRODUCTION_REPORT.md}"
 MASK_FILE="${DOMAIN_BASE_DIR:-${PWD}/domain}/eORCA1/maskutil.nc"
 
 mkdir -p "${VAL_OUTPUT_DIR}"

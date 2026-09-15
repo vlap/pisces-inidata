@@ -13,7 +13,7 @@ source "${SCRIPT_DIR}/config.sh" 2>/dev/null || true
 
 TEST_DIR="${OUTPUT_DIR:-${PWD}/output_ORCA2}"
 REF_DIR="${SETTE_REF_DIR:-${WORK_DIR}/sette_reference_ORCA2}"
-OUTPUT_MD="${SCRIPT_DIR}/VALIDATION_SCOREBOARD_ORCA2.md"
+OUTPUT_MD="${OUTPUT_MD:-${PWD}/VALIDATION_SCOREBOARD_ORCA2.md}"
 
 if [ ! -d "${REF_DIR}" ] && [ -f "${SCRIPT_DIR}/prepare_sette_reference_orca2.sh" ]; then
     echo "SETTE ORCA2 reference directory not found at ${REF_DIR}. Assembling..."
