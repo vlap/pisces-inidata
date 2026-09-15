@@ -214,7 +214,7 @@ def format_scoreboard_md(results):
     lines = []
     lines.append("# PISCES Inidata Validation Scoreboard (ORCA2 vs SETTE Reference)")
     lines.append("")
-    lines.append("Evaluation of newly generated PISCES inputs (including **Panaïotis et al. 2024 DOC**, **WOA23**, **GLODAPv3**) interpolated to **ORCA2** and verified against the official **SETTE ORCA2** ground truth.")
+    lines.append("Evaluation of newly generated PISCES inputs (including **Panaïotis et al. 2024 DOC**, **WOA23**, **GLODAPv2.2016b**) interpolated to **ORCA2** and verified against the official **SETTE ORCA2** ground truth.")
     lines.append("")
     lines.append("| Variable | Product Evaluated | Metric Unit | Pearson $r$ | RMSE | Rel RMSE (%) | MAE | Bias (MBE) | Rel Bias (%) | Status |")
     lines.append("| :--- | :--- | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |")
@@ -237,7 +237,7 @@ def format_scoreboard_md(results):
     lines.append("### Key Diagnostic Insights:")
     lines.append("- **Panaïotis et al. (2024) DOC:** Evaluates the new machine learning-based global DOC climatology against the classical Hansell (2009) baseline, capturing enhanced mesopelagic and surface carbon gradients.")
     lines.append("- **WOA23 Nutrients & Oxygen:** Demonstrates strong correlation ($r > 0.95$) against legacy climatologies while incorporating decades of modern biogeochemical observations.")
-    lines.append("- **GLODAPv3 Inorganic Carbon System:** Captures updated modern total inorganic carbon and alkalinity distributions calibrated using Furthest-First inversion.")
+    lines.append("- **GLODAPv2.2016b Inorganic Carbon System:** Captures objectively mapped pre-industrial/modern total inorganic carbon and alkalinity distributions.")
     lines.append("")
     return "\n".join(lines)
 
@@ -257,9 +257,9 @@ def main():
         ('PO4', ['data_PO4_ORCA2.nc', 'PO4_WOA23_monthly_ORCA2.nc'], ['data_PO4_ORCA2.nc', 'data_PO4_nomask_ORCA2.nc'], 'WOA23'),
         ('Si',  ['data_Si_ORCA2.nc', 'data_SIL_ORCA2.nc', 'Si_WOA23_monthly_ORCA2.nc'], ['data_Si_ORCA2.nc', 'data_SIL_ORCA2.nc', 'data_SIL_nomask_ORCA2.nc'], 'WOA23'),
         ('O2',  ['data_O2_ORCA2.nc', 'data_OXY_ORCA2.nc', 'O2_WOA23_monthly_ORCA2.nc'], ['data_O2_ORCA2.nc', 'data_OXY_ORCA2.nc', 'data_OXY_nomask_ORCA2.nc'], 'WOA23'),
-        ('TALK',['data_TALK_ORCA2.nc', 'data_ALK_ORCA2.nc', 'Alkalini_GLODAP_annual_ORCA2.nc'], ['data_TALK_ORCA2.nc', 'data_ALK_ORCA2.nc', 'data_ALK_nomask_ORCA2.nc'], 'GLODAPv3/v2'),
-        ('TDIC',['data_TDIC_ORCA2.nc', 'data_DIC_ORCA2.nc', 'DIC_GLODAP_annual_ORCA2.nc'], ['data_TDIC_ORCA2.nc', 'data_DIC_ORCA2.nc', 'data_DIC_nomask_ORCA2.nc'], 'GLODAPv3/v2'),
-        ('PiDIC',['data_PiDIC_ORCA2.nc', 'PiDIC_GLODAP_annual_ORCA2.nc'], ['data_PiDIC_ORCA2.nc', 'data_DIC_ORCA2.nc', 'data_DIC_nomask_ORCA2.nc'], 'GLODAPv3/v2'),
+        ('TALK',['data_TALK_ORCA2.nc', 'data_ALK_ORCA2.nc', 'Alkalini_GLODAP_annual_ORCA2.nc'], ['data_TALK_ORCA2.nc', 'data_ALK_ORCA2.nc', 'data_ALK_nomask_ORCA2.nc'], 'GLODAPv2.2016b'),
+        ('TDIC',['data_TDIC_ORCA2.nc', 'data_DIC_ORCA2.nc', 'DIC_GLODAP_annual_ORCA2.nc'], ['data_TDIC_ORCA2.nc', 'data_DIC_ORCA2.nc', 'data_DIC_nomask_ORCA2.nc'], 'GLODAPv2.2016b'),
+        ('PiDIC',['data_PiDIC_ORCA2.nc', 'PiDIC_GLODAP_annual_ORCA2.nc'], ['data_PiDIC_ORCA2.nc', 'data_DIC_ORCA2.nc', 'data_DIC_nomask_ORCA2.nc'], 'GLODAPv2.2016b'),
         ('DOC', ['data_DOC_ORCA2.nc', 'DOC_Panaiotis2024_monthly_ORCA2.nc'], ['data_DOC_ORCA2.nc', 'data_DOC_nomask_ORCA2.nc'], 'Panaïotis et al. 2024 (ML)'),
         ('Fer', ['data_Fer_ORCA2.nc', 'data_FER_ORCA2.nc', 'Fer_PISCES_monthly_ORCA2.nc'], ['data_Fer_ORCA2.nc', 'data_FER_ORCA2.nc', 'data_FER_nomask_ORCA2.nc'], 'Tagliabue 2012'),
         ('dust', ['dust.orca.nc', 'dust_INCA_ORCA2.nc'], ['dust.orca.nc'], 'INCA / Mahowald'),
