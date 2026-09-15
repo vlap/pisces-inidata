@@ -48,8 +48,6 @@ docs = [
 
 [project.scripts]
 pisces-inidata = "pisces_inidata.cli:main"
-pisces-scoreboard = "pisces_inidata.scoreboard:main"
-pisces-pad-depth = "pisces_inidata.padding:main"
 
 [project.urls]
 Homepage = "https://github.com/vlap/pisces-inidata"
