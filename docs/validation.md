@@ -1,12 +1,24 @@
 # Validation Metrics & Diagnostic Scoreboard
 
-To ensure that generated initial conditions are scientifically rigorous, physically plausible, and numerically stable before launching long-term climate integrations, `pisces-inidata` features an automated validation suite.
-
-The tool compares interpolated fields against the official **NEMO/PISCES SETTE** benchmark suite on the ORCA2 grid.
+To ensure that generated initial conditions are scientifically rigorous, physically plausible, and numerically stable before launching multi-century climate integrations, `pisces-inidata` features an automated procedure validation engine.
 
 ---
 
-## 1. Mathematical Definitions
+## 1. Rationale: Why Validate on ORCA2 against SETTE?
+
+1. **Procedure Verification Over Bitwise Identity:**
+   Different observational products (e.g. WOA23 vs WOA2009, or machine-learning Panaïotis 2024 DOC vs legacy Hansell 2009) have genuine oceanographic differences. The primary goal of validation is to verify the **integrity of the interpolation procedure** and catch **major defects**:
+   - **Unit Scaling Blunders:** Catches order-of-magnitude mistakes (e.g., $\times 1000$ or $\times 10^6$, $\text{mol/m}^3$ vs $\mu\text{mol/L}$, or annual vs per-second rates).
+   - **Coordinate & Orientation Flips:** Detects inverted latitudes, shifted longitudes, or transposed dimensions ($r < 0$).
+   - **Unphysical Values:** Detects negative concentrations in positive-definite biogeochemical tracers or NaN leakage into wet ocean cells.
+   - **Mass Non-Conservation:** Verifies that horizontal remapping preserves global integrated nutrient and dust flux totals ($\Delta_{\text{mass}} \le 0.5\%$).
+
+2. **Lightweight & Universal Portability:**
+   NEMO's standard test environment (**SETTE**) uses the **ORCA2** tripolar grid. Because ORCA2 is compact and computationally lightweight, anyone can run the complete validation suite in seconds on a standard laptop or workstation without requiring high-performance computing clusters, multi-gigabyte domain files, or proprietary storage paths.
+
+---
+
+## 2. Mathematical Definitions
 
 Let $x_i$ denote the test field value, $y_i$ denote the reference field value, and $N$ denote the total number of valid (unmasked ocean) grid cells across the 3D domain.
 
@@ -24,7 +36,7 @@ $$\text{Bias} = \frac{1}{N}\sum_{i=1}^N (x_i - y_i)$$
 $$\text{Relative Bias} = \frac{\text{Bias}}{|\bar{y}|} \times 100\%$$
 
 ### Pearson Correlation Coefficient ($r$)
-Quantifies spatial linear agreement:
+Quantifies spatial linear agreement and verifies correct orientation:
 $$r = \frac{\sum_{i=1}^N (x_i - \bar{x})(y_i - \bar{y})}{\sqrt{\sum_{i=1}^N (x_i - \bar{x})^2 \sum_{i=1}^N (y_i - \bar{y})^2}}$$
 
 ### Spearman Rank Correlation ($\rho$)
@@ -40,21 +52,32 @@ $$\Delta_{\text{mass}} = \frac{|\Phi_{\text{target}} - \Phi_{\text{ref}}|}{\Phi_
 
 ---
 
-## 2. Running the Validation Suite
+## 3. Product Scorecard & Health Status
 
-Execute the validation script:
-```bash
-pisces-inidata validate
-# or:
-# bash scripts/run_validation_suite.sh
-```
+Every evaluated product receives a diagnostic scorecard entry with an automated health verdict:
 
-The output markdown table is written to `VALIDATION_SCOREBOARD_ORCA2.md`.
+| Status | Condition | Meaning |
+| :--- | :--- | :--- |
+| **`PASS`** | Mean ratio in $[0.2, 5.0]$, $r \ge 0.65$, non-negative, mass conserved | Procedure and product verified; physically sound. |
+| **`WARN`** | Expected climatological shift (e.g. ML DOC vs Hansell baseline) | Oceanographic evolution noted; not a pipeline defect. |
+| **`FAIL`** | Scale error ($> 10\times$ or $< 0.1\times$), $r < 0$, negative values, or mass leakage | Critical defect: inspect units, coordinates, or remapping weights. |
 
 ---
 
-## 3. Interpreting Scoreboard Results
+## 4. Running the Validation Suite
 
-- **Near-Zero Errors ($r > 0.999$, $\text{NRMSE} < 0.1\%$):** Indicates numerical identity (e.g. boundary forcings or identical source data).
-- **Physical Climatology Evolution ($r \approx 0.96 - 0.98$, $\text{NRMSE} \approx 6 - 8\%$):** Observed when comparing WOA23 against WOA2009. Reflects actual oceanographic improvements and decadal changes (e.g. deoxygenation, adjusted nutrient stoichiometry).
-- **High Discrepancy ($r < 0.50$):** Signals an architectural divergence in raw source data, such as comparing modern machine-learning DOC (Panaïotis et al. 2024) against legacy Hansell (2009) estimates.
+Execute validation using the CLI:
+```bash
+# Validate generated ORCA2 outputs against SETTE references
+pisces-inidata validate --test-dir output_ORCA2 --ref-dir sette_reference_ORCA2
+
+# Optionally enforce strict failure exit code for automated CI:
+pisces-inidata validate --fail-on-error
+```
+
+Alternatively, invoke the driver script:
+```bash
+bash scripts/run_validation_suite.sh
+```
+
+The output markdown table is written to `VALIDATION_SCOREBOARD_ORCA2.md`.

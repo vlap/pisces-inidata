@@ -11,6 +11,7 @@ from pisces_inidata import __version__
 from pisces_inidata.config import load_config, validate_config
 from pisces_inidata.padding import pad_abyssal_depth
 from pisces_inidata.check import run_preflight_checks
+from pisces_inidata.scoreboard import run_validation_suite
 
 
 def get_repo_root() -> str:
@@ -44,16 +45,31 @@ def cmd_run(args):
 
 def cmd_validate(args):
     repo_root = get_repo_root()
-    script = os.path.join(repo_root, 'scripts', 'run_validation_suite.sh')
-    if not os.path.exists(script):
-        script = os.path.join(repo_root, 'run_validation_suite.sh')
-    if not os.path.exists(script):
-        print(f"Error: validation suite script not found at {script}")
-        sys.exit(1)
+    test_dir = args.test_dir
+    if not test_dir:
+        candidates = [
+            os.path.join(repo_root, "output_ORCA2"),
+            os.path.join(repo_root, "work_ORCA2"),
+            os.path.join(repo_root, "work_orca2"),
+            repo_root
+        ]
+        for c in candidates:
+            if os.path.exists(c):
+                test_dir = c
+                break
+        if not test_dir:
+            test_dir = os.path.join(repo_root, "output_ORCA2")
 
-    print(f"Launching PISCES validation suite: {script}")
-    res = subprocess.run(["bash", script], cwd=repo_root)
-    sys.exit(res.returncode)
+    ref_dir = args.ref_dir or os.environ.get("SETTE_REF_DIR", os.path.join(repo_root, "sette_reference_ORCA2"))
+    output_md = args.output_md or os.path.join(repo_root, "VALIDATION_SCOREBOARD_ORCA2.md")
+
+    code = run_validation_suite(
+        test_dir=test_dir,
+        ref_dir=ref_dir,
+        output_md=output_md,
+        fail_on_error=args.fail_on_error
+    )
+    sys.exit(code)
 
 
 def cmd_info(args):
@@ -142,7 +158,27 @@ def main():
     run_parser.set_defaults(func=cmd_run)
 
     # Command: validate
-    val_parser = subparsers.add_parser("validate", help="Run statistical validation suite against SETTE ground truth")
+    val_parser = subparsers.add_parser(
+        "validate",
+        help="Run procedure validation scorecard on ORCA2 vs SETTE benchmark"
+    )
+    val_parser.add_argument(
+        "--test-dir",
+        help="Directory containing generated ORCA2 NetCDF files (default: output_ORCA2/)"
+    )
+    val_parser.add_argument(
+        "--ref-dir",
+        help="Directory containing SETTE ORCA2 benchmark reference files (default: sette_reference_ORCA2/)"
+    )
+    val_parser.add_argument(
+        "--output-md",
+        help="Path to write Markdown scorecard report (default: VALIDATION_SCOREBOARD_ORCA2.md)"
+    )
+    val_parser.add_argument(
+        "--fail-on-error",
+        action="store_true",
+        help="Exit with non-zero code if any product encounters a critical validation error"
+    )
     val_parser.set_defaults(func=cmd_validate)
 
     # Command: info
