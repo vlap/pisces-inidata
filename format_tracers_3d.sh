@@ -117,8 +117,9 @@ if [ "${SOURCE_MODE}" = "modern" ]; then
             echo "[Step 3/3] Vertical interpolation to target L75 levels..."
             cdo ${CDO_OPTS} ${CDO_COMPRESS} -intlevel,"${TARGET_LEVELS}" "${TMP_DIR}/hremap.nc" "${OUT_FILE}"
 
-            # Create symlink matching observational product
+            # Create symlink matching observational product and EC-Earth4 setup-nemo.yml links
             ln -sfn "$(basename "${OUT_FILE}")" "${OUTPUT_DIR}/${VAR}_WOA23_monthly_${GRID_NAME}.nc"
+            ln -sfn "$(basename "${OUT_FILE}")" "${OUTPUT_DIR}/${VAR}_WOA2009_monthly_${GRID_NAME}.nc"
             ;;
 
         TALK|TDIC|PiDIC)

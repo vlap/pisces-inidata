@@ -146,6 +146,7 @@ process_ndep() {
         fi
     fi
 
+    ln -sfn "$(basename "${out_file}")" "${OUTPUT_DIR}/ndeposition_Duce_${GRID_NAME}.nc"
     ln -sfn "$(basename "${out_file}")" "${OUTPUT_DIR}/ndeposition_Duce_monthly_${GRID_NAME}.nc"
     stamp_provenance "${out_file}"
     echo "Created: ${out_file}"
