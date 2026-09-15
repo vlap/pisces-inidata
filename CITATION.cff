@@ -1,0 +1,22 @@
+cff-version: 1.2.0
+message: "If you use this software in your research or EC-Earth4 simulations, please cite it as below."
+title: "pisces-inidata: Global Biogeochemical Initial Conditions Generator for PISCES and EC-Earth4"
+version: 1.0.0
+date-released: 2026-09-15
+authors:
+  - family-names: Lapin
+    given-names: Vladimir
+    affiliation: "Barcelona Supercomputing Center (BSC)"
+    orcid: "https://orcid.org/0000-0000-0000-0000"
+repository-code: "https://github.com/vlap/pisces-inidata"
+url: "https://pisces-inidata.readthedocs.io/"
+license: Apache-2.0
+keywords:
+  - "ocean biogeochemistry"
+  - "PISCES"
+  - "NEMO"
+  - "EC-Earth4"
+  - "initial conditions"
+  - "climate modeling"
+  - "WOA23"
+  - "GLODAP"

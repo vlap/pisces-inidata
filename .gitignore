@@ -2,9 +2,12 @@
 *.tar.gz
 *.nc
 *.nc4
+*.csv
 
-# Extracted datasets
+# Extracted and raw datasets
 ORCA2_INPUTS_PISCES_v*
+raw_data/
+work_*/
 
 # Temporary and log files
 *.out
@@ -12,6 +15,18 @@ ORCA2_INPUTS_PISCES_v*
 tmp_*
 logs/
 sbatch_scripts/
-raw_data/
-*.csv
+scratch/
+
+# Python build and test artifacts
 __pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Documentation build output
+docs/_build/
