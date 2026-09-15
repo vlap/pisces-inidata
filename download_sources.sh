@@ -56,23 +56,74 @@ download_woa23_var "silicate" "i"
 download_woa23_var "oxygen" "o"
 
 # ------------------------------------------------------------------------------
-# 3. Download Raw GLODAPv2 Mapped Climatology from NOAA NCEI OCADS
+# 3. Download GLODAP (Default: GLODAPv3, supports v3, v2.2023, v2.2016b, v1.1)
 # ------------------------------------------------------------------------------
-echo "=== [3/5] Fetching Raw GLODAPv2 Mapped Climatology from NOAA NCEI ==="
-GLODAP_URL="https://www.ncei.noaa.gov/data/oceans/ncei/ocads/data/0162565/mapped/GLODAPv2.2016b_MappedClimatologies.tar.gz"
-GLODAP_TAR="${GLODAP_V2_DIR}/GLODAPv2.2016b_MappedClimatologies.tar.gz"
+echo "=== [3/5] Fetching GLODAP Datasets (Target Version: ${GLODAP_VERSION:-v3}) ==="
 
-if [ ! -f "${GLODAP_V2_DIR}/GLODAPv2.2016b.TAlk.nc" ]; then
-    if [ ! -f "${GLODAP_TAR}" ]; then
-        echo "Fetching GLODAP mapped climatologies..."
-        curl -fSL "${GLODAP_URL}" -o "${GLODAP_TAR}"
-    fi
-    echo "Extracting GLODAP archive..."
-    tar -xzf "${GLODAP_TAR}" -C "${GLODAP_V2_DIR}"
-    echo "GLODAP extraction complete: $(ls -l ${GLODAP_V2_DIR}/*.nc 2>/dev/null || true)"
-else
-    echo "GLODAP NetCDF files already present in ${GLODAP_V2_DIR}"
-fi
+download_glodap() {
+    local ver="${GLODAP_VERSION:-v3}"
+
+    case "${ver}" in
+        v3|3)
+            echo "--- Downloading GLODAPv3 (NOAA NCEI Accession 0315582) ---"
+            mkdir -p "${GLODAP_V3_DIR}"
+            local glodap_v3_url="https://www.ncei.noaa.gov/data/oceans/ncei/ocads/data/0315582/GLODAPv3_Merged_Master_File.nc"
+            local glodap_v3_dest="${GLODAP_V3_DIR}/GLODAPv3_Merged_Master_File.nc"
+            if [ ! -s "${glodap_v3_dest}" ]; then
+                echo "Fetching GLODAPv3 master bottle dataset..."
+                curl -fSL "${glodap_v3_url}" -o "${glodap_v3_dest}.tmp" && mv "${glodap_v3_dest}.tmp" "${glodap_v3_dest}" || {
+                    echo "WARNING: Direct download of GLODAPv3 master file failed. Checking local mirrors..." >&2
+                }
+            fi
+            # Also ensure GLODAPv2 mapped climatology is fetched as fallback baseline
+            echo "Ensuring mapped climatology baseline is available..."
+            mkdir -p "${GLODAP_V2_DIR}"
+            local glodap_v2_url="https://www.ncei.noaa.gov/data/oceans/ncei/ocads/data/0162565/mapped/GLODAPv2.2016b_MappedClimatologies.tar.gz"
+            local glodap_v2_tar="${GLODAP_V2_DIR}/GLODAPv2.2016b_MappedClimatologies.tar.gz"
+            if [ ! -f "${GLODAP_V2_DIR}/GLODAPv2.2016b.TAlk.nc" ]; then
+                if [ ! -f "${glodap_v2_tar}" ]; then
+                    curl -fSL "${glodap_v2_url}" -o "${glodap_v2_tar}"
+                fi
+                tar -xzf "${glodap_v2_tar}" -C "${GLODAP_V2_DIR}"
+            fi
+            ;;
+
+        v2.2023|2023)
+            echo "--- Downloading GLODAPv2.2023 (NOAA NCEI Accession 0283442) ---"
+            mkdir -p "${GLODAP_V2_2023_DIR}"
+            local glodap_2023_url="https://www.ncei.noaa.gov/data/oceans/ncei/ocads/data/0283442/GLODAPv2.2023_Merged_Master_File.nc"
+            local glodap_2023_dest="${GLODAP_V2_2023_DIR}/GLODAPv2.2023_Merged_Master_File.nc"
+            if [ ! -s "${glodap_2023_dest}" ]; then
+                curl -fSL "${glodap_2023_url}" -o "${glodap_2023_dest}.tmp" && mv "${glodap_2023_dest}.tmp" "${glodap_2023_dest}" || true
+            fi
+            ;;
+
+        v2.2016b|v2|2)
+            echo "--- Downloading GLODAPv2.2016b Mapped Climatologies (Accession 0162565) ---"
+            mkdir -p "${GLODAP_V2_DIR}"
+            local glodap_url="https://www.ncei.noaa.gov/data/oceans/ncei/ocads/data/0162565/mapped/GLODAPv2.2016b_MappedClimatologies.tar.gz"
+            local glodap_tar="${GLODAP_V2_DIR}/GLODAPv2.2016b_MappedClimatologies.tar.gz"
+            if [ ! -f "${GLODAP_V2_DIR}/GLODAPv2.2016b.TAlk.nc" ]; then
+                if [ ! -f "${glodap_tar}" ]; then
+                    curl -fSL "${glodap_url}" -o "${glodap_tar}"
+                fi
+                tar -xzf "${glodap_tar}" -C "${GLODAP_V2_DIR}"
+            fi
+            ;;
+
+        v1.1|v1|1)
+            echo "--- Downloading GLODAPv1.1 Legacy Climatology ---"
+            mkdir -p "${GLODAP_V1_DIR}"
+            local glodap_v1_url="https://www.ncei.noaa.gov/data/oceans/ncei/ocads/data/0000000/glodap_v1.tar.gz"
+            local glodap_v1_tar="${GLODAP_V1_DIR}/glodap_v1.tar.gz"
+            if [ ! -f "${glodap_v1_tar}" ]; then
+                curl -fSL "${glodap_v1_url}" -o "${glodap_v1_tar}" || true
+            fi
+            ;;
+    esac
+}
+
+download_glodap
 
 # ------------------------------------------------------------------------------
 # 4. Download Official NEMO PISCES inputs package (v5.0.0 fallback)

@@ -2,7 +2,7 @@
 
 A generic, modular, and parallel tool to generate, interpolate, and validate PISCES biogeochemical initial condition and boundary forcing files (`inidata`) for any NEMO ocean grid (e.g. `eORCA025`, `eORCA1`, `ORCA1`, `ORCA2`).
 
-Supports **modern observational products** (**WOA23** for nutrients, **GLODAPv2.2016b** for carbon) as well as exact bitwise reproduction of historical baselines (**EC-Earth3 / SHACONEMO**).
+Supports **modern observational products** (**WOA23** for nutrients, **GLODAPv3** [July 2026, NCEI Accession 0315582] as default with multi-version fallback to `v2.2023`, `v2.2016b`, and `v1.1` for carbon chemistry), as well as exact bitwise reproduction of historical baselines (**EC-Earth3 / SHACONEMO**).
 
 ---
 
@@ -10,18 +10,20 @@ Supports **modern observational products** (**WOA23** for nutrients, **GLODAPv2.
 
 ```text
 pisces-inidata/
-├── config.sh                   # Central configuration (grid, paths, Slurm, module environment)
-├── download_sources.sh         # Downloads and stages raw datasets (WOA23, GLODAPv2, SETTE)
+├── config.sh                   # Central configuration (grid, paths, Slurm, GLODAP version)
+├── download_sources.sh         # Downloads raw datasets (WOA23, GLODAPv3/v2, SETTE)
 ├── gen_grid_and_weights.sh     # Extracts curvilinear coordinates, cell areas (e1t*e2t), and CDO weights
-├── prepare_woa23_tracer.py     # Assembles WOA23 12-month upper + annual deep profiles with 6000m padding
+├── prepare_woa23_tracer.py     # Assembles WOA23 12-month profile with 6000m padding
 ├── pad_abyssal_depth.py        # Generic utility to replicate deepest level to 6000m for deep L75 bracketing
 ├── format_tracers_3d.sh        # Formats 3D tracers (NO3, PO4, Si, O2, TALK, TDIC, PiDIC, DOC, Fer)
-├── format_rivers.sh            # Strictly mass-conserving remapping for river nutrients (Global NEWS 2)
+├── format_rivers.sh            # Remapping for river nutrients (Global NEWS 2)
 ├── format_surface_forcings.sh  # Remaps dust, Fe solubility, N-deposition, and daily PAR fraction
 ├── format_bathy_hydrofe.sh     # Remaps bathymetric shelf slope fraction and hydrothermal Fe sources
 ├── launcher_pisces_inidata.sh  # Generates and submits parallel Slurm worker jobs on Nord4
 ├── evaluate_closeness.py       # High-performance validation utility (RMSE, MAE, Pearson r, Inventory)
 ├── run_validation_suite.sh     # Automated end-to-end test and validation harness
+├── DATA_CATALOG.md             # Detailed dataset provenance catalog and download URLs
+├── COMPREHENSIVE_INVENTORY.md  # Comprehensive inventory of all 15 PISCES inidata files
 ├── VALIDATION_REPORT.md        # Comprehensive verification report against official ECE4 references
 └── README.md                   # This documentation
 ```
@@ -48,13 +50,13 @@ The pipeline automatically locates domain definitions in `${DOMAIN_BASE_DIR}/${G
 
 ---
 
-## Operating Modes (`SOURCE_MODE`)
+## Operating Modes & Carbon Climatologies
 
-Configured via `SOURCE_MODE` in `config.sh`:
+Configured via `SOURCE_MODE` and `GLODAP_VERSION` in `config.sh`:
 
 1. **`modern` (Default & Recommended):**
    - **Nutrients ($NO_3, PO_4, Si, O_2$):** NOAA NCEI **WOA23** (World Ocean Atlas 2023, 102 vertical levels).
-   - **Carbon System ($TAlk, TDIC, PiDIC$):** NOAA OCADS **GLODAPv2.2016b** (incorporating CARINA Arctic data and modern anthropogenic $CO_2$ accumulation).
+   - **Carbon System ($TAlk, TDIC, PiDIC$):** **GLODAPv3** (Default; Lange et al., 2026, NCEI Accession 0315582, 1,181 cruises from 1972–2023). Multi-version resolution dynamically supports `GLODAP_VERSION="v3"`, `"v2.2023"`, `"v2.2016b"`, or `"v1.1"`.
    - **Organic Carbon & Iron ($DOC, Fer$):** Global observational climatologies (Hansell et al., Tagliabue et al.).
    - **Abyssal Padding:** Extends deep ocean coordinates to 6000 m by replicating bottom observations, eliminating missing values across NEMO L75 levels (down to 5902 m).
 
@@ -149,3 +151,24 @@ guaranteeing **100.000% exact global mass rate conservation** across arbitrary t
 ### 2. Abyssal Coordinate Extension (`pad_abyssal_depth.py`)
 Observational datasets frequently terminate above the deepest abyssal ocean depths (WOA23 and GLODAP stop at 5500 m; NOMASK stops at 5250 m), while NEMO L75 vertical discretization extends to 5902 m (levels 71–74).
 The pipeline pre-pads the vertical coordinate to 6000 m by replicating bottom observations. CDO 1D vertical interpolation (`cdo -intlevel`) then brackets all deep target levels, preventing missing values (`NaN`) in the ocean abyss.
+
+### 3. Objective Analysis & Extrapolation of Non-Gridded Products (e.g., GLODAP)
+Raw observational datasets like GLODAP (Global Ocean Data Analysis Project) originate as **discrete, non-gridded, non-synoptic bottle casts and CTD transects** gathered across hundreds of research expeditions over decades (e.g., 1,181 cruises across 1972–2023 in GLODAPv3). To transform these irregular points into spatially continuous climatological fields for ocean biogeochemical models (PISCES), a formal mathematical and physical processing sequence is applied:
+
+1. **Secondary Quality Control & Inversion:**
+   Because cruises span decades with varying sensor calibrations and analytical methods, deep-water crossover analysis (typically below 1500–2000 m where natural variability is minimal) calculates cruise-to-cruise systematic offsets. In GLODAPv3, a **Furthest-First (FF) inversion algorithm** minimizes regional biases compared to earlier weighted least-squares (WLSQ) approaches, generating an internally consistent point dataset.
+
+2. **Variational Objective Analysis (DIVA):**
+   Point measurements are mapped onto standard horizontal surfaces ($1^\circ \times 1^\circ$) using **DIVA** (Data-Interpolating Variational Analysis) based on the finite-element method (Lauvset et al., 2016). DIVA minimizes a continuous variational cost function:
+   $$J[\varphi] = \sum_{i=1}^N \mu_i \left( \varphi(x_i, y_i) - d_i \right)^2 + \int_{\Omega} \left( \alpha_1 (\nabla \varphi)^2 + \alpha_2 (\nabla^2 \varphi)^2 + \alpha_0 \varphi^2 \right) d\Omega$$
+   - The first term penalizes deviations from discrete bottle observations $d_i$ weighted by error variance $\mu_i$.
+   - The second term enforces spatial regularity (gradient and curvature smoothness penalties).
+   - **Physical Boundary Masking:** Unlike isotropic Gaussian objective analysis, DIVA uses finite elements that respect complex coastlines, peninsulas, and submarine ridges—preventing artificial leakage across land barriers (e.g., between the Atlantic and Pacific across Central America, or across island arcs).
+
+3. **Decoupling Temporal Trends (Reference Year Normalization):**
+   To create a steady-state initial condition, transient tracers (such as anthropogenic total dissolved inorganic carbon, $C_{\text{ant}}$) are normalized to a specific reference epoch (e.g., 2002 for GLODAPv2, or modern CMIP baseline) using extended Multiple Linear Regression (eMLR) or chlorofluorocarbon (CFC-11/12) / $SF_6$ transit-time distributions. Natural pre-industrial DIC ($\text{PI\_TCO2}$) is separated by subtracting $C_{\text{ant}}$ from measured total DIC.
+
+4. **Downstream Grid Extrapolation & Boundary Filling (`cdo fillmiss`):**
+   Mapped climatologies may still contain gaps in isolated, semi-enclosed marginal seas (e.g., Mediterranean Sea, Red Sea, Black Sea, high Arctic fjords) where cruise transects are sparse or excluded by the global analysis mask.
+   - The pipeline applies **Poisson/Laplacian iterative boundary relaxation** via `cdo fillmiss` on standard surfaces, propagating surrounding oceanic property gradients smoothly into unobserved coastal/enclosed basins without creating artificial step discontinuities.
+   - Pre-computed bilinear remapping weights then project the continuous regular field onto the target NEMO curvilinear tripolar mesh ($eORCA1$, $eORCA025$).

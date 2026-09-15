@@ -66,13 +66,19 @@ CDO_COMPRESS="-f nc4 -z zip_4"
 # 4. Source Data Catalog & References
 # ------------------------------------------------------------------------------
 # Source mode:
-#   'modern'           : Uses latest observational products: WOA23 (NO3, PO4, Si, O2) & GLODAPv2 (TALK, TDIC, PiDIC)
+#   'modern'           : Uses latest observational products: WOA23 (NO3, PO4, Si, O2) & GLODAP (TALK, TDIC, PiDIC)
 #   'official_regular' : Uses official regular 1x1 unmasked fields (WOA/GLODAP nomask) with 3D interpolation
 #   'ece3_baseline'    : Uses validated ECE3/SHACONEMO baseline in /gpfs/projects/bsc32/models/ecearth/v3.3.3/inidata/pisces/
 SOURCE_MODE="${SOURCE_MODE:-modern}"
 
+# GLODAP version configuration (supported: 'v3' [default], 'v2.2023', 'v2.2016b', 'v1.1')
+GLODAP_VERSION="${GLODAP_VERSION:-v3}"
+
 WOA23_DIR="${RAW_DIR}/woa23"
+GLODAP_V3_DIR="${RAW_DIR}/glodap_v3"
+GLODAP_V2_2023_DIR="${RAW_DIR}/glodap_v2_2023"
 GLODAP_V2_DIR="${RAW_DIR}/glodap_v2"
+GLODAP_V1_DIR="${RAW_DIR}/glodap_v1"
 
 # Paths to ECE3 / BSC baseline sources
 ECE3_PISCES_DIR="${ECE3_PISCES_DIR:-/gpfs/projects/bsc32/models/ecearth/v3.3.3/inidata/pisces}"
@@ -103,4 +109,4 @@ export SLURM_ACCOUNT SLURM_PARTITION SLURM_TIME SLURM_CPUS_PER_TASK
 export MODULE_LOAD_CMD CDO_THREADS CDO_OPTS CDO_COMPRESS
 export TRACERS_3D RIVER_VARS DUST_VARS NDEP_VARS
 export SOURCE_MODE ECE3_PISCES_DIR ORCA1_GRIDDES
-export WOA23_DIR GLODAP_V2_DIR
+export WOA23_DIR GLODAP_VERSION GLODAP_V3_DIR GLODAP_V2_2023_DIR GLODAP_V2_DIR GLODAP_V1_DIR

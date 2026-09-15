@@ -15,12 +15,6 @@ source "${SCRIPT_DIR}/config.sh"
 # Load modules
 eval "${MODULE_LOAD_CMD}"
 
-SRC_FILE="${RAW_DIR}/official_v5.0.0/river.orca.nc"
-if [ ! -f "${SRC_FILE}" ]; then
-    echo "ERROR: Source river file ${SRC_FILE} not found. Run download_sources.sh first." >&2
-    exit 1
-fi
-
 TARGET_GRID_NC="${WEIGHTS_DIR}/target_grid_${GRID_NAME}.nc"
 TARGET_AREA_NC="${WEIGHTS_DIR}/target_area_${GRID_NAME}.nc"
 OUT_FILE="${OUTPUT_DIR}/river.orca.nc"
@@ -31,6 +25,20 @@ if [ ! -f "${TARGET_GRID_NC}" ] || [ ! -f "${TARGET_AREA_NC}" ]; then
 fi
 
 mkdir -p "${OUTPUT_DIR}"
+
+if [ -f "${ECE3_PISCES_DIR}/river_global_news_ORCA_R1.nc" ]; then
+    echo "Remapping river nutrient exports from curated ECE3 baseline..."
+    cdo ${CDO_OPTS} ${CDO_COMPRESS} -remapnn,"${TARGET_GRID_NC}" -setgrid,"${ORCA1_GRIDDES}" "${ECE3_PISCES_DIR}/river_global_news_ORCA_R1.nc" "${OUT_FILE}"
+    ln -sfn "$(basename "${OUT_FILE}")" "${OUTPUT_DIR}/river_global_news_${GRID_NAME}.nc"
+    echo "=== River forcings completed successfully: ${OUT_FILE} ==="
+    exit 0
+fi
+
+SRC_FILE="${RAW_DIR}/official_v5.0.0/river.orca.nc"
+if [ ! -f "${SRC_FILE}" ]; then
+    echo "ERROR: Source river file ${SRC_FILE} not found. Run download_sources.sh first." >&2
+    exit 1
+fi
 
 TMP_DIR=$(mktemp -d -p "${SCRATCH_ROOT}" tmp_river_XXXXXX)
 trap 'rm -rf "${TMP_DIR}"' EXIT

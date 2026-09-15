@@ -43,24 +43,32 @@ sanitize_source_grid() {
 
 process_bathy() {
     echo "=== Processing Bathymetric Shelf Fraction (bathy.orca.nc) ==="
-    local src_file="${RAW_DIR}/official_v5.0.0/bathy.orca.nc"
     local out_file="${OUTPUT_DIR}/bathy.orca.nc"
 
-    if [ ! -f "${src_file}" ]; then
-        echo "ERROR: Source bathy file not found at ${src_file}" >&2
-        return 1
+    if [ -f "${ECE3_PISCES_DIR}/pmarge_etopo_ORCA_R1.nc" ]; then
+        echo "Remapping bathymetric shelf fraction from curated ECE3 baseline..."
+        cdo ${CDO_OPTS} ${CDO_COMPRESS} -remapnn,"${TARGET_GRID_NC}" -setgrid,"${ORCA1_GRIDDES}" "${ECE3_PISCES_DIR}/pmarge_etopo_ORCA_R1.nc" "${out_file}"
+    else
+        local src_file="${RAW_DIR}/official_v5.0.0/bathy.orca.nc"
+        if [ ! -f "${src_file}" ]; then
+            echo "ERROR: Source bathy file not found at ${src_file}" >&2
+            return 1
+        fi
+
+        local clean_bathy="${TMP_DIR}/clean_bathy.nc"
+        cp "${src_file}" "${clean_bathy}"
+        ncatted -O \
+            -a coordinates,bathy,c,c,"nav_lon nav_lat" \
+            -a units,nav_lon,c,c,"degrees_east" \
+            -a units,nav_lat,c,c,"degrees_north" \
+            -a standard_name,nav_lon,c,c,"longitude" \
+            -a standard_name,nav_lat,c,c,"latitude" \
+            "${clean_bathy}" 2>/dev/null || true
+
+        echo "Remapping bathy shelf fraction to ${GRID_NAME}..."
+        cdo ${CDO_OPTS} ${CDO_COMPRESS} remapnn,"${TARGET_GRID_NC}" "${clean_bathy}" "${out_file}"
     fi
 
-    local clean_bathy="${TMP_DIR}/clean_bathy.nc"
-    sanitize_source_grid "${src_file}" "${clean_bathy}"
-
-    local weights_bathy="${WEIGHTS_DIR}/weights_bathy_to_${GRID_NAME}.nc"
-    if [ ! -f "${weights_bathy}" ]; then
-        cdo ${CDO_OPTS} genbil,"${TARGET_GRID_NC}" "${clean_bathy}" "${weights_bathy}"
-    fi
-
-    echo "Remapping bathy shelf fraction to ${GRID_NAME}..."
-    cdo ${CDO_OPTS} ${CDO_COMPRESS} remap,"${TARGET_GRID_NC}","${weights_bathy}" "${clean_bathy}" "${out_file}"
     ln -sfn "$(basename "${out_file}")" "${OUTPUT_DIR}/pmarge_etopo_${GRID_NAME}.nc"
     echo "Created: ${out_file}"
 }
@@ -76,15 +84,21 @@ process_hydrofe() {
     fi
 
     local clean_hydro="${TMP_DIR}/clean_hydro.nc"
-    sanitize_source_grid "${src_file}" "${clean_hydro}"
-
-    local weights_hydro="${WEIGHTS_DIR}/weights_hydrofe_to_${GRID_NAME}.nc"
-    if [ ! -f "${weights_hydro}" ]; then
-        cdo ${CDO_OPTS} genbil,"${TARGET_GRID_NC}" "${clean_hydro}" "${weights_hydro}"
-    fi
+    cp "${src_file}" "${clean_hydro}"
+    ncatted -O \
+        -a coordinates,epsdb,c,c,"nav_lon nav_lat" \
+        -a units,nav_lon,c,c,"degrees_east" \
+        -a units,nav_lat,c,c,"degrees_north" \
+        -a standard_name,nav_lon,c,c,"longitude" \
+        -a standard_name,nav_lat,c,c,"latitude" \
+        -a units,deptht,c,c,"m" \
+        -a positive,deptht,c,c,"down" \
+        -a axis,deptht,c,c,"Z" \
+        -a standard_name,deptht,c,c,"depth" \
+        "${clean_hydro}" 2>/dev/null || true
 
     echo "Remapping hydrothermal Fe source to ${GRID_NAME}..."
-    cdo ${CDO_OPTS} ${CDO_COMPRESS} remap,"${TARGET_GRID_NC}","${weights_hydro}" "${clean_hydro}" "${out_file}"
+    cdo ${CDO_OPTS} ${CDO_COMPRESS} remapnn,"${TARGET_GRID_NC}" "${clean_hydro}" "${out_file}"
     echo "Created: ${out_file}"
 }
 

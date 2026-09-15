@@ -31,7 +31,12 @@ trap 'rm -rf "${TMP_DIR}"' EXIT
 sanitize_source_grid() {
     local in_file="$1"
     local out_file="$2"
+    shift 2
+    local vars=("$@")
     cp "${in_file}" "${out_file}"
+    for v in "${vars[@]}"; do
+        ncatted -O -a coordinates,"${v}",c,c,"nav_lon nav_lat" "${out_file}" 2>/dev/null || true
+    done
     ncatted -O \
         -a coordinates,,c,c,"nav_lon nav_lat" \
         -a units,nav_lon,c,c,"degrees_east" \
@@ -46,26 +51,28 @@ sanitize_source_grid() {
 # ------------------------------------------------------------------------------
 process_dust() {
     echo "=== Processing Dust Deposition (dust.orca.nc) ==="
-    local src_file="${RAW_DIR}/official_v5.0.0/dust.orca.new.nc"
-    [ -f "${src_file}" ] || src_file="${RAW_DIR}/official_v5.0.0/dust.orca.nc"
     local out_file="${OUTPUT_DIR}/dust.orca.nc"
 
-    if [ ! -f "${src_file}" ]; then
-        echo "ERROR: Source dust file not found at ${src_file}" >&2
-        return 1
+    if [ -f "${ECE3_PISCES_DIR}/dust_INCA_ORCA_R1.nc" ]; then
+        echo "Remapping dust variables from curated ECE3 baseline..."
+        cdo ${CDO_OPTS} ${CDO_COMPRESS} -remapnn,"${TARGET_GRID_NC}" -setgrid,"${ORCA1_GRIDDES}" "${ECE3_PISCES_DIR}/dust_INCA_ORCA_R1.nc" "${out_file}"
+    else
+        local src_file="${RAW_DIR}/official_v5.0.0/dust.orca.new.nc"
+        [ -f "${src_file}" ] || src_file="${RAW_DIR}/official_v5.0.0/dust.orca.nc"
+        if [ ! -f "${src_file}" ]; then
+            echo "ERROR: Source dust file not found at ${src_file}" >&2
+            return 1
+        fi
+        local clean_dust="${TMP_DIR}/clean_dust.nc"
+        sanitize_source_grid "${src_file}" "${clean_dust}" "${DUST_VARS[@]}"
+        local weights_dust="${WEIGHTS_DIR}/weights_dust_to_${GRID_NAME}.nc"
+        if [ ! -f "${weights_dust}" ]; then
+            cdo ${CDO_OPTS} genbil,"${TARGET_GRID_NC}" "${clean_dust}" "${weights_dust}"
+        fi
+        echo "Remapping dust variables to ${GRID_NAME}..."
+        cdo ${CDO_OPTS} ${CDO_COMPRESS} remap,"${TARGET_GRID_NC}","${weights_dust}" "${clean_dust}" "${out_file}"
     fi
 
-    local clean_dust="${TMP_DIR}/clean_dust.nc"
-    sanitize_source_grid "${src_file}" "${clean_dust}"
-
-    echo "Generating weights for dust grid..."
-    local weights_dust="${WEIGHTS_DIR}/weights_dust_to_${GRID_NAME}.nc"
-    if [ ! -f "${weights_dust}" ]; then
-        cdo ${CDO_OPTS} genbil,"${TARGET_GRID_NC}" "${clean_dust}" "${weights_dust}"
-    fi
-
-    echo "Remapping dust variables to ${GRID_NAME}..."
-    cdo ${CDO_OPTS} ${CDO_COMPRESS} remap,"${TARGET_GRID_NC}","${weights_dust}" "${clean_dust}" "${out_file}"
     ln -sfn "$(basename "${out_file}")" "${OUTPUT_DIR}/dust_INCA_${GRID_NAME}.nc"
     ln -sfn "$(basename "${out_file}")" "${OUTPUT_DIR}/Solubility_T62_Mahowald_${GRID_NAME}.nc"
     echo "Created: ${out_file}"
@@ -76,24 +83,27 @@ process_dust() {
 # ------------------------------------------------------------------------------
 process_ndep() {
     echo "=== Processing Atmospheric N Deposition (ndeposition.orca.nc) ==="
-    local src_file="${RAW_DIR}/official_v5.0.0/ndeposition.orca.nc"
     local out_file="${OUTPUT_DIR}/ndeposition.orca.nc"
 
-    if [ ! -f "${src_file}" ]; then
-        echo "ERROR: Source ndep file not found at ${src_file}" >&2
-        return 1
+    if [ -f "${ECE3_PISCES_DIR}/ndeposition_Duce_ORCA_R1.nc" ]; then
+        echo "Remapping N-deposition variables from curated ECE3 baseline..."
+        cdo ${CDO_OPTS} ${CDO_COMPRESS} -remapnn,"${TARGET_GRID_NC}" -setgrid,"${ORCA1_GRIDDES}" "${ECE3_PISCES_DIR}/ndeposition_Duce_ORCA_R1.nc" "${out_file}"
+    else
+        local src_file="${RAW_DIR}/official_v5.0.0/ndeposition.orca.nc"
+        if [ ! -f "${src_file}" ]; then
+            echo "ERROR: Source ndep file not found at ${src_file}" >&2
+            return 1
+        fi
+        local clean_ndep="${TMP_DIR}/clean_ndep.nc"
+        sanitize_source_grid "${src_file}" "${clean_ndep}" "${NDEP_VARS[@]}"
+        local weights_ndep="${WEIGHTS_DIR}/weights_ndep_to_${GRID_NAME}.nc"
+        if [ ! -f "${weights_ndep}" ]; then
+            cdo ${CDO_OPTS} genbil,"${TARGET_GRID_NC}" "${clean_ndep}" "${weights_ndep}"
+        fi
+        echo "Remapping N-deposition variables to ${GRID_NAME}..."
+        cdo ${CDO_OPTS} ${CDO_COMPRESS} remap,"${TARGET_GRID_NC}","${weights_ndep}" "${clean_ndep}" "${out_file}"
     fi
 
-    local clean_ndep="${TMP_DIR}/clean_ndep.nc"
-    sanitize_source_grid "${src_file}" "${clean_ndep}"
-
-    local weights_ndep="${WEIGHTS_DIR}/weights_ndep_to_${GRID_NAME}.nc"
-    if [ ! -f "${weights_ndep}" ]; then
-        cdo ${CDO_OPTS} genbil,"${TARGET_GRID_NC}" "${clean_ndep}" "${weights_ndep}"
-    fi
-
-    echo "Remapping N-deposition variables to ${GRID_NAME}..."
-    cdo ${CDO_OPTS} ${CDO_COMPRESS} remap,"${TARGET_GRID_NC}","${weights_ndep}" "${clean_ndep}" "${out_file}"
     ln -sfn "$(basename "${out_file}")" "${OUTPUT_DIR}/ndeposition_Duce_${GRID_NAME}.nc"
     echo "Created: ${out_file}"
 }
@@ -103,24 +113,27 @@ process_ndep() {
 # ------------------------------------------------------------------------------
 process_par() {
     echo "=== Processing PAR Fraction (par.orca.nc, 365 daily timesteps) ==="
-    local src_file="${RAW_DIR}/official_v5.0.0/par.orca.nc"
     local out_file="${OUTPUT_DIR}/par.orca.nc"
 
-    if [ ! -f "${src_file}" ]; then
-        echo "ERROR: Source PAR file not found at ${src_file}" >&2
-        return 1
+    if [ -f "${ECE3_PISCES_DIR}/par_fraction_gewex_clim90s00s_ORCA_R1.nc" ]; then
+        echo "Remapping PAR daily climatology from curated ECE3 baseline..."
+        cdo ${CDO_OPTS} ${CDO_COMPRESS} -remapnn,"${TARGET_GRID_NC}" -setgrid,"${ORCA1_GRIDDES}" "${ECE3_PISCES_DIR}/par_fraction_gewex_clim90s00s_ORCA_R1.nc" "${out_file}"
+    else
+        local src_file="${RAW_DIR}/official_v5.0.0/par.orca.nc"
+        if [ ! -f "${src_file}" ]; then
+            echo "ERROR: Source PAR file not found at ${src_file}" >&2
+            return 1
+        fi
+        local clean_par="${TMP_DIR}/clean_par.nc"
+        sanitize_source_grid "${src_file}" "${clean_par}" "fr_par"
+        local weights_par="${WEIGHTS_DIR}/weights_par_to_${GRID_NAME}.nc"
+        if [ ! -f "${weights_par}" ]; then
+            cdo ${CDO_OPTS} genbil,"${TARGET_GRID_NC}" "${clean_par}" "${weights_par}"
+        fi
+        echo "Remapping PAR daily climatology to ${GRID_NAME}..."
+        cdo ${CDO_OPTS} ${CDO_COMPRESS} remap,"${TARGET_GRID_NC}","${weights_par}" "${clean_par}" "${out_file}"
     fi
 
-    local clean_par="${TMP_DIR}/clean_par.nc"
-    sanitize_source_grid "${src_file}" "${clean_par}"
-
-    local weights_par="${WEIGHTS_DIR}/weights_par_to_${GRID_NAME}.nc"
-    if [ ! -f "${weights_par}" ]; then
-        cdo ${CDO_OPTS} genbil,"${TARGET_GRID_NC}" "${clean_par}" "${weights_par}"
-    fi
-
-    echo "Remapping PAR daily climatology to ${GRID_NAME}..."
-    cdo ${CDO_OPTS} ${CDO_COMPRESS} remap,"${TARGET_GRID_NC}","${weights_par}" "${clean_par}" "${out_file}"
     ln -sfn "$(basename "${out_file}")" "${OUTPUT_DIR}/par_fraction_gewex_clim90s00s_${GRID_NAME}.nc"
     echo "Created: ${out_file}"
 }

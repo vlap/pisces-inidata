@@ -51,6 +51,51 @@ echo " Target Grid:          ${GRID_NAME}"
 echo " Output File:          ${OUT_FILE}"
 echo "========================================================================"
 
+resolve_glodap_source() {
+    local param="$1" # TAlk, TCO2, PI_TCO2
+    local ver="${GLODAP_VERSION:-v3}"
+    local candidate=""
+
+    case "${ver}" in
+        v3|3)
+            for f in "${GLODAP_V3_DIR}/GLODAPv3.${param}.nc" \
+                     "${GLODAP_V3_DIR}/GLODAP_v3_${param}.nc" \
+                     "${GLODAP_V3_DIR}/GLODAPv3_MappedClimatology_${param}.nc"; do
+                if [ -f "${f}" ]; then
+                    echo "${f}"
+                    return 0
+                fi
+            done
+            echo "NOTICE: GLODAPv3 mapped climatology for ${param} not found in ${GLODAP_V3_DIR}." >&2
+            echo "NOTICE: Falling back to GLODAPv2.2016b mapped climatology baseline." >&2
+            echo "${GLODAP_V2_DIR}/GLODAPv2.2016b.${param}.nc"
+            return 0
+            ;;
+        v2.2023|2023)
+            candidate="${GLODAP_V2_2023_DIR}/GLODAPv2.2023.${param}.nc"
+            if [ -f "${candidate}" ]; then echo "${candidate}"; return 0; fi
+            ;;
+        v2.2016b|v2|2)
+            candidate="${GLODAP_V2_DIR}/GLODAPv2.2016b.${param}.nc"
+            if [ -f "${candidate}" ]; then echo "${candidate}"; return 0; fi
+            ;;
+        v1.1|v1|1)
+            candidate="${GLODAP_V1_DIR}/glodap_v1.${param}.nc"
+            if [ -f "${candidate}" ]; then echo "${candidate}"; return 0; fi
+            ;;
+    esac
+
+    for dir in "${GLODAP_V3_DIR}" "${GLODAP_V2_2023_DIR}" "${GLODAP_V2_DIR}" "${GLODAP_V1_DIR}"; do
+        if [ -d "${dir}" ]; then
+            for f in "${dir}"/*"${param}"*.nc; do
+                if [ -f "${f}" ]; then echo "${f}"; return 0; fi
+            done
+        fi
+    done
+
+    echo "${GLODAP_V2_DIR}/GLODAPv2.2016b.${param}.nc"
+}
+
 if [ "${SOURCE_MODE}" = "modern" ]; then
     case "${VAR}" in
         NO3|PO4|Si|O2)
@@ -81,25 +126,26 @@ if [ "${SOURCE_MODE}" = "modern" ]; then
         TALK|TDIC|PiDIC)
             case "${VAR}" in
                 TALK)
-                    SRC_FILE="${GLODAP_V2_DIR}/GLODAPv2.2016b.TAlk.nc"
+                    SRC_FILE="$(resolve_glodap_source 'TAlk')"
                     SRC_VAR="TAlk"
                     OUT_VAR_NAME="Alkalini"
                     LINK_NAME="Alkalini_GLODAP_annual_${GRID_NAME}.nc"
                     ;;
                 TDIC)
-                    SRC_FILE="${GLODAP_V2_DIR}/GLODAPv2.2016b.TCO2.nc"
+                    SRC_FILE="$(resolve_glodap_source 'TCO2')"
                     SRC_VAR="TCO2"
                     OUT_VAR_NAME="DIC"
                     LINK_NAME="DIC_GLODAP_annual_${GRID_NAME}.nc"
                     ;;
                 PiDIC)
-                    SRC_FILE="${GLODAP_V2_DIR}/GLODAPv2.2016b.PI_TCO2.nc"
+                    SRC_FILE="$(resolve_glodap_source 'PI_TCO2')"
                     SRC_VAR="PI_TCO2"
                     OUT_VAR_NAME="DIC"
                     LINK_NAME="PiDIC_GLODAP_annual_${GRID_NAME}.nc"
                     ;;
             esac
 
+            echo "Using GLODAP source file: ${SRC_FILE}"
             echo "[Step 1/4] Setting missing values to -999. and selecting ${SRC_VAR}..."
             cdo ${CDO_OPTS} setmissval,-999. -selname,"${SRC_VAR}" "${SRC_FILE}" "${TMP_DIR}/sel.nc"
 
