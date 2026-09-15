@@ -132,6 +132,15 @@ def cmd_config(args):
             sys.exit(1)
 
 
+def cmd_download(args):
+    from pisces_inidata.download import download_sources
+    repo_root = get_repo_root()
+    cfg_file = args.sources or os.path.join(repo_root, 'sources.yaml')
+    raw_dir = args.raw_dir or os.path.join(repo_root, 'pisces_raw_sources')
+    code = download_sources(config_file=cfg_file, raw_dir=raw_dir, dry_run=args.dry_run)
+    sys.exit(code)
+
+
 def cmd_pad(args):
     pad_abyssal_depth(args.input, args.output, args.depth)
 
@@ -262,6 +271,17 @@ def main():
     cfg_parser.add_argument("--file", help="Path to custom sources.yaml")
     cfg_parser.add_argument("--export", action="store_true", help="Print bash export statements")
     cfg_parser.set_defaults(func=cmd_config)
+
+    # Command: download
+    dl_parser = subparsers.add_parser(
+        "download", help="Fetch and stage raw observational datasets based on sources.yaml"
+    )
+    dl_parser.add_argument("--sources", help="Path to custom sources.yaml")
+    dl_parser.add_argument("--raw-dir", help="Target directory to store raw sources")
+    dl_parser.add_argument(
+        "--dry-run", action="store_true", help="Inspect what would be downloaded without downloading"
+    )
+    dl_parser.set_defaults(func=cmd_download)
 
     # Command: pad
     pad_parser = subparsers.add_parser("pad", help="Pad vertical coordinate to abyssal depth")
