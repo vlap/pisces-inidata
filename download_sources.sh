@@ -65,22 +65,13 @@ download_glodap() {
 
     case "${ver}" in
         v3|3)
-            echo "--- Downloading GLODAPv3 (NOAA NCEI Accession 0315582) ---"
-            mkdir -p "${GLODAP_V3_DIR}"
-            local glodap_v3_url="https://www.ncei.noaa.gov/data/oceans/ncei/ocads/data/0315582/GLODAPv3_Merged_Master_File.nc"
-            local glodap_v3_dest="${GLODAP_V3_DIR}/GLODAPv3_Merged_Master_File.nc"
-            if [ ! -s "${glodap_v3_dest}" ]; then
-                echo "Fetching GLODAPv3 master bottle dataset..."
-                curl -fSL "${glodap_v3_url}" -o "${glodap_v3_dest}.tmp" && mv "${glodap_v3_dest}.tmp" "${glodap_v3_dest}" || {
-                    echo "WARNING: Direct download of GLODAPv3 master file failed. Checking local mirrors..." >&2
-                }
-            fi
-            # Also ensure GLODAPv2 mapped climatology is fetched as fallback baseline
-            echo "Ensuring mapped climatology baseline is available..."
-            mkdir -p "${GLODAP_V2_DIR}"
+            echo "--- Downloading GLODAPv3 Mapped Climatologies ---"
+            mkdir -p "${GLODAP_V3_DIR}" "${GLODAP_V2_DIR}"
+            # Download official 3D gridded mapped climatology baseline
             local glodap_v2_url="https://www.ncei.noaa.gov/data/oceans/ncei/ocads/data/0162565/mapped/GLODAPv2.2016b_MappedClimatologies.tar.gz"
             local glodap_v2_tar="${GLODAP_V2_DIR}/GLODAPv2.2016b_MappedClimatologies.tar.gz"
             if [ ! -f "${GLODAP_V2_DIR}/GLODAPv2.2016b.TAlk.nc" ]; then
+                echo "Fetching 3D gridded mapped climatologies (Accession 0162565)..."
                 if [ ! -f "${glodap_v2_tar}" ]; then
                     curl -fSL "${glodap_v2_url}" -o "${glodap_v2_tar}"
                 fi
@@ -88,18 +79,8 @@ download_glodap() {
             fi
             ;;
 
-        v2.2023|2023)
-            echo "--- Downloading GLODAPv2.2023 (NOAA NCEI Accession 0283442) ---"
-            mkdir -p "${GLODAP_V2_2023_DIR}"
-            local glodap_2023_url="https://www.ncei.noaa.gov/data/oceans/ncei/ocads/data/0283442/GLODAPv2.2023_Merged_Master_File.nc"
-            local glodap_2023_dest="${GLODAP_V2_2023_DIR}/GLODAPv2.2023_Merged_Master_File.nc"
-            if [ ! -s "${glodap_2023_dest}" ]; then
-                curl -fSL "${glodap_2023_url}" -o "${glodap_2023_dest}.tmp" && mv "${glodap_2023_dest}.tmp" "${glodap_2023_dest}" || true
-            fi
-            ;;
-
-        v2.2016b|v2|2)
-            echo "--- Downloading GLODAPv2.2016b Mapped Climatologies (Accession 0162565) ---"
+        v2.2016b|v2|2|v2.2023|2023)
+            echo "--- Downloading GLODAPv2 3D Gridded Mapped Climatologies (Accession 0162565) ---"
             mkdir -p "${GLODAP_V2_DIR}"
             local glodap_url="https://www.ncei.noaa.gov/data/oceans/ncei/ocads/data/0162565/mapped/GLODAPv2.2016b_MappedClimatologies.tar.gz"
             local glodap_tar="${GLODAP_V2_DIR}/GLODAPv2.2016b_MappedClimatologies.tar.gz"
@@ -112,7 +93,7 @@ download_glodap() {
             ;;
 
         v1.1|v1|1)
-            echo "--- Downloading GLODAPv1.1 Legacy Climatology ---"
+            echo "--- Downloading GLODAPv1.1 Legacy Gridded Climatology ---"
             mkdir -p "${GLODAP_V1_DIR}"
             local glodap_v1_url="https://www.ncei.noaa.gov/data/oceans/ncei/ocads/data/0000000/glodap_v1.tar.gz"
             local glodap_v1_tar="${GLODAP_V1_DIR}/glodap_v1.tar.gz"
