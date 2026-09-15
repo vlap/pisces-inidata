@@ -10,6 +10,7 @@ import subprocess
 from pisces_inidata import __version__
 from pisces_inidata.config import load_config, validate_config
 from pisces_inidata.padding import pad_abyssal_depth
+from pisces_inidata.check import run_preflight_checks
 
 
 def get_repo_root() -> str:
@@ -77,6 +78,19 @@ def cmd_pad(args):
     pad_abyssal_depth(args.input, args.output, args.depth)
 
 
+def cmd_check(args):
+    repo_root = get_repo_root()
+    cfg_file = args.config or os.path.join(repo_root, 'products.cfg')
+    code = run_preflight_checks(
+        grid_name=args.orca,
+        config_file=cfg_file,
+        raw_dir=args.raw_dir,
+        domain_dir=args.domain_dir,
+        out_dir=args.out_dir
+    )
+    sys.exit(code)
+
+
 def main():
     parser = argparse.ArgumentParser(
         prog="pisces-inidata",
@@ -85,6 +99,32 @@ def main():
     parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
 
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
+
+    # Command: check
+    check_parser = subparsers.add_parser("check", help="Run pre-flight system and data integrity verification")
+    check_parser.add_argument(
+        "--orca",
+        choices=["ORCA2", "eORCA1", "eORCA025"],
+        default="ORCA2",
+        help="Target NEMO grid resolution to verify"
+    )
+    check_parser.add_argument(
+        "--domain-dir",
+        help="Path to directory containing target NEMO domain files (${GRID_NAME}/domain_cfg.nc)"
+    )
+    check_parser.add_argument(
+        "--raw-dir",
+        help="Path to directory containing raw input products"
+    )
+    check_parser.add_argument(
+        "--out-dir",
+        help="Target output directory for free disk space check"
+    )
+    check_parser.add_argument(
+        "--config",
+        help="Path to custom products.cfg"
+    )
+    check_parser.set_defaults(func=cmd_check)
 
     # Command: run
     run_parser = subparsers.add_parser("run", help="Run end-to-end PISCES initial conditions generation")

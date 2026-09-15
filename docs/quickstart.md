@@ -44,13 +44,25 @@ export PRODUCT_TALK="glodap_v2_2016b"
 export PRODUCT_TDIC="glodap_v2_2016b"
 ```
 
-### 2. Download Raw Datasets
+### 2. Pre-Flight System & Data Integrity Check
+Before starting heavy computational remapping, run the pre-flight verification tool:
+```bash
+pisces-inidata check --orca ORCA2
+```
+This inspects:
+- **CLI Tools:** Availability and versions of `cdo`, `ncks`, `ncap2`, `ncatted`, `sbatch`.
+- **Python Stack:** Installation of `netCDF4`, `numpy`, `scipy`.
+- **Domain & Grid Files:** Verifies target grid definitions and land-sea masks.
+- **Raw Data Catalog:** Verifies that required input products exist.
+- **Disk Storage:** Checks available filesystem capacity against resolution-specific requirements.
+
+### 3. Download Raw Datasets (If Needed)
 Run the automated downloader to fetch required raw datasets:
 ```bash
 bash scripts/download_sources.sh
 ```
 
-### 3. Generate Initial Conditions
+### 4. Generate Initial Conditions
 Target ocean domain files (`domain_cfg.nc` and `maskutil.nc`) define the target NEMO curvilinear grid.
 - **On BSC clusters:** Pre-installed domain files are automatically detected.
 - **On external machines:** Download the official EC-Earth4 inidata package and point to it using `--domain-dir`:
@@ -71,7 +83,7 @@ work_orca2/
 └── river_fluxes_forcing_orca2.nc
 ```
 
-### 4. Run Statistical Validation
+### 5. Run Statistical Validation
 Evaluate the generated files against the official SETTE ORCA2 reference:
 ```bash
 pisces-inidata validate

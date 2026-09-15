@@ -15,6 +15,9 @@ Executes the full end-to-end pipeline to generate 3D tracers and 2D boundary for
 ### `pisces-inidata validate`
 Runs statistical diagnostics against the SETTE reference files on ORCA2 and writes `VALIDATION_SCOREBOARD_ORCA2.md`.
 
+### `pisces-inidata check [--orca {ORCA2,eORCA1,eORCA025}]`
+Runs automated pre-flight verification of system binaries (CDO, NCO), Python environment, target grid & domain definitions, raw observational catalog, and disk space.
+
 ### `pisces-inidata pad <input.nc> <output.nc> [--depth 6000.0]`
 Directly runs the vertical depth padding utility on any 3D/4D NetCDF file.
 
