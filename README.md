@@ -16,7 +16,7 @@ Built for **EC-Earth4** and the broader ocean modeling community.
 - **Per-Variable Product Selection:** Choose observational, reanalysis, or model products independently for each tracer via `products.cfg`.
 - **Modern Gridded Datasets:**
   - **Nutrients & Oxygen:** World Ocean Atlas 2023 (**WOA23**, 102 depth levels) or WOA2009.
-  - **Carbon Chemistry:** **GLODAP** (3D mapped climatology v2.2016b, v2.2023, v3, or Copernicus Marine Service).
+  - **Carbon Chemistry:** **GLODAP** (3D mapped climatology v2.2016b [default], or Copernicus Marine Service). *Only 3D gridded products are supported; discrete bottle master files are unsupported.*
   - **Dissolved Organic Carbon:** State-of-the-art machine-learning DOC climatology (**Panaïotis et al. 2024**, SEANOE) or Hansell (2009).
   - **Dissolved Iron:** Tagliabue et al. (2012) global compilation.
   - **Boundary & Surface Forcings:** Dust deposition (INCA/Mahowald), Nitrogen deposition (Duce et al.), PAR fraction (GEWEX), bathymetric shelf slope factor (ETOPO), hydrothermal Fe injection, and river nutrient discharge (Global NEWS 2).

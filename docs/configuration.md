@@ -11,7 +11,7 @@ The configuration file is located at the repository root as `products.cfg`. It u
 ```bash
 # Example syntax:
 PRODUCT_NO3="${PRODUCT_NO3:-woa23}"
-PRODUCT_TALK="${PRODUCT_TALK:-glodap_v3}"
+PRODUCT_TALK="${PRODUCT_TALK:-glodap_v2_2016b}"
 PRODUCT_DOC="${PRODUCT_DOC:-panaiotis2024}"
 ```
 
@@ -23,9 +23,9 @@ PRODUCT_DOC="${PRODUCT_DOC:-panaiotis2024}"
 | Phosphate | `PRODUCT_PO4` | `woa23`, `woa2009`, `sette_nomask`, `ece3` | `woa23` |
 | Silicate | `PRODUCT_Si` | `woa23`, `woa2009`, `sette_nomask`, `ece3` | `woa23` |
 | Dissolved Oxygen | `PRODUCT_O2` | `woa23`, `woa2009`, `sette_nomask`, `ece3` | `woa23` |
-| Total Alkalinity | `PRODUCT_TALK` | `glodap_v3`, `glodap_v2_2016b`, `glodap_v2_2023`, `glodap_v1`, `sette_nomask`, `ece3`, `cmems` | `glodap_v3` |
-| Total Dissolved Inorganic Carbon | `PRODUCT_TDIC` | `glodap_v3`, `glodap_v2_2016b`, `glodap_v2_2023`, `glodap_v1`, `sette_nomask`, `ece3`, `cmems` | `glodap_v3` |
-| Pre-Industrial DIC | `PRODUCT_PiDIC` | `glodap_v3`, `glodap_v2_2016b`, `glodap_v2_2023`, `glodap_v1`, `sette_nomask`, `ece3`, `cmems` | `glodap_v3` |
+| Total Alkalinity | `PRODUCT_TALK` | `glodap_v2_2016b`, `glodap_v2_2023`, `glodap_v1`, `sette_nomask`, `ece3`, `cmems` | `glodap_v2_2016b` |
+| Total Dissolved Inorganic Carbon | `PRODUCT_TDIC` | `glodap_v2_2016b`, `glodap_v2_2023`, `glodap_v1`, `sette_nomask`, `ece3`, `cmems` | `glodap_v2_2016b` |
+| Pre-Industrial DIC | `PRODUCT_PiDIC` | `glodap_v2_2016b`, `glodap_v2_2023`, `glodap_v1`, `sette_nomask`, `ece3`, `cmems` | `glodap_v2_2016b` |
 | Dissolved Organic Carbon | `PRODUCT_DOC` | `panaiotis2024`, `sette_nomask`, `ece3` | `panaiotis2024` |
 | Dissolved Iron | `PRODUCT_Fer` | `sette_nomask`, `ece3` | `sette_nomask` |
 

@@ -25,6 +25,11 @@ Ocean circulation and biogeochemical models (NEMO, PISCES) solve discretized 3D 
 
 If a discrete bottle file were directly interpolated onto a model grid without objective analysis, 98% of the model grid cells would evaluate to `NaN` (no sample was taken in that specific grid box).
 
+> [!IMPORTANT]
+> **Support Policy: Gridded Products Only**
+> `pisces-inidata` exclusively supports 3D gridded climatologies (e.g., `GLODAPv2.2016b`, `WOA23`, `Panaïotis et al. 2024 DOC`).
+> Discrete cruise bottle master files (such as `GLODAPv3_Merged_Master_File.nc`) are explicitly unsupported. Only gridded products are accepted by the pipeline.
+
 ---
 
 ## 2. Gridded Objective Analyses & Climatologies

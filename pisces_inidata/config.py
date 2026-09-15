@@ -13,15 +13,15 @@ VALID_PRODUCTS = {
     'PRODUCT_Si': ['woa23', 'woa2009', 'sette_nomask', 'ece3'],
     'PRODUCT_O2': ['woa23', 'woa2009', 'sette_nomask', 'ece3'],
     'PRODUCT_TALK': [
-        'glodap_v3', 'glodap_v2_2016b', 'glodap_v2_2023', 'glodap_v1',
+        'glodap_v2_2016b', 'glodap_v2_2023', 'glodap_v1',
         'sette_nomask', 'ece3', 'cmems'
     ],
     'PRODUCT_TDIC': [
-        'glodap_v3', 'glodap_v2_2016b', 'glodap_v2_2023', 'glodap_v1',
+        'glodap_v2_2016b', 'glodap_v2_2023', 'glodap_v1',
         'sette_nomask', 'ece3', 'cmems'
     ],
     'PRODUCT_PiDIC': [
-        'glodap_v3', 'glodap_v2_2016b', 'glodap_v2_2023', 'glodap_v1',
+        'glodap_v2_2016b', 'glodap_v2_2023', 'glodap_v1',
         'sette_nomask', 'ece3', 'cmems'
     ],
     'PRODUCT_DOC': ['panaiotis2024', 'sette_nomask', 'ece3'],
@@ -39,9 +39,9 @@ DEFAULTS = {
     'PRODUCT_PO4': 'woa23',
     'PRODUCT_Si': 'woa23',
     'PRODUCT_O2': 'woa23',
-    'PRODUCT_TALK': 'glodap_v3',
-    'PRODUCT_TDIC': 'glodap_v3',
-    'PRODUCT_PiDIC': 'glodap_v3',
+    'PRODUCT_TALK': 'glodap_v2_2016b',
+    'PRODUCT_TDIC': 'glodap_v2_2016b',
+    'PRODUCT_PiDIC': 'glodap_v2_2016b',
     'PRODUCT_DOC': 'panaiotis2024',
     'PRODUCT_Fer': 'sette_nomask',
     'PRODUCT_DUST': 'ece3',

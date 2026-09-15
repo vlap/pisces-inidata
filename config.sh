@@ -70,8 +70,9 @@ CDO_COMPRESS="-f nc4 -z zip_4"
 #   'ece3_baseline'    : Uses validated ECE3/SHACONEMO baseline in /gpfs/projects/bsc32/models/ecearth/v3.3.3/inidata/pisces/
 SOURCE_MODE="${SOURCE_MODE:-modern}"
 
-# GLODAP version configuration (supported: 'v3' [default], 'v2.2023', 'v2.2016b', 'v1.1')
-GLODAP_VERSION="${GLODAP_VERSION:-v3}"
+# GLODAP version configuration (supported: 'v2.2016b' [default 3D gridded], 'v2.2023', 'v1.1')
+# Only 3D gridded products are supported; discrete bottle master files (e.g. GLODAPv3 Master File) are not supported.
+GLODAP_VERSION="${GLODAP_VERSION:-v2.2016b}"
 
 # Source per-variable product configuration file if present
 SCRIPT_DIR_CONFIG="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

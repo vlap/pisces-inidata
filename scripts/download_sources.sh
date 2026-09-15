@@ -56,18 +56,19 @@ download_woa23_var "silicate" "i"
 download_woa23_var "oxygen" "o"
 
 # ------------------------------------------------------------------------------
-# 3. Download GLODAP (Default: GLODAPv3, supports v3, v2.2023, v2.2016b, v1.1)
+# 3. Download GLODAP 3D Gridded Mapped Climatologies (Default: GLODAPv2.2016b)
+#    Note: Non-gridded/discrete bottle master files (GLODAPv3 Master File) are unsupported.
 # ------------------------------------------------------------------------------
-echo "=== [3/5] Fetching GLODAP Datasets (Target Version: ${GLODAP_VERSION:-v3}) ==="
+echo "=== [3/5] Fetching GLODAP 3D Gridded Climatologies (Target Version: ${GLODAP_VERSION:-v2.2016b}) ==="
 
 download_glodap() {
-    local ver="${GLODAP_VERSION:-v3}"
+    local ver="${GLODAP_VERSION:-v2.2016b}"
 
     case "${ver}" in
         v3|3)
-            echo "--- Downloading GLODAPv3 Mapped Climatologies ---"
-            mkdir -p "${GLODAP_V3_DIR}" "${GLODAP_V2_DIR}"
-            # Download official 3D gridded mapped climatology baseline
+            echo "NOTICE: GLODAPv3 only exists as discrete bottle observations (Merged Master File)."
+            echo "NOTICE: Only 3D gridded products are supported; using official GLODAPv2.2016b 3D mapped climatology."
+            mkdir -p "${GLODAP_V2_DIR}"
             local glodap_v2_url="https://www.ncei.noaa.gov/data/oceans/ncei/ocads/data/0162565/mapped/GLODAPv2.2016b_MappedClimatologies.tar.gz"
             local glodap_v2_tar="${GLODAP_V2_DIR}/GLODAPv2.2016b_MappedClimatologies.tar.gz"
             if [ ! -f "${GLODAP_V2_DIR}/GLODAPv2.2016b.TAlk.nc" ]; then

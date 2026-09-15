@@ -11,6 +11,7 @@ def test_default_config():
     cfg = load_config("non_existent_file.cfg")
     assert cfg['PRODUCT_NO3'] == 'woa23'
     assert cfg['PRODUCT_DOC'] == 'panaiotis2024'
+    assert cfg['PRODUCT_TALK'] == 'glodap_v2_2016b'
     assert validate_config(cfg) is True
 
 
@@ -36,3 +37,5 @@ def test_custom_config_parsing():
 def test_invalid_product_validation():
     bad_cfg = {'PRODUCT_NO3': 'invalid_product_xyz'}
     assert validate_config(bad_cfg) is False
+    # GLODAPv3 Master File is discrete, so glodap_v3 is rejected in favor of gridded products
+    assert validate_config({'PRODUCT_TALK': 'glodap_v3'}) is False

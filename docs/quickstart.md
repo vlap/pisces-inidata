@@ -40,8 +40,8 @@ export PRODUCT_PO4="woa23"
 export PRODUCT_Si="woa23"
 export PRODUCT_O2="woa23"
 export PRODUCT_DOC="panaiotis2024"
-export PRODUCT_TALK="glodap_v3"
-export PRODUCT_TDIC="glodap_v3"
+export PRODUCT_TALK="glodap_v2_2016b"
+export PRODUCT_TDIC="glodap_v2_2016b"
 ```
 
 ### 2. Download Raw Datasets

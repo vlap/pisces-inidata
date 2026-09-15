@@ -13,14 +13,15 @@
 - **`ece3`:** Historical initial conditions used in EC-Earth3-CC simulations.
 
 ### Total Alkalinity ($\text{TALK}$) & Total Dissolved Inorganic Carbon ($\text{TDIC}$)
-- **`glodap_v3` (Recommended Default):** Uses GLODAPv3 mapping with expanded observational coverage (1,181 cruises, 1.5 million bottle samples).
-- **`glodap_v2_2016b`:** Official 3D objectively mapped climatology (Lauvset et al. 2016). Standard $1^\circ \times 1^\circ$ grid with 33 vertical depth levels (0m to 5500m).
-- **`glodap_v2_2023`:** Updated GLODAP synthesis.
+- **`glodap_v2_2016b` (Recommended Default):** Official 3D objectively mapped climatology (Lauvset et al. 2016, NOAA NCEI Accession 0162565). Standard $1^\circ \times 1^\circ$ global grid across 33 vertical depth levels (0m to 5500m).
 - **`cmems`:** Gridded carbon extraction from Copernicus Marine Service (`INSITU_GLO_BGC_CARBON_DISCRETE_MY_013_050` / `013_046`).
 - **`sette_nomask`:** Standard SETTE reference fields.
+- **`ece3`:** Historical EC-Earth3 baseline fields.
+
+*Note: Only 3D gridded products are supported. Discrete cruise bottle compilations (such as the GLODAPv3 Merged Master File) are not supported.*
 
 ### Pre-Industrial Dissolved Inorganic Carbon ($\text{PiDIC}$)
-- **`glodap_v3` / `glodap_v2_2016b`:** Derived by subtracting anthropogenic carbon ($\text{C}_{\text{ant}}$) estimates from total dissolved inorganic carbon.
+- **`glodap_v2_2016b` (Recommended Default):** Derived from the 3D mapped field by subtracting anthropogenic carbon ($\text{C}_{\text{ant}}$) estimates from total dissolved inorganic carbon.
 
 ### Dissolved Organic Carbon ($\text{DOC}$)
 - **`panaiotis2024` (Recommended Default):** State-of-the-art machine learning dissolved organic carbon climatology (Panaïotis et al. 2024, SEANOE, [doi:10.17882/101170](https://doi.org/101170)). Trained on global in situ DOC observations with environmental predictors (temperature, salinity, depth, nutrients, primary production) at $1^\circ \times 1^\circ$ and 102 vertical depths.

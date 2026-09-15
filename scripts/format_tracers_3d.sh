@@ -60,21 +60,12 @@ echo "========================================================================"
 
 resolve_glodap_source() {
     local param="$1" # TAlk, TCO2, PI_TCO2
-    local ver="${GLODAP_VERSION:-v3}"
-    local candidate=""
+    local ver="${GLODAP_VERSION:-v2.2016b}"
 
     case "${ver}" in
         v3|3)
-            for f in "${GLODAP_V3_DIR}/GLODAPv3.${param}.nc" \
-                     "${GLODAP_V3_DIR}/GLODAP_v3_${param}.nc" \
-                     "${GLODAP_V3_DIR}/GLODAPv3_MappedClimatology_${param}.nc"; do
-                if [ -f "${f}" ]; then
-                    echo "${f}"
-                    return 0
-                fi
-            done
-            echo "NOTICE: GLODAPv3 mapped climatology for ${param} not found in ${GLODAP_V3_DIR}." >&2
-            echo "NOTICE: Falling back to GLODAPv2.2016b mapped climatology baseline." >&2
+            echo "NOTICE: GLODAPv3 Master File contains discrete bottle observations and is not gridded." >&2
+            echo "NOTICE: Only 3D gridded products are supported; using official GLODAPv2.2016b mapped climatology." >&2
             echo "${GLODAP_V2_DIR}/GLODAPv2.2016b.${param}.nc"
             return 0
             ;;
