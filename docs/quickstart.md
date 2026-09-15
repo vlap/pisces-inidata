@@ -51,12 +51,13 @@ bash scripts/download_sources.sh
 ```
 
 ### 3. Generate Initial Conditions
-Run the end-to-end pipeline for your target resolution (e.g. `ORCA2`):
-```bash
-pisces-inidata run --orca ORCA2
-# Alternatively:
-# bash scripts/launcher_pisces_inidata.sh
-```
+Target ocean domain files (`domain_cfg.nc` and `maskutil.nc`) define the target NEMO curvilinear grid.
+- **On BSC clusters:** Pre-installed domain files are automatically detected.
+- **On external machines:** Download the official EC-Earth4 inidata package and point to it using `--domain-dir`:
+  ```bash
+  pisces-inidata run --orca ORCA2 --domain-dir /path/to/nemo/domain
+  ```
+  *(For instructions on obtaining official EC-Earth4 inidata, refer to the [EC-Earth4 Documentation](https://ec-earth-4-docs.readthedocs.io/).)*
 
 The formatted NetCDF files will be saved in:
 ```

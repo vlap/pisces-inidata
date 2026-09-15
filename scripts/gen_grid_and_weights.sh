@@ -57,7 +57,18 @@ elif [ "${GRID_NAME}" = "ORCA2" ] && [ -f "${RAW_DIR}/official_v5.0.0/bathy.orca
         "${TMP_DIR}/grid_coords.nc"
     mv "${TMP_DIR}/grid_coords.nc" "${TARGET_GRID_NC}"
 else
-    echo "ERROR: domain_cfg.nc not found at ${DOMAIN_CFG} and MASKUTIL not found at ${MASKUTIL}" >&2
+    echo "================================================================================" >&2
+    echo "ERROR: Target domain files not found:" >&2
+    echo "       DOMAIN_CFG: ${DOMAIN_CFG}" >&2
+    echo "       MASKUTIL:   ${MASKUTIL}" >&2
+    echo "" >&2
+    echo "To generate initial conditions for target grid '${GRID_NAME}', please download" >&2
+    echo "the official EC-Earth4 inidata package and set DOMAIN_BASE_DIR (or --domain-dir)" >&2
+    echo "to your local directory containing ${GRID_NAME}/domain_cfg.nc." >&2
+    echo "" >&2
+    echo "For instructions on obtaining official EC-Earth4 inidata, refer to:" >&2
+    echo "👉 https://ec-earth-4-docs.readthedocs.io/" >&2
+    echo "================================================================================" >&2
     exit 1
 fi
 

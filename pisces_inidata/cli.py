@@ -31,10 +31,13 @@ def cmd_run(args):
         sys.exit(1)
 
     print(f"Launching PISCES inidata pipeline: {script}")
-    cmd = ["bash", script]
+    env = os.environ.copy()
     if args.orca:
-        cmd.extend(["--orca", args.orca])
-    res = subprocess.run(cmd, cwd=repo_root)
+        env["GRID_NAME"] = args.orca
+    if args.domain_dir:
+        env["DOMAIN_BASE_DIR"] = os.path.abspath(args.domain_dir)
+
+    res = subprocess.run(["bash", script], cwd=repo_root, env=env)
     sys.exit(res.returncode)
 
 
@@ -90,6 +93,11 @@ def main():
         choices=["ORCA2", "eORCA1", "eORCA025"],
         default="ORCA2",
         help="Target NEMO grid resolution"
+    )
+    run_parser.add_argument(
+        "--domain-dir",
+        help="Path to directory containing target NEMO domain files (${GRID_NAME}/domain_cfg.nc). "
+             "See https://ec-earth-4-docs.readthedocs.io/ for obtaining official EC-Earth4 inidata."
     )
     run_parser.set_defaults(func=cmd_run)
 

@@ -10,9 +10,17 @@
 GRID_NAME="${GRID_NAME:-eORCA1}"
 
 # Base directory for NEMO domain files
-DOMAIN_BASE_DIR="${DOMAIN_BASE_DIR:-/gpfs/projects/bsc32/models/ecearth/ece4-trunk/inidata/nemo/domain}"
+if [ -z "${DOMAIN_BASE_DIR:-}" ]; then
+    if [ -d "${PWD}/domain/${GRID_NAME}" ]; then
+        DOMAIN_BASE_DIR="${PWD}/domain"
+    elif [ -d "/gpfs/projects/bsc32/models/ecearth/ece4-trunk/inidata/nemo/domain" ]; then
+        DOMAIN_BASE_DIR="/gpfs/projects/bsc32/models/ecearth/ece4-trunk/inidata/nemo/domain"
+    else
+        DOMAIN_BASE_DIR="${PWD}/domain"
+    fi
+fi
 
-# Paths to grid and mask files (provided by user)
+# Paths to grid and mask files (provided by user or official EC-Earth4 inidata)
 DOMAIN_CFG="${DOMAIN_CFG:-${DOMAIN_BASE_DIR}/${GRID_NAME}/domain_cfg.nc}"
 MASKUTIL="${MASKUTIL:-${DOMAIN_BASE_DIR}/${GRID_NAME}/maskutil.nc}"
 

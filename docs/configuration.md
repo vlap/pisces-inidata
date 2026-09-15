@@ -57,3 +57,13 @@ To verify the effective configuration at any time:
 ```bash
 pisces-inidata info
 ```
+
+---
+
+## Target Domain Configuration (`DOMAIN_BASE_DIR`)
+
+The target NEMO grid is configured via `GRID_NAME` (e.g. `ORCA2`, `eORCA1`, `eORCA025`). The pipeline requires `${DOMAIN_BASE_DIR}/${GRID_NAME}/domain_cfg.nc` and `maskutil.nc`.
+
+- **Environment Variable:** `DOMAIN_BASE_DIR`
+- **CLI Flag:** `pisces-inidata run --orca eORCA1 --domain-dir /path/to/nemo/domain`
+- **Official Inidata Provenance:** For instructions on downloading official EC-Earth4 inidata files, refer to [https://ec-earth-4-docs.readthedocs.io/](https://ec-earth-4-docs.readthedocs.io/).
