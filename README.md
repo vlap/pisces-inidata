@@ -31,13 +31,18 @@ Built for **EC-Earth4** and the broader ocean modeling community.
 ```text
 pisces-inidata/
 ├── docs/                        # ReadTheDocs Sphinx documentation (MyST Markdown)
+│   ├── index.md                 # Documentation homepage
+│   ├── products.md              # Supported observational products catalog
+│   ├── configuration.md         # Per-variable configuration (sources.yaml) reference
+│   └── validation.md            # Statistical scoreboards and validation suites
 ├── python/                      # Python library and CLI package
 │   └── pisces_inidata/
 │       ├── __init__.py
-│       ├── cli.py               # CLI: pisces-inidata (check, run, validate, pad, ...)
+│       ├── cli.py               # CLI: pisces-inidata (check, download, run, validate, ...)
 │       ├── check.py             # Pre-flight system & data integrity verifier
-│       ├── config.py            # Configuration parser & validator
-│       ├── padding.py           # Abyssal depth padding algorithm
+│       ├── config.py            # Configuration parser & validator (sources.yaml)
+│       ├── download.py          # Selective raw dataset downloader & staging
+│       ├── padding.py           # Abyssal depth padding algorithm (up to 6000m)
 │       ├── woa23.py             # WOA23 12-month depth profile builder
 │       ├── doc.py               # Panaïotis et al. (2024) DOC NetCDF generator
 │       ├── scoreboard.py        # Validation scoreboard generator
@@ -45,13 +50,13 @@ pisces-inidata/
 │       └── utils.py             # NetCDF inspection & FAIR metadata stamping
 ├── scripts/                     # Modular Bash execution pipeline
 │   ├── config.sh                # Environment, paths, and module configuration
-│   ├── download_sources.sh      # Automated raw dataset downloader
+│   ├── download_sources.sh      # Thin wrapper calling pisces-inidata download
 │   ├── gen_grid_and_weights.sh  # Grid description and CDO remapping weights
 │   ├── format_tracers_3d.sh     # 3D tracers formatting and interpolation
 │   ├── format_surface_forcings.sh # Atmospheric dust, N-dep, PAR forcings
 │   ├── format_bathy_hydrofe.sh  # Bathymetric shelf factor & hydrothermal iron
-│   ├── format_rivers.sh         # River nutrient discharge
-│   ├── launcher_pisces_inidata.sh # End-to-end master pipeline driver
+│   ├── format_rivers.sh         # Mass-conserving river nutrient discharge
+│   ├── launcher_pisces_inidata.sh # End-to-end Slurm master pipeline driver
 │   └── run_validation_suite.sh  # Automated validation suite
 ├── tests/                       # Unit tests (pytest)
 ├── sources.yaml                 # Per-variable source dataset configuration
@@ -80,22 +85,65 @@ Verify your installation:
 pisces-inidata info
 ```
 
-### 2. Download Data
+### 2. Configure Sources (`sources.yaml`)
+
+Choose observational climatologies on a per-tracer basis in `sources.yaml`:
+- `NO3`, `PO4`, `Si`, `O2`: `woa23` (default) | `woa2009` | `sette_nomask`
+- `TALK`, `TDIC`, `PiDIC`: `glodap_v2_2016b` (default) | `glodap_v2_2023` | `glodap_v1` | `sette_nomask`
+- `DOC`: `panaiotis2024` (default) | `sette_nomask`
+- `Fer`: `sette_nomask` (default)
+
+### 3. Download Raw Datasets
+Fetch only the active datasets selected in `sources.yaml`:
 ```bash
-bash scripts/download_sources.sh
+# Using the CLI:
+pisces-inidata download
+
+# Or dry-run preview:
+pisces-inidata download --dry-run
 ```
 
-### 3. Generate Initial Conditions
+### 4. Generate Initial Conditions
 ```bash
+# Generate for ORCA2:
 pisces-inidata run --orca ORCA2
+
+# Or for arbitrary grids (eORCA1, eORCA025) with custom domain:
+pisces-inidata run --orca eORCA1 --domain-dir /path/to/nemo/domain
 ```
 
-### 4. Validate Against SETTE Reference
+### 5. Validate Against Reference
 ```bash
+# Statistical validation against SETTE ORCA2 reference:
 pisces-inidata validate
+
+# Or reproduction verification against EC-Earth3 baseline on eORCA1:
+pisces-inidata test-reproduction
 ```
 
-View the generated validation metrics in `VALIDATION_SCOREBOARD_ORCA2.md`.
+---
+
+## HPC Execution Workflow (BSC Hub04 & Nord4)
+
+On high-performance computing clusters where compute nodes lack direct internet access (such as BSC Nord4 / MareNostrum 5):
+
+1. **Dataset Ingestion (Interactive / Internet Node: `hub04`):**
+   ```bash
+   ssh hub04
+   cd /esarchive/scratch/${USER}/scripts/pisces_inidata
+   pisces-inidata download
+   ```
+2. **Parallel Generation via Slurm (Batch Node: `nord4`):**
+   ```bash
+   ssh nord4
+   cd /esarchive/scratch/${USER}/scripts/pisces_inidata
+
+   # Submit batch generation for eORCA1:
+   ./scripts/launcher_pisces_inidata.sh submit
+
+   # Submit batch generation for eORCA025:
+   GRID_NAME=eORCA025 ./scripts/launcher_pisces_inidata.sh submit
+   ```
 
 ---
 
@@ -104,14 +152,9 @@ View the generated validation metrics in `VALIDATION_SCOREBOARD_ORCA2.md`.
 Full documentation is hosted on **Read the Docs**:  
 👉 [**https://pisces-inidata.readthedocs.io/en/latest/**](https://pisces-inidata.readthedocs.io/en/latest/)
 
-- [Quickstart Guide](docs/quickstart.md)
-- [Pipeline Architecture](docs/architecture.md)
-- [Supported Products Catalog](docs/products.md)
-- [Gridded vs. Discrete Data Guide](docs/gridded_vs_discrete.md)
-- [Configuration Reference](docs/configuration.md)
-- [HPC Execution (BSC MareNostrum 5 / Nord3)](docs/hpc_execution.md)
-- [Validation Scoreboard & Metrics](docs/validation.md)
-- [API & CLI Reference](docs/api.md)
+- [Primary Observational Data Sources](docs/products.md)
+- [Configuration Reference (`sources.yaml`)](docs/configuration.md)
+- [Validation Suites & Diagnostic Scorecards](docs/validation.md)
 
 ---
 
