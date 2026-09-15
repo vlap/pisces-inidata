@@ -61,9 +61,13 @@ The validation checks:
 1. **Unit Consistency:** Verifies that physical units match expected dimensions and flags order-of-magnitude scaling blunders (e.g. $\text{mol/m}^3$ vs $\mu\text{mol/L}$, or seconds vs annual rates).
 2. **Physical Bounds:** Asserts non-negativity across positive-definite tracers and flags unphysical negative values or NaN leakage into wet ocean cells.
 3. **Pattern Orientation:** Validates spatial pattern correlation ($r > 0$) to detect inverted coordinate axes or transposed dimensions.
-4. **Boundary Mass Conservation:** Computes total global surface integrals ($\sum F_i \cdot A_i$) for river nutrient fluxes and atmospheric deposition to verify conservative remapping ($\le 0.5\%$).
 
-### 3D Tracers Product Scorecard
+```{note}
+**Scope of SETTE Validation:**
+Only independent observational products re-interpolated by the pipeline (WOA23, GLODAPv2.2016b, Panaïotis et al. 2024 DOC) are evaluated against SETTE. Variables inherited directly from the SETTE benchmark without independent re-mapping (such as dissolved iron `Fer` from Tagliabue et al. 2012) or static boundary forcings (`dust`, `ndep`, `bathy`, `river`, `hydrofe`, `par`) are excluded to avoid uninformative self-comparisons.
+```
+
+### Supported Products Scorecard (3D Tracers)
 
 | Variable | Evaluated Product | Unit | Physical Range [min, max] | Mean Ratio | Pearson $r$ | Rel RMSE (%) | Status |
 | :--- | :--- | :--- | :---: | :---: | :---: | :---: | :---: |
@@ -75,18 +79,6 @@ The validation checks:
 | **TDIC** | `GLODAPv2.2016b` | $\mu\text{mol C/L}$ | $[620.0, 2480.0]$ | 1.07x | 0.1474 | 9.25% | **`PASS`** |
 | **PiDIC** | `GLODAPv2.2016b` | $\mu\text{mol C/L}$ | $[600.0, 2410.0]$ | 1.09x | 0.1390 | 11.10% | **`PASS`** |
 | **DOC** | `Panaïotis 2024 (ML)` | $\mu\text{mol C/L}$ | $[32.0, 95.0]$ | 5.54x | **0.6035** | 553.98% | **`WARN`** |
-| **Fer** | `Tagliabue 2012` | $\text{nmol Fe/L}$ | $[0.00, 2.50]$ | 1.00x | **1.0000** | 0.00% | **`PASS`** |
-
-### Boundary Forcings Scorecard & Mass Conservation
-
-| Variable | Evaluated Product | Target Integral | Ref Integral | $\Delta_{\text{mass}}$ (%) | Tolerance | Status |
-| :--- | :--- | :---: | :---: | :---: | :---: | :---: |
-| **dust** | `INCA / Mahowald` | $4.2810 \times 10^{11}$ | $4.2810 \times 10^{11}$ | **$0.00\%$** | $\le 0.5\%$ | **`PASS`** |
-| **ndep** | `Duce et al.` | $6.8340 \times 10^{10}$ | $6.8340 \times 10^{10}$ | **$0.00\%$** | $\le 0.5\%$ | **`PASS`** |
-| **par** | `GEWEX Climatology` | $1.4920 \times 10^{8}$ | $1.4920 \times 10^{8}$ | **$-0.08\%$** | $\le 0.5\%$ | **`PASS`** |
-| **bathy** | `ETOPO / pmarge` | $1.2840 \times 10^{7}$ | $1.2840 \times 10^{7}$ | **$0.00\%$** | $\le 0.5\%$ | **`PASS`** |
-| **hydrofe** | `Hydrothermal Fe` | $3.1200 \times 10^{9}$ | $3.1200 \times 10^{9}$ | **$0.00\%$** | $\le 0.5\%$ | **`PASS`** |
-| **river** | `Global NEWS 2` | $5.1420 \times 10^{10}$ | $5.1420 \times 10^{10}$ | **$0.00\%$** | $\le 0.5\%$ | **`PASS`** |
 
 ---
 

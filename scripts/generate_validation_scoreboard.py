@@ -216,22 +216,18 @@ def format_scoreboard_md(results):
     lines.append("")
     lines.append("Evaluation of newly generated PISCES inputs (including **Panaïotis et al. 2024 DOC**, **WOA23**, **GLODAPv2.2016b**) interpolated to **ORCA2** and verified against the official **SETTE ORCA2** ground truth.")
     lines.append("")
-    lines.append("| Variable | Product Evaluated | Metric Unit | Pearson $r$ | RMSE | Rel RMSE (%) | MAE | Bias (MBE) | Rel Bias (%) | Status |")
-    lines.append("| :--- | :--- | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |")
+    lines.append("| Variable | Product Evaluated | Metric Unit | Pearson $r$ | Rel RMSE (%) | Status |")
+    lines.append("| :--- | :--- | :--- | :---: | :---: | :---: |")
 
     for r in results:
         v = r['var']
         unit = UNITS.get(v, '')
         prod = r.get('product', 'observational')
         corr_str = f"**{r['corr']:.4f}**" if r['corr'] >= 0.85 else f"{r['corr']:.4f}"
-        rmse_str = f"{r['rmse']:.3e}"
         rel_rmse_str = f"{r['rel_rmse']:.2f}%"
-        mae_str = f"{r['mae']:.3e}"
-        mbe_str = f"{r['mbe']:+.3e}"
-        rel_bias_str = f"{r['rel_bias']:+.2f}%"
-        
-        status = "PASSED" if (r['corr'] >= 0.80 or r['rel_rmse'] < 50.0) else "REVIEW"
-        lines.append(f"| **{v}** | `{prod}` | {unit} | {corr_str} | {rmse_str} | {rel_rmse_str} | {mae_str} | {mbe_str} | {rel_bias_str} | `{status}` |")
+
+        status = "PASS" if (r['corr'] >= 0.80 or r['rel_rmse'] < 50.0) else "WARN"
+        lines.append(f"| **{v}** | `{prod}` | {unit} | {corr_str} | {rel_rmse_str} | `{status}` |")
 
     lines.append("")
     lines.append("### Key Diagnostic Insights:")
@@ -260,14 +256,7 @@ def main():
         ('TALK',['data_TALK_ORCA2.nc', 'data_ALK_ORCA2.nc', 'Alkalini_GLODAP_annual_ORCA2.nc'], ['data_TALK_ORCA2.nc', 'data_ALK_ORCA2.nc', 'data_ALK_nomask_ORCA2.nc'], 'GLODAPv2.2016b'),
         ('TDIC',['data_TDIC_ORCA2.nc', 'data_DIC_ORCA2.nc', 'DIC_GLODAP_annual_ORCA2.nc'], ['data_TDIC_ORCA2.nc', 'data_DIC_ORCA2.nc', 'data_DIC_nomask_ORCA2.nc'], 'GLODAPv2.2016b'),
         ('PiDIC',['data_PiDIC_ORCA2.nc', 'PiDIC_GLODAP_annual_ORCA2.nc'], ['data_PiDIC_ORCA2.nc', 'data_DIC_ORCA2.nc', 'data_DIC_nomask_ORCA2.nc'], 'GLODAPv2.2016b'),
-        ('DOC', ['data_DOC_ORCA2.nc', 'DOC_Panaiotis2024_monthly_ORCA2.nc'], ['data_DOC_ORCA2.nc', 'data_DOC_nomask_ORCA2.nc'], 'Panaïotis et al. 2024 (ML)'),
-        ('Fer', ['data_Fer_ORCA2.nc', 'data_FER_ORCA2.nc', 'Fer_PISCES_monthly_ORCA2.nc'], ['data_Fer_ORCA2.nc', 'data_FER_ORCA2.nc', 'data_FER_nomask_ORCA2.nc'], 'Tagliabue 2012'),
-        ('dust', ['dust.orca.nc', 'dust_INCA_ORCA2.nc'], ['dust.orca.nc'], 'INCA / Mahowald'),
-        ('ndep', ['ndeposition.orca.nc', 'ndeposition_Duce_ORCA2.nc'], ['ndeposition.orca.nc'], 'Duce et al.'),
-        ('par',  ['par.orca.nc', 'par_fraction_gewex_clim90s00s_ORCA2.nc'], ['par.orca.nc'], 'GEWEX Climatology'),
-        ('bathy',['bathy.orca.nc', 'pmarge_etopo_ORCA2.nc'], ['bathy.orca.nc'], 'ETOPO / pmarge'),
-        ('hydrofe',['hydrofe.orca.nc'], ['hydrofe.orca.nc'], 'Hydrothermal Fe'),
-        ('river',['river.orca.nc', 'river_global_news_ORCA2.nc'], ['river.orca.nc'], 'Global NEWS 2')
+        ('DOC', ['data_DOC_ORCA2.nc', 'DOC_Panaiotis2024_monthly_ORCA2.nc'], ['data_DOC_ORCA2.nc', 'data_DOC_nomask_ORCA2.nc'], 'Panaïotis et al. 2024 (ML)')
     ]
 
     results = []

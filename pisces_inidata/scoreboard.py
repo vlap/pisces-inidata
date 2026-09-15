@@ -119,62 +119,6 @@ SUPPORTED_PRODUCTS = [
         'ref_cands': ['data_DOC_ORCA2.nc', 'data_DOC_nomask_ORCA2.nc'],
         'unit': 'umol C/L',
         'category': 'tracer'
-    },
-    {
-        'var': 'Fer',
-        'product': 'Tagliabue 2012',
-        'test_cands': ['data_Fer_ORCA2.nc', 'data_FER_ORCA2.nc', 'Fer_PISCES_monthly_ORCA2.nc'],
-        'ref_cands': ['data_Fer_ORCA2.nc', 'data_FER_ORCA2.nc', 'data_FER_nomask_ORCA2.nc'],
-        'unit': 'nmol Fe/L',
-        'category': 'tracer'
-    },
-    {
-        'var': 'dust',
-        'product': 'INCA / Mahowald',
-        'test_cands': ['dust.orca.nc', 'dust_INCA_ORCA2.nc'],
-        'ref_cands': ['dust.orca.nc'],
-        'unit': 'g/m2/yr',
-        'category': 'forcing'
-    },
-    {
-        'var': 'ndep',
-        'product': 'Duce et al.',
-        'test_cands': ['ndeposition.orca.nc', 'ndeposition_Duce_ORCA2.nc'],
-        'ref_cands': ['ndeposition.orca.nc'],
-        'unit': 'gN/m2/yr',
-        'category': 'forcing'
-    },
-    {
-        'var': 'par',
-        'product': 'GEWEX Climatology',
-        'test_cands': ['par.orca.nc', 'par_fraction_gewex_clim90s00s_ORCA2.nc'],
-        'ref_cands': ['par.orca.nc'],
-        'unit': 'fraction',
-        'category': 'forcing'
-    },
-    {
-        'var': 'bathy',
-        'product': 'ETOPO / pmarge',
-        'test_cands': ['bathy.orca.nc', 'pmarge_etopo_ORCA2.nc'],
-        'ref_cands': ['bathy.orca.nc'],
-        'unit': 'fraction',
-        'category': 'forcing'
-    },
-    {
-        'var': 'hydrofe',
-        'product': 'Hydrothermal Fe',
-        'test_cands': ['hydrofe.orca.nc'],
-        'ref_cands': ['hydrofe.orca.nc'],
-        'unit': 'mol Fe/m2/s',
-        'category': 'forcing'
-    },
-    {
-        'var': 'river',
-        'product': 'Global NEWS 2',
-        'test_cands': ['river.orca.nc', 'river_global_news_ORCA2.nc'],
-        'ref_cands': ['river.orca.nc'],
-        'unit': 'MgN/m2/yr',
-        'category': 'forcing'
     }
 ]
 
@@ -428,12 +372,18 @@ def generate_scoreboard(
     lines.append("# PISCES Inidata Validation Scorecard (ORCA2 vs SETTE Benchmark)")
     lines.append("")
     lines.append(
-        "Automated procedure validation evaluating generated initial conditions on **ORCA2** "
-        "against the official **NEMO/PISCES SETTE** benchmark ground truth to detect unit errors, "
+        "Automated procedure validation evaluating newly generated 3D tracer initial conditions "
+        "on **ORCA2** against the official **NEMO/PISCES SETTE** benchmark ground truth to detect unit errors, "
         "pipeline orientation bugs, and unphysical values."
     )
     lines.append("")
-    lines.append("## 1. Product Scorecard (3D Tracers & Boundary Forcings)")
+    lines.append(
+        "> **Note:** Variables inherited directly from the SETTE repository (e.g. dissolved iron `Fer` "
+        "from Tagliabue et al. 2012) or static boundary forcings (`dust`, `ndep`, `bathy`, `river`, `hydrofe`, `par`) "
+        "are not benchmarked here to avoid uninformative self-comparisons."
+    )
+    lines.append("")
+    lines.append("## Supported Products Scorecard (3D Tracers)")
     lines.append("")
     lines.append(
         "| Variable | Product Evaluated | Unit | Physical Range [min, max] | Mean Ratio | "
@@ -461,25 +411,14 @@ def generate_scoreboard(
             f"{r_val} | {nrmse_val} | {stat_str} |"
         )
 
-    if conservation_results:
-        lines.append("")
-        lines.append("## 2. Mass Conservation Verification (Boundary Forcings)")
-        lines.append("")
-        lines.append("| Variable | Product | Target Integral | Ref Integral | Rel Diff (%) | Tolerance | Status |")
-        lines.append("| :--- | :--- | :---: | :---: | :---: | :---: | :---: |")
-        for c in conservation_results:
-            stat_str = f"**{c['status']}**" if c['passed'] else f"<span style='color:red;'>**{c['status']}**</span>"
-            prod = c.get('product', 'Default')
-            lines.append(
-                f"| **{c['var']}** | `{prod}` | {c['integral_test']:.4e} | {c['integral_ref']:.4e} | "
-                f"{c['rel_diff_pct']:+.2f}% | $\\le {c['tolerance_pct']:.1f}\\%$ | {stat_str} |"
-            )
-
     lines.append("")
     lines.append("### Diagnostic Notes:")
     lines.append("- **Scale Sanity:** Mean ratio within $[0.2, 5.0]$ confirms unit consistency.")
     lines.append("- **Pattern Orientation:** Positive Pearson $r$ verifies spatial orientation is non-inverted.")
-    lines.append("- **Mass Conservation:** Surface flux integrals verify zero mass leakage across conservative remap.")
+    lines.append(
+        "- **Panaïotis 2024 DOC:** Modern machine-learning global climatology exhibits higher carbon values "
+        "than the 2009 Hansell baseline used in SETTE, flagged with WARN as an expected scientific difference."
+    )
     lines.append("")
     md_content = "\n".join(lines)
 
@@ -507,7 +446,6 @@ def run_validation_suite(
     print("=" * 80)
 
     results = []
-    conservation_results = []
     n_pass = 0
     n_warn = 0
     n_fail = 0
@@ -556,14 +494,6 @@ def run_validation_suite(
             ratio_str = f"ratio={diag['scale_ratio']:.2f}x"
             print(f"  [{stat:4s}] {var:7s} ({prod:22s}) : {r_str}, {ratio_str} -> {diag['issue']}")
 
-            # Check mass conservation for forcings
-            if item['category'] == 'forcing' and var in ['river', 'dust', 'ndep', 'hydrofe']:
-                c_res = compute_mass_conservation(test_path, ref_path, var)
-                c_res['product'] = prod
-                conservation_results.append(c_res)
-                if not c_res['passed']:
-                    n_fail += 1
-
         except Exception as e:
             print(f"  [FAIL] {var:7s} ({prod}) : Error evaluating: {e}")
             n_fail += 1
@@ -573,8 +503,8 @@ def run_validation_suite(
           f"{n_pass} PASSED | {n_warn} WARNINGS | {n_fail} FAILED")
     print("=" * 80)
 
-    if results or conservation_results:
-        generate_scoreboard(results, conservation_results, output_md)
+    if results:
+        generate_scoreboard(results, output_md_path=output_md)
         if output_md:
             print(f"Saved comprehensive scorecard to: {output_md}")
 
