@@ -54,3 +54,15 @@ If vertical interpolation (`cdo intlevel`) is performed without depth bracketing
 Because coastal bathymetry in model resolution (e.g. ORCA2, eORCA1) diverges from the $1^\circ \times 1^\circ$ observational land-sea mask, narrow straits, fjords, and shelves would otherwise exhibit missing values.
 - `cdo setmisstonn` performs nearest-neighbor search to flood missing values from adjacent ocean waters.
 - The official target ocean mask (`tmask` from `mesh_mask.nc`) is subsequently multiplied to ensure dry land cells remain masked to zero.
+
+### Stage 6: Scientific Provenance & FAIR Metadata Stamping
+Every generated initial condition and boundary forcing NetCDF file is automatically stamped with standardized CF global attributes via `stamp_provenance`:
+- `title`: Target grid description (`NEMO/EC-Earth4 (${GRID_NAME})`).
+- `source_pipeline`: Tool version and repository URL (`pisces-inidata`).
+- `source_products`: Exact breakdown of selected input products (`NO3:woa23, TALK:glodap_v2_2016b, DOC:panaiotis2024, ...`).
+- `git_commit`: Specific commit hash that generated the file.
+- `generation_timestamp`: ISO 8601 UTC timestamp.
+- `institution`: Barcelona Supercomputing Center (BSC), EC-Earth Consortium.
+- `license`: Apache-2.0.
+
+This guarantees complete traceability and scientific reproducibility for long-term EC-Earth4 climate simulations.

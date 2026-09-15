@@ -1,9 +1,10 @@
 """
-Utilities for NetCDF inspection, coordinate checking, and CDO execution.
+Utilities for NetCDF inspection, coordinate checking, provenance stamping, and CDO execution.
 """
 
 import os
 import subprocess
+from datetime import datetime, timezone
 from typing import List, Optional
 import netCDF4 as nc
 import numpy as np
@@ -54,3 +55,29 @@ def check_missing_in_ocean(nc_file: str, var_name: str, mask_file: Optional[str]
         missing_count = np.sum(mask)
         total_cells = data.size
         return (missing_count / total_cells) * 100.0 if total_cells > 0 else 0.0
+
+
+def stamp_provenance_metadata(
+    nc_file: str,
+    grid_name: str = "ORCA2",
+    product_summary: Optional[str] = None,
+    git_commit: Optional[str] = None,
+) -> None:
+    """
+    Appends scientific provenance attributes to a NetCDF dataset.
+    """
+    if not os.path.isfile(nc_file):
+        raise FileNotFoundError(f"File not found: {nc_file}")
+
+    timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    with nc.Dataset(nc_file, 'a') as ds:
+        ds.title = f"PISCES Biogeochemical Initial Conditions for NEMO/EC-Earth4 ({grid_name})"
+        ds.institution = "Barcelona Supercomputing Center (BSC), EC-Earth Consortium"
+        ds.source_pipeline = "pisces-inidata (https://github.com/vlap/pisces-inidata)"
+        if product_summary:
+            ds.source_products = product_summary
+        if git_commit:
+            ds.git_commit = git_commit
+        ds.generation_timestamp = timestamp
+        ds.references = "https://pisces-inidata.readthedocs.io/en/latest/"
+        ds.license = "Apache-2.0"

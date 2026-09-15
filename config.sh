@@ -123,5 +123,31 @@ export SCRATCH_ROOT WORK_DIR RAW_DIR WEIGHTS_DIR OUTPUT_DIR LOG_DIR
 export SLURM_ACCOUNT SLURM_PARTITION SLURM_TIME SLURM_CPUS_PER_TASK
 export MODULE_LOAD_CMD CDO_THREADS CDO_OPTS CDO_COMPRESS
 export TRACERS_3D RIVER_VARS DUST_VARS NDEP_VARS
-export SOURCE_MODE ECE3_PISCES_DIR ORCA1_GRIDDES
 export WOA23_DIR GLODAP_VERSION GLODAP_V3_DIR GLODAP_V2_2023_DIR GLODAP_V2_DIR GLODAP_V1_DIR PANAIOTIS_DOC_DIR
+
+# ------------------------------------------------------------------------------
+# 5. Scientific Provenance & FAIR Metadata Stamping
+# ------------------------------------------------------------------------------
+stamp_provenance() {
+    local target_file="$1"
+    if [ -f "${target_file}" ] && command -v ncatted >/dev/null 2>&1; then
+        local git_rev
+        git_rev="$(git -C "${SCRIPT_DIR_CONFIG:-.}" rev-parse --short HEAD 2>/dev/null || echo 'release')"
+        local timestamp
+        timestamp="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+        local prod_summary="NO3:${PRODUCT_NO3:-woa23}, PO4:${PRODUCT_PO4:-woa23}, Si:${PRODUCT_Si:-woa23}, O2:${PRODUCT_O2:-woa23}, TALK:${PRODUCT_TALK:-glodap_v2_2016b}, TDIC:${PRODUCT_TDIC:-glodap_v2_2016b}, DOC:${PRODUCT_DOC:-panaiotis2024}, Fer:${PRODUCT_Fer:-sette_nomask}"
+
+        ncatted -h -O \
+            -a title,global,o,c,"PISCES Biogeochemical Initial Conditions for NEMO/EC-Earth4 (${GRID_NAME})" \
+            -a institution,global,o,c,"Barcelona Supercomputing Center (BSC), EC-Earth Consortium" \
+            -a source_pipeline,global,o,c,"pisces-inidata (https://github.com/vlap/pisces-inidata)" \
+            -a source_products,global,o,c,"${prod_summary}" \
+            -a git_commit,global,o,c,"${git_rev}" \
+            -a generation_timestamp,global,o,c,"${timestamp}" \
+            -a references,global,o,c,"https://pisces-inidata.readthedocs.io/en/latest/" \
+            -a license,global,o,c,"Apache-2.0" \
+            "${target_file}" 2>/dev/null || true
+    fi
+}
+export -f stamp_provenance 2>/dev/null || true
+

@@ -95,7 +95,8 @@ process_dust() {
     fi
 
     ln -sfn "$(basename "${out_file}")" "${OUTPUT_DIR}/dust_INCA_${GRID_NAME}.nc"
-    ln -sfn "$(basename "${out_file}")" "${OUTPUT_DIR}/Solubility_T62_Mahowald_${GRID_NAME}.nc"
+    ln -sfn "$(basename "${out_file}")" "${OUTPUT_DIR}/dust_INCA_Mahowald_monthly_${GRID_NAME}.nc"
+    stamp_provenance "${out_file}"
     echo "Created: ${out_file}"
 }
 
@@ -145,7 +146,8 @@ process_ndep() {
         fi
     fi
 
-    ln -sfn "$(basename "${out_file}")" "${OUTPUT_DIR}/ndeposition_Duce_${GRID_NAME}.nc"
+    ln -sfn "$(basename "${out_file}")" "${OUTPUT_DIR}/ndeposition_Duce_monthly_${GRID_NAME}.nc"
+    stamp_provenance "${out_file}"
     echo "Created: ${out_file}"
 }
 
@@ -196,6 +198,7 @@ process_par() {
     fi
 
     ln -sfn "$(basename "${out_file}")" "${OUTPUT_DIR}/par_fraction_gewex_clim90s00s_${GRID_NAME}.nc"
+    stamp_provenance "${out_file}"
     echo "Created: ${out_file}"
 }
 

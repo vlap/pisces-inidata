@@ -126,5 +126,6 @@ done
 echo "Merging all river variables into ${OUT_FILE}..."
 cdo ${CDO_OPTS} ${CDO_COMPRESS} merge "${MERGE_FILES[@]}" "${OUT_FILE}"
 ln -sfn "$(basename "${OUT_FILE}")" "${OUTPUT_DIR}/river_global_news_${GRID_NAME}.nc"
+stamp_provenance "${OUT_FILE}"
 
 echo "=== River forcings completed successfully: ${OUT_FILE} ==="

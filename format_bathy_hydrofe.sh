@@ -92,6 +92,7 @@ process_bathy() {
     fi
 
     ln -sfn "$(basename "${out_file}")" "${OUTPUT_DIR}/pmarge_etopo_${GRID_NAME}.nc"
+    stamp_provenance "${out_file}"
     echo "Created: ${out_file}"
 }
 
@@ -126,6 +127,7 @@ process_hydrofe() {
         echo "Remapping hydrothermal Fe source to ${GRID_NAME}..."
         cdo ${CDO_OPTS} ${CDO_COMPRESS} remapnn,"${TARGET_GRID_NC}" "${clean_hydro}" "${out_file}"
     fi
+    stamp_provenance "${out_file}"
     echo "Created: ${out_file}"
 }
 

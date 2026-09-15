@@ -289,4 +289,5 @@ if [ "${SOURCE_MODE}" != "modern" ]; then
     fi
 fi
 
+stamp_provenance "${OUT_FILE}"
 echo "Successfully generated: ${OUT_FILE}"
