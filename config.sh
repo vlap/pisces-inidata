@@ -53,8 +53,12 @@ SLURM_CPUS_PER_TASK="${SLURM_CPUS_PER_TASK:-16}"
 # Command to load required modules on HPC (Nord4 / interactive nodes)
 MODULE_LOAD_CMD="set +u; module load CDO/2.3.0-gompi-2020b NCO/5.1.0-foss-2020b netcdf4-python/1.6.1-foss-2020b-Python-3.8.6 2>/dev/null || module load CDO NCO 2>/dev/null || true; set -u"
 
-# CDO execution options
-CDO_THREADS="${CDO_THREADS:-16}"
+# CDO execution options (safe login node limit: 4 threads; full Slurm job: 16 threads)
+if [ -z "${SLURM_JOB_ID:-}" ]; then
+    CDO_THREADS="${CDO_THREADS:-4}"
+else
+    CDO_THREADS="${SLURM_CPUS_PER_TASK:-16}"
+fi
 CDO_OPTS="-L -P ${CDO_THREADS}"
 CDO_COMPRESS="-f nc4 -z zip_4"
 
