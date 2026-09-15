@@ -168,7 +168,7 @@ if [ "${PRODUCT_DOC:-panaiotis2024}" = "panaiotis2024" ]; then
     echo "=== [6/6] Fetching & Preparing Panaïotis et al. (2024) DOC Dataset ==="
     mkdir -p "${PANAIOTIS_DOC_DIR}"
     if [ ! -s "${PANAIOTIS_DOC_DIR}/panaiotis2024_doc_1deg.nc" ]; then
-        python3 "${SCRIPT_DIR}/prepare_panaiotis2024_doc.py" "${PANAIOTIS_DOC_DIR}" "${PANAIOTIS_DOC_DIR}/panaiotis2024_doc_1deg.nc"
+        pisces-inidata prepare-doc "${PANAIOTIS_DOC_DIR}" "${PANAIOTIS_DOC_DIR}/panaiotis2024_doc_1deg.nc"
     else
         echo "Panaïotis DOC NetCDF already present at ${PANAIOTIS_DOC_DIR}/panaiotis2024_doc_1deg.nc"
     fi

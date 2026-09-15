@@ -31,14 +31,18 @@ Built for **EC-Earth4** and the broader ocean modeling community.
 ```text
 pisces-inidata/
 ├── docs/                        # ReadTheDocs Sphinx documentation (MyST Markdown)
-├── pisces_inidata/              # Python library and CLI package
-│   ├── __init__.py
-│   ├── cli.py                   # CLI: pisces-inidata (run, validate, info, pad)
-│   ├── config.py                # Configuration parser & validator
-│   ├── download.py              # Download routines (NOAA, SEANOE, CMEMS)
-│   ├── padding.py               # Abyssal depth padding algorithm
-│   ├── scoreboard.py            # Validation scoreboard generator
-│   └── utils.py                 # NetCDF inspection & coordinate utilities
+├── python/                      # Python library and CLI package
+│   └── pisces_inidata/
+│       ├── __init__.py
+│       ├── cli.py               # CLI: pisces-inidata (check, run, validate, pad, ...)
+│       ├── check.py             # Pre-flight system & data integrity verifier
+│       ├── config.py            # Configuration parser & validator
+│       ├── padding.py           # Abyssal depth padding algorithm
+│       ├── woa23.py             # WOA23 12-month depth profile builder
+│       ├── doc.py               # Panaïotis et al. (2024) DOC NetCDF generator
+│       ├── scoreboard.py        # Validation scoreboard generator
+│       ├── reproduction.py      # EC-Earth3 baseline precision benchmark
+│       └── utils.py             # NetCDF inspection & FAIR metadata stamping
 ├── scripts/                     # Modular Bash execution pipeline
 │   ├── config.sh                # Environment, paths, and module configuration
 │   ├── download_sources.sh      # Automated raw dataset downloader

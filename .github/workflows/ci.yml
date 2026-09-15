@@ -33,7 +33,7 @@ jobs:
 
     - name: Lint with flake8
       run: |
-        flake8 pisces_inidata/ tests/
+        flake8 python/ tests/
 
     - name: Run unit tests with pytest
       run: |

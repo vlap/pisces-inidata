@@ -16,12 +16,23 @@ from pisces_inidata.reproduction import run_pipeline_reproduction_test
 
 
 def get_repo_root() -> str:
-    """Finds repository root path."""
-    current = os.path.dirname(os.path.abspath(__file__))
-    parent = os.path.dirname(current)
-    if os.path.exists(os.path.join(parent, 'products.cfg')) or os.path.exists(os.path.join(parent, 'scripts')):
-        return parent
+    """Finds repository root path by traversing parent directories."""
+    cur = os.path.dirname(os.path.abspath(__file__))
+    while cur and cur != os.path.dirname(cur):
+        if os.path.exists(os.path.join(cur, 'products.cfg')) or os.path.exists(os.path.join(cur, 'scripts')):
+            return cur
+        cur = os.path.dirname(cur)
     return os.getcwd()
+
+
+def cmd_prepare_woa(args):
+    from pisces_inidata.woa23 import process_tracer
+    process_tracer(args.var_code, args.woa_dir, args.out_file)
+
+
+def cmd_prepare_doc(args):
+    from pisces_inidata.doc import build_doc_climatology
+    build_doc_climatology(args.raw_dir, args.out_file)
 
 
 def cmd_run(args):
@@ -238,6 +249,22 @@ def main():
     pad_parser.add_argument("output", help="Target padded NetCDF file")
     pad_parser.add_argument("--depth", type=float, default=6000.0, help="Bottom depth limit in meters")
     pad_parser.set_defaults(func=cmd_pad)
+
+    # Command: prepare-woa
+    woa_parser = subparsers.add_parser("prepare-woa", help="Combine monthly WOA23 files with annual deep levels")
+    woa_parser.add_argument(
+        "var_code", choices=["n", "p", "i", "o"],
+        help="Tracer code: n (NO3), p (PO4), i (Si), o (O2)"
+    )
+    woa_parser.add_argument("woa_dir", help="Directory containing WOA23 raw files")
+    woa_parser.add_argument("out_file", help="Path to output 12-month 3D NetCDF")
+    woa_parser.set_defaults(func=cmd_prepare_woa)
+
+    # Command: prepare-doc
+    doc_parser = subparsers.add_parser("prepare-doc", help="Convert Panaïotis et al. (2024) DOC CSVs to NetCDF")
+    doc_parser.add_argument("raw_dir", help="Directory containing or downloading DOC CSVs")
+    doc_parser.add_argument("out_file", help="Path to output 12-month 3D NetCDF")
+    doc_parser.set_defaults(func=cmd_prepare_doc)
 
     args = parser.parse_args()
     if hasattr(args, "func"):

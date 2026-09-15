@@ -106,7 +106,7 @@ if [ "${SOURCE_MODE}" = "modern" ]; then
             SRC_12M="${RAW_DIR}/woa23/woa23_12m_${CODE}.nc"
             if [ ! -f "${SRC_12M}" ]; then
                 echo "Assembling WOA23 12-month profile for ${VAR}..."
-                python3 "${SCRIPT_DIR}/prepare_woa23_tracer.py" "${CODE}" "${WOA23_DIR}" "${SRC_12M}"
+                pisces-inidata prepare-woa "${CODE}" "${WOA23_DIR}" "${SRC_12M}"
             fi
             echo "[Step 1/3] Filling missing land values with cdo fillmiss..."
             cdo ${CDO_OPTS} fillmiss "${SRC_12M}" "${TMP_DIR}/filled.nc"
@@ -155,7 +155,7 @@ if [ "${SOURCE_MODE}" = "modern" ]; then
             cdo ${CDO_OPTS} remap,"${TARGET_GRID_NC}","${WEIGHTS_BILIN}" "${TMP_DIR}/filled.nc" "${TMP_DIR}/hremap.nc"
 
             echo "[Step 4/5] Extending abyssal depth to 6000m..."
-            python3 -m pisces_inidata.padding "${TMP_DIR}/hremap.nc" "${TMP_DIR}/hremap_padded.nc" 6000.0
+            pisces-inidata pad "${TMP_DIR}/hremap.nc" "${TMP_DIR}/hremap_padded.nc" --depth 6000.0
 
             echo "[Step 5/5] Vertical interpolation to target L75 levels..."
             cdo ${CDO_OPTS} ${CDO_COMPRESS} -intlevel,"${TARGET_LEVELS}" "${TMP_DIR}/hremap_padded.nc" "${OUT_FILE}"
@@ -175,8 +175,8 @@ if [ "${SOURCE_MODE}" = "modern" ]; then
             if [ "${chosen_doc}" = "panaiotis2024" ]; then
                 SRC_FILE="${PANAIOTIS_DOC_DIR}/panaiotis2024_doc_1deg.nc"
                 if [ ! -f "${SRC_FILE}" ]; then
-                    echo "Panaïotis DOC NetCDF not found. Generating with prepare_panaiotis2024_doc.py..."
-                    python3 "${SCRIPT_DIR}/prepare_panaiotis2024_doc.py" "${PANAIOTIS_DOC_DIR}" "${SRC_FILE}"
+                    echo "Panaïotis DOC NetCDF not found. Generating with pisces-inidata prepare-doc..."
+                    pisces-inidata prepare-doc "${PANAIOTIS_DOC_DIR}" "${SRC_FILE}"
                 fi
 
                 echo "[Step 1/4] Filling missing values with cdo fillmiss..."
@@ -186,7 +186,7 @@ if [ "${SOURCE_MODE}" = "modern" ]; then
                 cdo ${CDO_OPTS} remap,"${TARGET_GRID_NC}","${WEIGHTS_BILIN}" "${TMP_DIR}/filled.nc" "${TMP_DIR}/hremap.nc"
 
                 echo "[Step 3/4] Extending abyssal depth to 6000m..."
-                python3 -m pisces_inidata.padding "${TMP_DIR}/hremap.nc" "${TMP_DIR}/hremap_padded.nc" 6000.0
+                pisces-inidata pad "${TMP_DIR}/hremap.nc" "${TMP_DIR}/hremap_padded.nc" --depth 6000.0
 
                 echo "[Step 4/4] Vertical interpolation to target levels..."
                 cdo ${CDO_OPTS} ${CDO_COMPRESS} -intlevel,"${TARGET_LEVELS}" "${TMP_DIR}/hremap_padded.nc" "${OUT_FILE}"
@@ -201,7 +201,7 @@ if [ "${SOURCE_MODE}" = "modern" ]; then
                 echo "[Step 1/3] Horizontal remapping to ${GRID_NAME}..."
                 cdo ${CDO_OPTS} remap,"${TARGET_GRID_NC}","${WEIGHTS_BILIN}" -selname,DOC "${SRC_FILE}" "${TMP_DIR}/hremap.nc"
                 echo "[Step 2/3] Extending abyssal depth to 6000m..."
-                python3 -m pisces_inidata.padding "${TMP_DIR}/hremap.nc" "${TMP_DIR}/hremap_padded.nc" 6000.0
+                pisces-inidata pad "${TMP_DIR}/hremap.nc" "${TMP_DIR}/hremap_padded.nc" --depth 6000.0
                 echo "[Step 3/3] Vertical interpolation to target levels..."
                 cdo ${CDO_OPTS} ${CDO_COMPRESS} -intlevel,"${TARGET_LEVELS}" "${TMP_DIR}/hremap_padded.nc" "${OUT_FILE}"
             fi
@@ -210,13 +210,13 @@ if [ "${SOURCE_MODE}" = "modern" ]; then
             ;;
 
         Fer)
-            LINK_NAME="Fer_PISCES_monthly_${GRID_NAME}.nc"
+            LINK_NAME="Fer_PISCES_annual_${GRID_NAME}.nc"
             chosen_fer="${PRODUCT_Fer:-sette_nomask}"
             echo "Chosen product for Fer: ${chosen_fer}"
 
             if [ "${chosen_fer}" = "ece3" ]; then
                 echo "Remapping Fer from curated ECE3 baseline..."
-                cdo ${CDO_OPTS} ${CDO_COMPRESS} -remapnn,"${TARGET_GRID_NC}" -setgrid,"${ORCA1_GRIDDES}" "${ECE3_PISCES_DIR}/Fer_PISCES_monthly_ORCA_R1.nc" "${OUT_FILE}"
+                cdo ${CDO_OPTS} ${CDO_COMPRESS} -remapnn,"${TARGET_GRID_NC}" -setgrid,"${ORCA1_GRIDDES}" "${ECE3_PISCES_DIR}/Fer_PISCES_annual_ORCA_R1.nc" "${OUT_FILE}"
             else
                 SRC_FILE="${RAW_DIR}/official_v5.0.0/data_FER_nomask.nc"
                 if [ "${GRID_NAME}" = "ORCA2" ]; then
@@ -226,7 +226,7 @@ if [ "${SOURCE_MODE}" = "modern" ]; then
                     echo "[Step 1/3] Horizontal remapping to ${GRID_NAME}..."
                     cdo ${CDO_OPTS} remap,"${TARGET_GRID_NC}","${WEIGHTS_BILIN}" -selname,Fer "${SRC_FILE}" "${TMP_DIR}/hremap.nc"
                     echo "[Step 2/3] Extending abyssal depth to 6000m..."
-                    python3 -m pisces_inidata.padding "${TMP_DIR}/hremap.nc" "${TMP_DIR}/hremap_padded.nc" 6000.0
+                    pisces-inidata pad "${TMP_DIR}/hremap.nc" "${TMP_DIR}/hremap_padded.nc" --depth 6000.0
                     echo "[Step 3/3] Vertical interpolation to target levels..."
                     cdo ${CDO_OPTS} ${CDO_COMPRESS} -intlevel,"${TARGET_LEVELS}" "${TMP_DIR}/hremap_padded.nc" "${OUT_FILE}"
                 fi
@@ -254,7 +254,7 @@ elif [ "${SOURCE_MODE}" = "official_regular" ]; then
 
     cdo ${CDO_OPTS} -selname,"${INTERNAL_VAR}" "${SRC_FILE}" "${TMP_DIR}/src_sel.nc"
     cdo ${CDO_OPTS} remap,"${TARGET_GRID_NC}","${WEIGHTS_BILIN}" "${TMP_DIR}/src_sel.nc" "${TMP_DIR}/hremap.nc"
-    python3 -m pisces_inidata.padding "${TMP_DIR}/hremap.nc" "${TMP_DIR}/hremap_padded.nc" 6000.0
+    pisces-inidata pad "${TMP_DIR}/hremap.nc" "${TMP_DIR}/hremap_padded.nc" --depth 6000.0
     cdo ${CDO_OPTS} ${CDO_COMPRESS} -intlevel,"${TARGET_LEVELS}" "${TMP_DIR}/hremap_padded.nc" "${OUT_FILE}"
 
 elif [ "${SOURCE_MODE}" = "ece3_baseline" ]; then

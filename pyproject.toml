@@ -56,5 +56,5 @@ Repository = "https://github.com/vlap/pisces-inidata"
 Issues = "https://github.com/vlap/pisces-inidata/issues"
 
 [tool.setuptools.packages.find]
-where = ["."]
+where = ["python"]
 include = ["pisces_inidata*"]

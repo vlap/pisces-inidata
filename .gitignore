@@ -7,7 +7,9 @@
 # Extracted and raw datasets
 ORCA2_INPUTS_PISCES_v*
 raw_data/
+pisces_raw_sources/
 work_*/
+output_*/
 
 # Temporary and log files
 *.out
