@@ -52,7 +52,7 @@ pisces-inidata check --orca ORCA2
 ```
 
 ### 3. Configure & Execute Pipeline
-Select preferred source products in `products.cfg` (or override via environment variables), then run:
+Select preferred source products in `sources.yaml` (or override via environment variables), then run:
 ```bash
 # Generate inidata on ORCA2 (or eORCA1, eORCA025)
 pisces-inidata run --orca ORCA2 --domain-dir /path/to/nemo/domain

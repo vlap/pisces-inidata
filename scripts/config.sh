@@ -75,19 +75,20 @@ CDO_COMPRESS="-f nc4 -z zip_4"
 # Source mode:
 #   'modern'           : Uses latest observational products: WOA23 (NO3, PO4, Si, O2) & GLODAP (TALK, TDIC, PiDIC)
 #   'official_regular' : Uses official regular 1x1 unmasked fields (WOA/GLODAP nomask) with 3D interpolation
-#   'ece3_baseline'    : Uses validated ECE3/SHACONEMO baseline in /gpfs/projects/bsc32/models/ecearth/v3.3.3/inidata/pisces/
+# NOTE: EC-Earth3 inidata is strictly a verification benchmark (test_pipeline_reproduction.sh), not an input source.
 SOURCE_MODE="${SOURCE_MODE:-modern}"
 
 # GLODAP version configuration (supported: 'v2.2016b' [default 3D gridded], 'v2.2023', 'v1.1')
 # Only 3D gridded products are supported; discrete bottle master files (e.g. GLODAPv3 Master File) are not supported.
 GLODAP_VERSION="${GLODAP_VERSION:-v2.2016b}"
 
-# Source per-variable product configuration file if present
+# Load per-variable source configuration (sources.yaml) via Python exporter
 SCRIPT_DIR_CONFIG="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-if [ -f "${SCRIPT_DIR_CONFIG}/products.cfg" ]; then
-    source "${SCRIPT_DIR_CONFIG}/products.cfg"
-elif [ -f "${SCRIPT_DIR_CONFIG}/../products.cfg" ]; then
-    source "${SCRIPT_DIR_CONFIG}/../products.cfg"
+REPO_DIR="$(cd "${SCRIPT_DIR_CONFIG}/.." && pwd)"
+if [ -f "${REPO_DIR}/sources.yaml" ]; then
+    eval "$(python3 -m pisces_inidata.config export "${REPO_DIR}/sources.yaml" 2>/dev/null || pisces-inidata config --export --file "${REPO_DIR}/sources.yaml" 2>/dev/null || true)"
+elif [ -f "${SCRIPT_DIR_CONFIG}/sources.yaml" ]; then
+    eval "$(python3 -m pisces_inidata.config export "${SCRIPT_DIR_CONFIG}/sources.yaml" 2>/dev/null || pisces-inidata config --export --file "${SCRIPT_DIR_CONFIG}/sources.yaml" 2>/dev/null || true)"
 fi
 
 WOA23_DIR="${RAW_DIR}/woa23"

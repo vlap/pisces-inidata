@@ -8,7 +8,7 @@ import os
 import argparse
 import subprocess
 from pisces_inidata import __version__
-from pisces_inidata.config import load_config, validate_config
+from pisces_inidata.config import load_config, validate_config, export_env_commands
 from pisces_inidata.padding import pad_abyssal_depth
 from pisces_inidata.check import run_preflight_checks
 from pisces_inidata.scoreboard import run_validation_suite
@@ -19,7 +19,7 @@ def get_repo_root() -> str:
     """Finds repository root path by traversing parent directories."""
     cur = os.path.dirname(os.path.abspath(__file__))
     while cur and cur != os.path.dirname(cur):
-        if os.path.exists(os.path.join(cur, 'products.cfg')) or os.path.exists(os.path.join(cur, 'scripts')):
+        if os.path.exists(os.path.join(cur, 'sources.yaml')) or os.path.exists(os.path.join(cur, 'scripts')):
             return cur
         cur = os.path.dirname(cur)
     return os.getcwd()
@@ -102,7 +102,7 @@ def cmd_test_reproduction(args):
 
 def cmd_info(args):
     repo_root = get_repo_root()
-    cfg_file = os.path.join(repo_root, 'products.cfg')
+    cfg_file = os.path.join(repo_root, 'sources.yaml')
     config = load_config(cfg_file)
     valid = validate_config(config)
 
@@ -110,12 +110,26 @@ def cmd_info(args):
     print(f"  pisces-inidata v{__version__} - System & Configuration Status")
     print("=================================================================")
     print(f"Repository Root: {repo_root}")
-    print(f"Configuration File: {cfg_file}")
+    print(f"Sources File: {cfg_file}")
     print(f"Configuration Valid: {'YES' if valid else 'WARNINGS DETECTED'}")
-    print("\nConfigured Products:")
+    print("\nConfigured Sources:")
     for k, v in sorted(config.items()):
         print(f"  {k:18s} = {v}")
     print("=================================================================")
+
+
+def cmd_config(args):
+    repo_root = get_repo_root()
+    cfg_file = args.file or os.path.join(repo_root, 'sources.yaml')
+    config = load_config(cfg_file)
+    if args.export:
+        print(export_env_commands(config))
+    else:
+        valid = validate_config(config)
+        for k, v in sorted(config.items()):
+            print(f"{k} = {v}")
+        if not valid:
+            sys.exit(1)
 
 
 def cmd_pad(args):
@@ -124,7 +138,7 @@ def cmd_pad(args):
 
 def cmd_check(args):
     repo_root = get_repo_root()
-    cfg_file = args.config or os.path.join(repo_root, 'products.cfg')
+    cfg_file = args.config or os.path.join(repo_root, 'sources.yaml')
     code = run_preflight_checks(
         grid_name=args.orca,
         config_file=cfg_file,
@@ -166,7 +180,7 @@ def main():
     )
     check_parser.add_argument(
         "--config",
-        help="Path to custom products.cfg"
+        help="Path to custom sources.yaml"
     )
     check_parser.set_defaults(func=cmd_check)
 
@@ -242,6 +256,12 @@ def main():
     # Command: info
     info_parser = subparsers.add_parser("info", help="Display current configuration and environment status")
     info_parser.set_defaults(func=cmd_info)
+
+    # Command: config
+    cfg_parser = subparsers.add_parser("config", help="Inspect sources.yaml or export shell environment variables")
+    cfg_parser.add_argument("--file", help="Path to custom sources.yaml")
+    cfg_parser.add_argument("--export", action="store_true", help="Print bash export statements")
+    cfg_parser.set_defaults(func=cmd_config)
 
     # Command: pad
     pad_parser = subparsers.add_parser("pad", help="Pad vertical coordinate to abyssal depth")

@@ -13,7 +13,7 @@ Built for **EC-Earth4** and the broader ocean modeling community.
 
 ## Key Features
 
-- **Per-Variable Product Selection:** Choose observational, reanalysis, or model products independently for each tracer via `products.cfg`.
+- **Per-Variable Source Selection:** Choose observational climatologies independently for each tracer via `sources.yaml`.
 - **Modern Gridded Datasets:**
   - **Nutrients & Oxygen:** World Ocean Atlas 2023 (**WOA23**, 102 depth levels) or WOA2009.
   - **Carbon Chemistry:** **GLODAP** (3D mapped climatology v2.2016b [default], or Copernicus Marine Service). *Only 3D gridded products are supported; discrete bottle master files are unsupported.*
@@ -54,7 +54,7 @@ pisces-inidata/
 │   ├── launcher_pisces_inidata.sh # End-to-end master pipeline driver
 │   └── run_validation_suite.sh  # Automated validation suite
 ├── tests/                       # Unit tests (pytest)
-├── products.cfg                 # Per-variable product configuration
+├── sources.yaml                 # Per-variable source dataset configuration
 ├── pyproject.toml               # Modern PEP 517/621 package metadata
 ├── LICENSE                      # Apache-2.0 License
 ├── CITATION.cff                 # Citation metadata

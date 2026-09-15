@@ -1,0 +1,63 @@
+# ==============================================================================
+# PISCES Initial Conditions Source Configuration (sources.yaml)
+#
+# Configures the input observational datasets for 3D tracers and boundary forcings.
+# NOTE: EC-Earth3 inidata is NOT a valid input source; it is reserved exclusively
+# for pipeline reproduction verification on eORCA1.
+# ==============================================================================
+
+tracers_3d:
+  # Nitrate (NO3):
+  # Options: woa23 (default) | woa2009 | sette_nomask
+  NO3: woa23
+
+  # Phosphate (PO4):
+  # Options: woa23 (default) | woa2009 | sette_nomask
+  PO4: woa23
+
+  # Silicate (Si):
+  # Options: woa23 (default) | woa2009 | sette_nomask
+  Si: woa23
+
+  # Dissolved Oxygen (O2):
+  # Options: woa23 (default) | woa2009 | sette_nomask
+  O2: woa23
+
+  # Total Alkalinity (TALK):
+  # Options: glodap_v2_2016b (default) | glodap_v2_2023 | glodap_v1 | sette_nomask
+  TALK: glodap_v2_2016b
+
+  # Total Dissolved Inorganic Carbon (TDIC):
+  # Options: glodap_v2_2016b (default) | glodap_v2_2023 | glodap_v1 | sette_nomask
+  TDIC: glodap_v2_2016b
+
+  # Pre-Industrial Dissolved Inorganic Carbon (PiDIC):
+  # Options: glodap_v2_2016b (default) | glodap_v2_2023 | glodap_v1 | sette_nomask
+  PiDIC: glodap_v2_2016b
+
+  # Dissolved Organic Carbon (DOC):
+  # Options: panaiotis2024 (Panaïotis et al. 2024 ML climatology, default) | sette_nomask (Hansell 2009)
+  DOC: panaiotis2024
+
+  # Dissolved Iron (Fer):
+  # Options: sette_nomask (Tagliabue et al. 2012 unmasked, default)
+  Fer: sette_nomask
+
+boundary_forcings:
+  # Atmospheric Dust Deposition (INCA/Mahowald):
+  dust: sette_orca2
+
+  # Atmospheric Nitrogen Deposition (Duce et al. 2008):
+  ndep: sette_orca2
+
+  # Photosynthetically Available Radiation Fraction (GEWEX climatology):
+  par: sette_orca2
+
+  # Bathymetric Shelf Slope Fraction (ETOPO/pmarge):
+  bathy: sette_orca2
+
+  # Hydrothermal Iron Injection (Resing et al. / Tagliabue):
+  hydrofe: sette_orca2
+
+  # River Nutrient Fluxes (Global NEWS 2):
+  rivers: sette_orca2

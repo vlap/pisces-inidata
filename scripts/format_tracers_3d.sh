@@ -192,9 +192,6 @@ if [ "${SOURCE_MODE}" = "modern" ]; then
                 cdo ${CDO_OPTS} ${CDO_COMPRESS} -intlevel,"${TARGET_LEVELS}" "${TMP_DIR}/hremap_padded.nc" "${OUT_FILE}"
                 ln -sfn "$(basename "${OUT_FILE}")" "${OUTPUT_DIR}/DOC_Panaiotis2024_monthly_${GRID_NAME}.nc"
 
-            elif [ "${chosen_doc}" = "ece3" ]; then
-                echo "Remapping DOC from curated ECE3 baseline..."
-                cdo ${CDO_OPTS} ${CDO_COMPRESS} -remapnn,"${TARGET_GRID_NC}" -setgrid,"${ORCA1_GRIDDES}" "${ECE3_PISCES_DIR}/DOC_PISCES_monthly_ORCA_R1.nc" "${OUT_FILE}"
             else
                 # sette_nomask (Hansell 2009)
                 SRC_FILE="${RAW_DIR}/official_v5.0.0/data_DOC_nomask.nc"
@@ -211,25 +208,18 @@ if [ "${SOURCE_MODE}" = "modern" ]; then
 
         Fer)
             LINK_NAME="Fer_PISCES_annual_${GRID_NAME}.nc"
-            chosen_fer="${PRODUCT_Fer:-sette_nomask}"
-            echo "Chosen product for Fer: ${chosen_fer}"
-
-            if [ "${chosen_fer}" = "ece3" ]; then
-                echo "Remapping Fer from curated ECE3 baseline..."
-                cdo ${CDO_OPTS} ${CDO_COMPRESS} -remapnn,"${TARGET_GRID_NC}" -setgrid,"${ORCA1_GRIDDES}" "${ECE3_PISCES_DIR}/Fer_PISCES_annual_ORCA_R1.nc" "${OUT_FILE}"
+            # Primary observational/model product: Tagliabue et al. (2012)
+            SRC_FILE="${RAW_DIR}/official_v5.0.0/data_FER_nomask.nc"
+            if [ "${GRID_NAME}" = "ORCA2" ]; then
+                echo "Remapping Fer to ORCA2 (native vertical levels match)..."
+                cdo ${CDO_OPTS} ${CDO_COMPRESS} remap,"${TARGET_GRID_NC}","${WEIGHTS_BILIN}" -selname,Fer "${SRC_FILE}" "${OUT_FILE}"
             else
-                SRC_FILE="${RAW_DIR}/official_v5.0.0/data_FER_nomask.nc"
-                if [ "${GRID_NAME}" = "ORCA2" ]; then
-                    echo "Remapping Fer to ORCA2 (native vertical levels match)..."
-                    cdo ${CDO_OPTS} ${CDO_COMPRESS} remap,"${TARGET_GRID_NC}","${WEIGHTS_BILIN}" -selname,Fer "${SRC_FILE}" "${OUT_FILE}"
-                else
-                    echo "[Step 1/3] Horizontal remapping to ${GRID_NAME}..."
-                    cdo ${CDO_OPTS} remap,"${TARGET_GRID_NC}","${WEIGHTS_BILIN}" -selname,Fer "${SRC_FILE}" "${TMP_DIR}/hremap.nc"
-                    echo "[Step 2/3] Extending abyssal depth to 6000m..."
-                    pisces-inidata pad "${TMP_DIR}/hremap.nc" "${TMP_DIR}/hremap_padded.nc" --depth 6000.0
-                    echo "[Step 3/3] Vertical interpolation to target levels..."
-                    cdo ${CDO_OPTS} ${CDO_COMPRESS} -intlevel,"${TARGET_LEVELS}" "${TMP_DIR}/hremap_padded.nc" "${OUT_FILE}"
-                fi
+                echo "[Step 1/3] Horizontal remapping to ${GRID_NAME}..."
+                cdo ${CDO_OPTS} remap,"${TARGET_GRID_NC}","${WEIGHTS_BILIN}" -selname,Fer "${SRC_FILE}" "${TMP_DIR}/hremap.nc"
+                echo "[Step 2/3] Extending abyssal depth to 6000m..."
+                pisces-inidata pad "${TMP_DIR}/hremap.nc" "${TMP_DIR}/hremap_padded.nc" --depth 6000.0
+                echo "[Step 3/3] Vertical interpolation to target levels..."
+                cdo ${CDO_OPTS} ${CDO_COMPRESS} -intlevel,"${TARGET_LEVELS}" "${TMP_DIR}/hremap_padded.nc" "${OUT_FILE}"
             fi
 
             ln -sfn "$(basename "${OUT_FILE}")" "${OUTPUT_DIR}/${LINK_NAME}"
@@ -256,23 +246,6 @@ elif [ "${SOURCE_MODE}" = "official_regular" ]; then
     cdo ${CDO_OPTS} remap,"${TARGET_GRID_NC}","${WEIGHTS_BILIN}" "${TMP_DIR}/src_sel.nc" "${TMP_DIR}/hremap.nc"
     pisces-inidata pad "${TMP_DIR}/hremap.nc" "${TMP_DIR}/hremap_padded.nc" --depth 6000.0
     cdo ${CDO_OPTS} ${CDO_COMPRESS} -intlevel,"${TARGET_LEVELS}" "${TMP_DIR}/hremap_padded.nc" "${OUT_FILE}"
-
-elif [ "${SOURCE_MODE}" = "ece3_baseline" ]; then
-    case "${VAR}" in
-        NO3) BASE_NAME="data_NO3_orca1.nc" ;;
-        PO4) BASE_NAME="data_PO4_orca1.nc" ;;
-        Si)  BASE_NAME="data_SIL_orca1.nc" ;;
-        O2)  BASE_NAME="data_OXY_orca1.nc" ;;
-        TALK) BASE_NAME="data_ALK_orca1.nc" ;;
-        TDIC) BASE_NAME="data_DIC_orca1.nc" ;;
-        DOC) BASE_NAME="data_DOC_orca1.nc" ;;
-        Fer) BASE_NAME="data_FER_orca1.nc" ;;
-        *)   BASE_NAME="data_${VAR}_orca1.nc" ;;
-    esac
-    SRC_FILE="${ECE3_PISCES_DIR}/${BASE_NAME}"
-
-    cdo ${CDO_OPTS} -setgrid,"${ORCA1_GRIDDES}" "${SRC_FILE}" "${TMP_DIR}/src_grid.nc"
-    cdo ${CDO_OPTS} ${CDO_COMPRESS} -remapnn,"${TARGET_GRID_NC}" "${TMP_DIR}/src_grid.nc" "${OUT_FILE}"
 fi
 
 if [ "${SOURCE_MODE}" != "modern" ]; then

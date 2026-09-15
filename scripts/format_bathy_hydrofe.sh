@@ -44,51 +44,27 @@ sanitize_source_grid() {
 process_bathy() {
     echo "=== Processing Bathymetric Shelf Fraction (bathy.orca.nc) ==="
     local out_file="${OUTPUT_DIR}/bathy.orca.nc"
-    local chosen_bathy="${PRODUCT_BATHY:-ece3}"
+    local src_file="${RAW_DIR}/official_v5.0.0/bathy.orca.nc"
+    if [ ! -f "${src_file}" ]; then
+        echo "ERROR: Source bathy file not found at ${src_file}. Run download_sources.sh first." >&2
+        return 1
+    fi
 
-    if [ "${chosen_bathy}" = "sette_orca2" ]; then
-        local src_file="${RAW_DIR}/official_v5.0.0/bathy.orca.nc"
-        if [ "${GRID_NAME}" = "ORCA2" ]; then
-            echo "Copying native ORCA2 SETTE bathymetric shelf fraction..."
-            cp "${src_file}" "${out_file}"
-        else
-            local clean_bathy="${TMP_DIR}/clean_bathy.nc"
-            cp "${src_file}" "${clean_bathy}"
-            ncatted -O \
-                -a coordinates,bathy,c,c,"nav_lon nav_lat" \
-                -a units,nav_lon,c,c,"degrees_east" \
-                -a units,nav_lat,c,c,"degrees_north" \
-                -a standard_name,nav_lon,c,c,"longitude" \
-                -a standard_name,nav_lat,c,c,"latitude" \
-                "${clean_bathy}" 2>/dev/null || true
-            echo "Remapping bathy shelf fraction to ${GRID_NAME}..."
-            cdo ${CDO_OPTS} ${CDO_COMPRESS} remapnn,"${TARGET_GRID_NC}" "${clean_bathy}" "${out_file}"
-        fi
-    elif [ -f "${ECE3_PISCES_DIR}/pmarge_etopo_ORCA_R1.nc" ]; then
-        echo "Remapping bathymetric shelf fraction from curated ECE3 baseline..."
-        cdo ${CDO_OPTS} ${CDO_COMPRESS} -remapnn,"${TARGET_GRID_NC}" -setgrid,"${ORCA1_GRIDDES}" "${ECE3_PISCES_DIR}/pmarge_etopo_ORCA_R1.nc" "${out_file}"
+    if [ "${GRID_NAME}" = "ORCA2" ]; then
+        echo "Copying native ORCA2 SETTE bathymetric shelf fraction..."
+        cp "${src_file}" "${out_file}"
     else
-        local src_file="${RAW_DIR}/official_v5.0.0/bathy.orca.nc"
-        if [ ! -f "${src_file}" ]; then
-            echo "ERROR: Source bathy file not found at ${src_file}" >&2
-            return 1
-        fi
-        if [ "${GRID_NAME}" = "ORCA2" ]; then
-            cp "${src_file}" "${out_file}"
-        else
-            local clean_bathy="${TMP_DIR}/clean_bathy.nc"
-            cp "${src_file}" "${clean_bathy}"
-            ncatted -O \
-                -a coordinates,bathy,c,c,"nav_lon nav_lat" \
-                -a units,nav_lon,c,c,"degrees_east" \
-                -a units,nav_lat,c,c,"degrees_north" \
-                -a standard_name,nav_lon,c,c,"longitude" \
-                -a standard_name,nav_lat,c,c,"latitude" \
-                "${clean_bathy}" 2>/dev/null || true
-
-            echo "Remapping bathy shelf fraction to ${GRID_NAME}..."
-            cdo ${CDO_OPTS} ${CDO_COMPRESS} remapnn,"${TARGET_GRID_NC}" "${clean_bathy}" "${out_file}"
-        fi
+        local clean_bathy="${TMP_DIR}/clean_bathy.nc"
+        cp "${src_file}" "${clean_bathy}"
+        ncatted -O \
+            -a coordinates,bathy,c,c,"nav_lon nav_lat" \
+            -a units,nav_lon,c,c,"degrees_east" \
+            -a units,nav_lat,c,c,"degrees_north" \
+            -a standard_name,nav_lon,c,c,"longitude" \
+            -a standard_name,nav_lat,c,c,"latitude" \
+            "${clean_bathy}" 2>/dev/null || true
+        echo "Remapping bathy shelf fraction to ${GRID_NAME}..."
+        cdo ${CDO_OPTS} ${CDO_COMPRESS} remapnn,"${TARGET_GRID_NC}" "${clean_bathy}" "${out_file}"
     fi
 
     ln -sfn "$(basename "${out_file}")" "${OUTPUT_DIR}/pmarge_etopo_${GRID_NAME}.nc"

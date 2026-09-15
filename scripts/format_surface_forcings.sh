@@ -52,46 +52,26 @@ sanitize_source_grid() {
 process_dust() {
     echo "=== Processing Dust Deposition (dust.orca.nc) ==="
     local out_file="${OUTPUT_DIR}/dust.orca.nc"
-    local chosen_dust="${PRODUCT_DUST:-ece3}"
+    local src_file="${RAW_DIR}/official_v5.0.0/dust.orca.new.nc"
+    [ -f "${src_file}" ] || src_file="${RAW_DIR}/official_v5.0.0/dust.orca.nc"
 
-    if [ "${chosen_dust}" = "sette_orca2" ]; then
-        local src_file="${RAW_DIR}/official_v5.0.0/dust.orca.new.nc"
-        [ -f "${src_file}" ] || src_file="${RAW_DIR}/official_v5.0.0/dust.orca.nc"
-        if [ "${GRID_NAME}" = "ORCA2" ]; then
-            echo "Copying native ORCA2 SETTE dust forcing..."
-            cp "${src_file}" "${out_file}"
-        else
-            local clean_dust="${TMP_DIR}/clean_dust.nc"
-            sanitize_source_grid "${src_file}" "${clean_dust}" "${DUST_VARS[@]}"
-            local weights_dust="${WEIGHTS_DIR}/weights_dust_to_${GRID_NAME}.nc"
-            if [ ! -f "${weights_dust}" ]; then
-                cdo ${CDO_OPTS} genbil,"${TARGET_GRID_NC}" "${clean_dust}" "${weights_dust}"
-            fi
-            echo "Remapping dust variables to ${GRID_NAME}..."
-            cdo ${CDO_OPTS} ${CDO_COMPRESS} remap,"${TARGET_GRID_NC}","${weights_dust}" "${clean_dust}" "${out_file}"
-        fi
-    elif [ -f "${ECE3_PISCES_DIR}/dust_INCA_ORCA_R1.nc" ]; then
-        echo "Remapping dust variables from curated ECE3 baseline..."
-        cdo ${CDO_OPTS} ${CDO_COMPRESS} -remapnn,"${TARGET_GRID_NC}" -setgrid,"${ORCA1_GRIDDES}" "${ECE3_PISCES_DIR}/dust_INCA_ORCA_R1.nc" "${out_file}"
+    if [ ! -f "${src_file}" ]; then
+        echo "ERROR: Source dust file not found at ${src_file}. Run download_sources.sh first." >&2
+        return 1
+    fi
+
+    if [ "${GRID_NAME}" = "ORCA2" ]; then
+        echo "Copying native ORCA2 SETTE dust forcing..."
+        cp "${src_file}" "${out_file}"
     else
-        local src_file="${RAW_DIR}/official_v5.0.0/dust.orca.new.nc"
-        [ -f "${src_file}" ] || src_file="${RAW_DIR}/official_v5.0.0/dust.orca.nc"
-        if [ ! -f "${src_file}" ]; then
-            echo "ERROR: Source dust file not found at ${src_file}" >&2
-            return 1
+        local clean_dust="${TMP_DIR}/clean_dust.nc"
+        sanitize_source_grid "${src_file}" "${clean_dust}" "${DUST_VARS[@]}"
+        local weights_dust="${WEIGHTS_DIR}/weights_dust_to_${GRID_NAME}.nc"
+        if [ ! -f "${weights_dust}" ]; then
+            cdo ${CDO_OPTS} genbil,"${TARGET_GRID_NC}" "${clean_dust}" "${weights_dust}"
         fi
-        if [ "${GRID_NAME}" = "ORCA2" ]; then
-            cp "${src_file}" "${out_file}"
-        else
-            local clean_dust="${TMP_DIR}/clean_dust.nc"
-            sanitize_source_grid "${src_file}" "${clean_dust}" "${DUST_VARS[@]}"
-            local weights_dust="${WEIGHTS_DIR}/weights_dust_to_${GRID_NAME}.nc"
-            if [ ! -f "${weights_dust}" ]; then
-                cdo ${CDO_OPTS} genbil,"${TARGET_GRID_NC}" "${clean_dust}" "${weights_dust}"
-            fi
-            echo "Remapping dust variables to ${GRID_NAME}..."
-            cdo ${CDO_OPTS} ${CDO_COMPRESS} remap,"${TARGET_GRID_NC}","${weights_dust}" "${clean_dust}" "${out_file}"
-        fi
+        echo "Remapping dust variables to ${GRID_NAME}..."
+        cdo ${CDO_OPTS} ${CDO_COMPRESS} remap,"${TARGET_GRID_NC}","${weights_dust}" "${clean_dust}" "${out_file}"
     fi
 
     ln -sfn "$(basename "${out_file}")" "${OUTPUT_DIR}/dust_INCA_${GRID_NAME}.nc"
@@ -106,44 +86,25 @@ process_dust() {
 process_ndep() {
     echo "=== Processing Atmospheric N Deposition (ndeposition.orca.nc) ==="
     local out_file="${OUTPUT_DIR}/ndeposition.orca.nc"
-    local chosen_ndep="${PRODUCT_NDEP:-ece3}"
+    local src_file="${RAW_DIR}/official_v5.0.0/ndeposition.orca.nc"
 
-    if [ "${chosen_ndep}" = "sette_orca2" ]; then
-        local src_file="${RAW_DIR}/official_v5.0.0/ndeposition.orca.nc"
-        if [ "${GRID_NAME}" = "ORCA2" ]; then
-            echo "Copying native ORCA2 SETTE N-deposition forcing..."
-            cp "${src_file}" "${out_file}"
-        else
-            local clean_ndep="${TMP_DIR}/clean_ndep.nc"
-            sanitize_source_grid "${src_file}" "${clean_ndep}" "${NDEP_VARS[@]}"
-            local weights_ndep="${WEIGHTS_DIR}/weights_ndep_to_${GRID_NAME}.nc"
-            if [ ! -f "${weights_ndep}" ]; then
-                cdo ${CDO_OPTS} genbil,"${TARGET_GRID_NC}" "${clean_ndep}" "${weights_ndep}"
-            fi
-            echo "Remapping N-deposition variables to ${GRID_NAME}..."
-            cdo ${CDO_OPTS} ${CDO_COMPRESS} remap,"${TARGET_GRID_NC}","${weights_ndep}" "${clean_ndep}" "${out_file}"
-        fi
-    elif [ -f "${ECE3_PISCES_DIR}/ndeposition_Duce_ORCA_R1.nc" ]; then
-        echo "Remapping N-deposition variables from curated ECE3 baseline..."
-        cdo ${CDO_OPTS} ${CDO_COMPRESS} -remapnn,"${TARGET_GRID_NC}" -setgrid,"${ORCA1_GRIDDES}" "${ECE3_PISCES_DIR}/ndeposition_Duce_ORCA_R1.nc" "${out_file}"
+    if [ ! -f "${src_file}" ]; then
+        echo "ERROR: Source ndep file not found at ${src_file}. Run download_sources.sh first." >&2
+        return 1
+    fi
+
+    if [ "${GRID_NAME}" = "ORCA2" ]; then
+        echo "Copying native ORCA2 SETTE N-deposition forcing..."
+        cp "${src_file}" "${out_file}"
     else
-        local src_file="${RAW_DIR}/official_v5.0.0/ndeposition.orca.nc"
-        if [ ! -f "${src_file}" ]; then
-            echo "ERROR: Source ndep file not found at ${src_file}" >&2
-            return 1
+        local clean_ndep="${TMP_DIR}/clean_ndep.nc"
+        sanitize_source_grid "${src_file}" "${clean_ndep}" "${NDEP_VARS[@]}"
+        local weights_ndep="${WEIGHTS_DIR}/weights_ndep_to_${GRID_NAME}.nc"
+        if [ ! -f "${weights_ndep}" ]; then
+            cdo ${CDO_OPTS} genbil,"${TARGET_GRID_NC}" "${clean_ndep}" "${weights_ndep}"
         fi
-        if [ "${GRID_NAME}" = "ORCA2" ]; then
-            cp "${src_file}" "${out_file}"
-        else
-            local clean_ndep="${TMP_DIR}/clean_ndep.nc"
-            sanitize_source_grid "${src_file}" "${clean_ndep}" "${NDEP_VARS[@]}"
-            local weights_ndep="${WEIGHTS_DIR}/weights_ndep_to_${GRID_NAME}.nc"
-            if [ ! -f "${weights_ndep}" ]; then
-                cdo ${CDO_OPTS} genbil,"${TARGET_GRID_NC}" "${clean_ndep}" "${weights_ndep}"
-            fi
-            echo "Remapping N-deposition variables to ${GRID_NAME}..."
-            cdo ${CDO_OPTS} ${CDO_COMPRESS} remap,"${TARGET_GRID_NC}","${weights_ndep}" "${clean_ndep}" "${out_file}"
-        fi
+        echo "Remapping N-deposition variables to ${GRID_NAME}..."
+        cdo ${CDO_OPTS} ${CDO_COMPRESS} remap,"${TARGET_GRID_NC}","${weights_ndep}" "${clean_ndep}" "${out_file}"
     fi
 
     ln -sfn "$(basename "${out_file}")" "${OUTPUT_DIR}/ndeposition_Duce_${GRID_NAME}.nc"
@@ -158,47 +119,29 @@ process_ndep() {
 process_par() {
     echo "=== Processing PAR Fraction (par.orca.nc, 365 daily timesteps) ==="
     local out_file="${OUTPUT_DIR}/par.orca.nc"
-    local chosen_par="${PRODUCT_PAR:-ece3}"
+    local src_file="${RAW_DIR}/official_v5.0.0/par.orca.nc"
 
-    if [ "${chosen_par}" = "sette_orca2" ]; then
-        local src_file="${RAW_DIR}/official_v5.0.0/par.orca.nc"
-        if [ "${GRID_NAME}" = "ORCA2" ]; then
-            echo "Copying native ORCA2 SETTE PAR forcing..."
-            cp "${src_file}" "${out_file}"
-        else
-            local clean_par="${TMP_DIR}/clean_par.nc"
-            sanitize_source_grid "${src_file}" "${clean_par}" "fr_par"
-            local weights_par="${WEIGHTS_DIR}/weights_par_to_${GRID_NAME}.nc"
-            if [ ! -f "${weights_par}" ]; then
-                cdo ${CDO_OPTS} genbil,"${TARGET_GRID_NC}" "${clean_par}" "${weights_par}"
-            fi
-            echo "Remapping PAR daily climatology to ${GRID_NAME}..."
-            cdo ${CDO_OPTS} ${CDO_COMPRESS} remap,"${TARGET_GRID_NC}","${weights_par}" "${clean_par}" "${out_file}"
-        fi
-    elif [ -f "${ECE3_PISCES_DIR}/par_fraction_gewex_clim90s00s_ORCA_R1.nc" ]; then
-        echo "Remapping PAR daily climatology from curated ECE3 baseline..."
-        cdo ${CDO_OPTS} ${CDO_COMPRESS} -remapnn,"${TARGET_GRID_NC}" -setgrid,"${ORCA1_GRIDDES}" "${ECE3_PISCES_DIR}/par_fraction_gewex_clim90s00s_ORCA_R1.nc" "${out_file}"
-    else
-        local src_file="${RAW_DIR}/official_v5.0.0/par.orca.nc"
-        if [ ! -f "${src_file}" ]; then
-            echo "ERROR: Source PAR file not found at ${src_file}" >&2
-            return 1
-        fi
-        if [ "${GRID_NAME}" = "ORCA2" ]; then
-            cp "${src_file}" "${out_file}"
-        else
-            local clean_par="${TMP_DIR}/clean_par.nc"
-            sanitize_source_grid "${src_file}" "${clean_par}" "fr_par"
-            local weights_par="${WEIGHTS_DIR}/weights_par_to_${GRID_NAME}.nc"
-            if [ ! -f "${weights_par}" ]; then
-                cdo ${CDO_OPTS} genbil,"${TARGET_GRID_NC}" "${clean_par}" "${weights_par}"
-            fi
-            echo "Remapping PAR daily climatology to ${GRID_NAME}..."
-            cdo ${CDO_OPTS} ${CDO_COMPRESS} remap,"${TARGET_GRID_NC}","${weights_par}" "${clean_par}" "${out_file}"
-        fi
+    if [ ! -f "${src_file}" ]; then
+        echo "ERROR: Source PAR file not found at ${src_file}. Run download_sources.sh first." >&2
+        return 1
     fi
 
-    ln -sfn "$(basename "${out_file}")" "${OUTPUT_DIR}/par_fraction_gewex_clim90s00s_${GRID_NAME}.nc"
+    if [ "${GRID_NAME}" = "ORCA2" ]; then
+        echo "Copying native ORCA2 SETTE PAR forcing..."
+        cp "${src_file}" "${out_file}"
+    else
+        local clean_par="${TMP_DIR}/clean_par.nc"
+        sanitize_source_grid "${src_file}" "${clean_par}" "fr_par"
+        local weights_par="${WEIGHTS_DIR}/weights_par_to_${GRID_NAME}.nc"
+        if [ ! -f "${weights_par}" ]; then
+            cdo ${CDO_OPTS} genbil,"${TARGET_GRID_NC}" "${clean_par}" "${weights_par}"
+        fi
+        echo "Remapping PAR daily climatology to ${GRID_NAME}..."
+        cdo ${CDO_OPTS} ${CDO_COMPRESS} remap,"${TARGET_GRID_NC}","${weights_par}" "${clean_par}" "${out_file}"
+    fi
+
+    ln -sfn "$(basename "${out_file}")" "${OUTPUT_DIR}/par_GEWEX_${GRID_NAME}.nc"
+    ln -sfn "$(basename "${out_file}")" "${OUTPUT_DIR}/par_fraction_daily_${GRID_NAME}.nc"
     stamp_provenance "${out_file}"
     echo "Created: ${out_file}"
 }

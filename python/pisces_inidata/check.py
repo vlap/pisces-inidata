@@ -134,7 +134,7 @@ def check_target_grid(grid_name: str, domain_dir: Optional[str] = None) -> List[
 
 def check_raw_sources(raw_dir: str, config: Dict[str, str]) -> List[Tuple[str, bool, str]]:
     """
-    Checks for the existence of required input raw datasets based on products.cfg.
+    Checks for the existence of required input raw datasets based on sources.yaml.
     """
     results = []
     if not os.path.exists(raw_dir):
@@ -169,7 +169,7 @@ def run_preflight_checks(
     Runs full preflight check suite and outputs formatted results.
     Returns 0 on success, 1 on critical failure.
     """
-    cfg = load_config(config_file or "products.cfg")
+    cfg = load_config(config_file or "sources.yaml")
     validate_config(cfg)
 
     print("=" * 78)
