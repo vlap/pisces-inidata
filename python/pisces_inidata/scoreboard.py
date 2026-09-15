@@ -10,7 +10,6 @@ import argparse
 from typing import Dict, Any, Optional, List
 import numpy as np
 import netCDF4 as nc
-from scipy.stats import spearmanr
 
 ALIASES = {
     'NO3': ['NO3', 'no3', 'nitrate', 'n_an'],
@@ -232,6 +231,7 @@ def compute_diagnostics(test_file: str, ref_file: str, var_key: str) -> Dict[str
         if std_test > 1e-12 and std_ref > 1e-12:
             r = float(np.corrcoef(valid_test, valid_ref)[0, 1])
             try:
+                from scipy.stats import spearmanr
                 if n_valid > 200000:
                     idx = np.random.choice(n_valid, 100000, replace=False)
                     rho = float(spearmanr(valid_test[idx], valid_ref[idx]).statistic)
