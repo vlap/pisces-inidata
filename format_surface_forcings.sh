@@ -28,6 +28,19 @@ mkdir -p "${OUTPUT_DIR}"
 TMP_DIR=$(mktemp -d -p "${SCRATCH_ROOT}" tmp_surf_${COMPONENT}_XXXXXX)
 trap 'rm -rf "${TMP_DIR}"' EXIT
 
+sanitize_source_grid() {
+    local in_file="$1"
+    local out_file="$2"
+    cp "${in_file}" "${out_file}"
+    ncatted -O \
+        -a coordinates,,c,c,"nav_lon nav_lat" \
+        -a units,nav_lon,c,c,"degrees_east" \
+        -a units,nav_lat,c,c,"degrees_north" \
+        -a standard_name,nav_lon,c,c,"longitude" \
+        -a standard_name,nav_lat,c,c,"latitude" \
+        "${out_file}" 2>/dev/null || true
+}
+
 # ------------------------------------------------------------------------------
 # 1. Atmospheric Dust Deposition
 # ------------------------------------------------------------------------------
@@ -42,14 +55,17 @@ process_dust() {
         return 1
     fi
 
+    local clean_dust="${TMP_DIR}/clean_dust.nc"
+    sanitize_source_grid "${src_file}" "${clean_dust}"
+
     echo "Generating weights for dust grid..."
     local weights_dust="${WEIGHTS_DIR}/weights_dust_to_${GRID_NAME}.nc"
     if [ ! -f "${weights_dust}" ]; then
-        cdo ${CDO_OPTS} genbil,"${TARGET_GRID_NC}" "${src_file}" "${weights_dust}"
+        cdo ${CDO_OPTS} genbil,"${TARGET_GRID_NC}" "${clean_dust}" "${weights_dust}"
     fi
 
     echo "Remapping dust variables to ${GRID_NAME}..."
-    cdo ${CDO_OPTS} ${CDO_COMPRESS} remap,"${TARGET_GRID_NC}","${weights_dust}" "${src_file}" "${out_file}"
+    cdo ${CDO_OPTS} ${CDO_COMPRESS} remap,"${TARGET_GRID_NC}","${weights_dust}" "${clean_dust}" "${out_file}"
     ln -sfn "$(basename "${out_file}")" "${OUTPUT_DIR}/dust_INCA_${GRID_NAME}.nc"
     ln -sfn "$(basename "${out_file}")" "${OUTPUT_DIR}/Solubility_T62_Mahowald_${GRID_NAME}.nc"
     echo "Created: ${out_file}"
@@ -68,13 +84,16 @@ process_ndep() {
         return 1
     fi
 
+    local clean_ndep="${TMP_DIR}/clean_ndep.nc"
+    sanitize_source_grid "${src_file}" "${clean_ndep}"
+
     local weights_ndep="${WEIGHTS_DIR}/weights_ndep_to_${GRID_NAME}.nc"
     if [ ! -f "${weights_ndep}" ]; then
-        cdo ${CDO_OPTS} genbil,"${TARGET_GRID_NC}" "${src_file}" "${weights_ndep}"
+        cdo ${CDO_OPTS} genbil,"${TARGET_GRID_NC}" "${clean_ndep}" "${weights_ndep}"
     fi
 
     echo "Remapping N-deposition variables to ${GRID_NAME}..."
-    cdo ${CDO_OPTS} ${CDO_COMPRESS} remap,"${TARGET_GRID_NC}","${weights_ndep}" "${src_file}" "${out_file}"
+    cdo ${CDO_OPTS} ${CDO_COMPRESS} remap,"${TARGET_GRID_NC}","${weights_ndep}" "${clean_ndep}" "${out_file}"
     ln -sfn "$(basename "${out_file}")" "${OUTPUT_DIR}/ndeposition_Duce_${GRID_NAME}.nc"
     echo "Created: ${out_file}"
 }
@@ -92,13 +111,16 @@ process_par() {
         return 1
     fi
 
+    local clean_par="${TMP_DIR}/clean_par.nc"
+    sanitize_source_grid "${src_file}" "${clean_par}"
+
     local weights_par="${WEIGHTS_DIR}/weights_par_to_${GRID_NAME}.nc"
     if [ ! -f "${weights_par}" ]; then
-        cdo ${CDO_OPTS} genbil,"${TARGET_GRID_NC}" "${src_file}" "${weights_par}"
+        cdo ${CDO_OPTS} genbil,"${TARGET_GRID_NC}" "${clean_par}" "${weights_par}"
     fi
 
     echo "Remapping PAR daily climatology to ${GRID_NAME}..."
-    cdo ${CDO_OPTS} ${CDO_COMPRESS} remap,"${TARGET_GRID_NC}","${weights_par}" "${src_file}" "${out_file}"
+    cdo ${CDO_OPTS} ${CDO_COMPRESS} remap,"${TARGET_GRID_NC}","${weights_par}" "${clean_par}" "${out_file}"
     ln -sfn "$(basename "${out_file}")" "${OUTPUT_DIR}/par_fraction_gewex_clim90s00s_${GRID_NAME}.nc"
     echo "Created: ${out_file}"
 }

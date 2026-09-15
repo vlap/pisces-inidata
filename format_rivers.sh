@@ -39,16 +39,25 @@ echo "=== Processing River Nutrient Forcings for ${GRID_NAME} ==="
 echo "Source: ${SRC_FILE}"
 echo "Target output: ${OUT_FILE}"
 
+# Sanitize source grid coordinates for CDO recognition
+cp "${SRC_FILE}" "${TMP_DIR}/src_clean.nc"
+ncatted -O \
+    -a coordinates,,c,c,"nav_lon nav_lat" \
+    -a units,nav_lon,c,c,"degrees_east" \
+    -a units,nav_lat,c,c,"degrees_north" \
+    -a standard_name,nav_lon,c,c,"longitude" \
+    -a standard_name,nav_lat,c,c,"latitude" \
+    "${TMP_DIR}/src_clean.nc" 2>/dev/null || true
+
 # 1. Compute horizontal cell area on the source grid (ORCA2)
-# ORCA2 grid cell area approx from grid size or using cdo gridarea
 echo "Computing source cell areas..."
-cdo ${CDO_OPTS} gridarea "${SRC_FILE}" "${TMP_DIR}/src_area.nc"
+cdo ${CDO_OPTS} gridarea "${TMP_DIR}/src_clean.nc" "${TMP_DIR}/src_area.nc"
 
 # Generate distance-weighted remapping weights from source river grid to target
 WEIGHTS_RIVER="${WEIGHTS_DIR}/weights_river_to_${GRID_NAME}.nc"
 if [ ! -f "${WEIGHTS_RIVER}" ]; then
     echo "Computing remapping weights for river grid..."
-    cdo ${CDO_OPTS} gendis,"${TARGET_GRID_NC}" "${SRC_FILE}" "${WEIGHTS_RIVER}"
+    cdo ${CDO_OPTS} gendis,"${TARGET_GRID_NC}" "${TMP_DIR}/src_clean.nc" "${WEIGHTS_RIVER}"
 fi
 
 # 2. Process each nutrient variable conservatively
@@ -58,7 +67,7 @@ for var in "${RIVER_VARS[@]}"; do
     echo "--- Processing variable: ${var} ---"
     
     # Extract variable
-    cdo ${CDO_OPTS} -selname,"${var}" "${SRC_FILE}" "${TMP_DIR}/${var}_src.nc"
+    cdo ${CDO_OPTS} -selname,"${var}" "${TMP_DIR}/src_clean.nc" "${TMP_DIR}/${var}_src.nc"
     
     # Compute total mass rate on source grid: mass = flux * area (in Mg/yr)
     cdo ${CDO_OPTS} -mul "${TMP_DIR}/${var}_src.nc" "${TMP_DIR}/src_area.nc" "${TMP_DIR}/${var}_mass_src.nc"
