@@ -36,8 +36,15 @@ if [ ! -f "${WEIGHTS_BILIN}" ]; then
     bash "${SCRIPT_DIR}/gen_grid_and_weights.sh"
 fi
 
-# Extract target vertical levels from domain_cfg (L75 depths)
-TARGET_LEVELS=$(ncks -s '%f,' -H -C -v nav_lev "${DOMAIN_CFG}" 2>/dev/null | sed 's/,$//')
+# Extract target vertical levels from domain_cfg (e.g. L75 depths) or official nomask (e.g. ORCA2 L31 depths)
+TARGET_LEVELS=""
+if [ -f "${DOMAIN_CFG}" ]; then
+    TARGET_LEVELS=$(ncks -s '%f,' -H -C -v nav_lev "${DOMAIN_CFG}" 2>/dev/null | sed 's/,$//')
+fi
+if [ -z "${TARGET_LEVELS:-}" ] && [ -f "${RAW_DIR}/official_v5.0.0/data_DOC_nomask.nc" ]; then
+    echo "Extracting ORCA2 vertical levels from official data_DOC_nomask.nc..."
+    TARGET_LEVELS=$(cdo -s showlevel "${RAW_DIR}/official_v5.0.0/data_DOC_nomask.nc" 2>/dev/null | tr -s ' ' ',' | sed 's/^,//; s/,$//')
+fi
 
 TMP_DIR=$(mktemp -d -p "${SCRATCH_ROOT}" tmp_tracer_${VAR}_XXXXXX)
 trap 'rm -rf "${TMP_DIR}"' EXIT
@@ -168,21 +175,65 @@ if [ "${SOURCE_MODE}" = "modern" ]; then
             ln -sfn "$(basename "${OUT_FILE}")" "${OUTPUT_DIR}/${LINK_NAME}"
             ;;
 
-        DOC|Fer)
-            case "${VAR}" in
-                DOC) FILE_VAR="DOC"; LINK_NAME="DOC_PISCES_monthly_${GRID_NAME}.nc" ;;
-                Fer) FILE_VAR="FER"; LINK_NAME="Fer_PISCES_monthly_${GRID_NAME}.nc" ;;
-            esac
-            SRC_FILE="${RAW_DIR}/official_v5.0.0/data_${FILE_VAR}_nomask.nc"
+        DOC)
+            LINK_NAME="DOC_PISCES_monthly_${GRID_NAME}.nc"
+            chosen_doc="${PRODUCT_DOC:-panaiotis2024}"
+            echo "Chosen product for DOC: ${chosen_doc}"
 
-            echo "[Step 1/3] Horizontal remapping to ${GRID_NAME}..."
-            cdo ${CDO_OPTS} remap,"${TARGET_GRID_NC}","${WEIGHTS_BILIN}" -selname,"${VAR}" "${SRC_FILE}" "${TMP_DIR}/hremap.nc"
+            if [ "${chosen_doc}" = "panaiotis2024" ]; then
+                SRC_FILE="${PANAIOTIS_DOC_DIR}/panaiotis2024_doc_1deg.nc"
+                if [ ! -f "${SRC_FILE}" ]; then
+                    echo "Panaïotis DOC NetCDF not found. Generating with prepare_panaiotis2024_doc.py..."
+                    python3 "${SCRIPT_DIR}/prepare_panaiotis2024_doc.py" "${PANAIOTIS_DOC_DIR}" "${SRC_FILE}"
+                fi
 
-            echo "[Step 2/3] Extending abyssal depth to 6000m..."
-            python3 "${SCRIPT_DIR}/pad_abyssal_depth.py" "${TMP_DIR}/hremap.nc" "${TMP_DIR}/hremap_padded.nc" 6000.0
+                echo "[Step 1/4] Filling missing values with cdo fillmiss..."
+                cdo ${CDO_OPTS} fillmiss "${SRC_FILE}" "${TMP_DIR}/filled.nc"
 
-            echo "[Step 3/3] Vertical interpolation to target L75 levels..."
-            cdo ${CDO_OPTS} ${CDO_COMPRESS} -intlevel,"${TARGET_LEVELS}" "${TMP_DIR}/hremap_padded.nc" "${OUT_FILE}"
+                echo "[Step 2/4] Horizontal remapping to ${GRID_NAME}..."
+                cdo ${CDO_OPTS} remap,"${TARGET_GRID_NC}","${WEIGHTS_BILIN}" "${TMP_DIR}/filled.nc" "${TMP_DIR}/hremap.nc"
+
+                echo "[Step 3/4] Extending abyssal depth to 6000m..."
+                python3 "${SCRIPT_DIR}/pad_abyssal_depth.py" "${TMP_DIR}/hremap.nc" "${TMP_DIR}/hremap_padded.nc" 6000.0
+
+                echo "[Step 4/4] Vertical interpolation to target levels..."
+                cdo ${CDO_OPTS} ${CDO_COMPRESS} -intlevel,"${TARGET_LEVELS}" "${TMP_DIR}/hremap_padded.nc" "${OUT_FILE}"
+                ln -sfn "$(basename "${OUT_FILE}")" "${OUTPUT_DIR}/DOC_Panaiotis2024_monthly_${GRID_NAME}.nc"
+
+            elif [ "${chosen_doc}" = "ece3" ]; then
+                echo "Remapping DOC from curated ECE3 baseline..."
+                cdo ${CDO_OPTS} ${CDO_COMPRESS} -remapnn,"${TARGET_GRID_NC}" -setgrid,"${ORCA1_GRIDDES}" "${ECE3_PISCES_DIR}/DOC_PISCES_monthly_ORCA_R1.nc" "${OUT_FILE}"
+            else
+                # sette_nomask (Hansell 2009)
+                SRC_FILE="${RAW_DIR}/official_v5.0.0/data_DOC_nomask.nc"
+                echo "[Step 1/3] Horizontal remapping to ${GRID_NAME}..."
+                cdo ${CDO_OPTS} remap,"${TARGET_GRID_NC}","${WEIGHTS_BILIN}" -selname,DOC "${SRC_FILE}" "${TMP_DIR}/hremap.nc"
+                echo "[Step 2/3] Extending abyssal depth to 6000m..."
+                python3 "${SCRIPT_DIR}/pad_abyssal_depth.py" "${TMP_DIR}/hremap.nc" "${TMP_DIR}/hremap_padded.nc" 6000.0
+                echo "[Step 3/3] Vertical interpolation to target levels..."
+                cdo ${CDO_OPTS} ${CDO_COMPRESS} -intlevel,"${TARGET_LEVELS}" "${TMP_DIR}/hremap_padded.nc" "${OUT_FILE}"
+            fi
+
+            ln -sfn "$(basename "${OUT_FILE}")" "${OUTPUT_DIR}/${LINK_NAME}"
+            ;;
+
+        Fer)
+            LINK_NAME="Fer_PISCES_monthly_${GRID_NAME}.nc"
+            chosen_fer="${PRODUCT_Fer:-sette_nomask}"
+            echo "Chosen product for Fer: ${chosen_fer}"
+
+            if [ "${chosen_fer}" = "ece3" ]; then
+                echo "Remapping Fer from curated ECE3 baseline..."
+                cdo ${CDO_OPTS} ${CDO_COMPRESS} -remapnn,"${TARGET_GRID_NC}" -setgrid,"${ORCA1_GRIDDES}" "${ECE3_PISCES_DIR}/Fer_PISCES_monthly_ORCA_R1.nc" "${OUT_FILE}"
+            else
+                SRC_FILE="${RAW_DIR}/official_v5.0.0/data_FER_nomask.nc"
+                echo "[Step 1/3] Horizontal remapping to ${GRID_NAME}..."
+                cdo ${CDO_OPTS} remap,"${TARGET_GRID_NC}","${WEIGHTS_BILIN}" -selname,Fer "${SRC_FILE}" "${TMP_DIR}/hremap.nc"
+                echo "[Step 2/3] Extending abyssal depth to 6000m..."
+                python3 "${SCRIPT_DIR}/pad_abyssal_depth.py" "${TMP_DIR}/hremap.nc" "${TMP_DIR}/hremap_padded.nc" 6000.0
+                echo "[Step 3/3] Vertical interpolation to target levels..."
+                cdo ${CDO_OPTS} ${CDO_COMPRESS} -intlevel,"${TARGET_LEVELS}" "${TMP_DIR}/hremap_padded.nc" "${OUT_FILE}"
+            fi
 
             ln -sfn "$(basename "${OUT_FILE}")" "${OUTPUT_DIR}/${LINK_NAME}"
             ;;

@@ -179,4 +179,17 @@ else
     echo "=== [5/5] Skipping Legacy WOA2009 (set DOWNLOAD_LEGACY=true to enable) ==="
 fi
 
+# ------------------------------------------------------------------------------
+# 6. Download & Prepare Panaïotis et al. (2024) Machine Learning DOC Climatology
+# ------------------------------------------------------------------------------
+if [ "${PRODUCT_DOC:-panaiotis2024}" = "panaiotis2024" ]; then
+    echo "=== [6/6] Fetching & Preparing Panaïotis et al. (2024) DOC Dataset ==="
+    mkdir -p "${PANAIOTIS_DOC_DIR}"
+    if [ ! -s "${PANAIOTIS_DOC_DIR}/panaiotis2024_doc_1deg.nc" ]; then
+        python3 "${SCRIPT_DIR}/prepare_panaiotis2024_doc.py" "${PANAIOTIS_DOC_DIR}" "${PANAIOTIS_DOC_DIR}/panaiotis2024_doc_1deg.nc"
+    else
+        echo "Panaïotis DOC NetCDF already present at ${PANAIOTIS_DOC_DIR}/panaiotis2024_doc_1deg.nc"
+    fi
+fi
+
 echo "=== All raw datasets staged successfully in ${RAW_DIR} ==="

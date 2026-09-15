@@ -24,49 +24,58 @@ echo "Target grid: ${GRID_NAME}"
 echo "Domain config: ${DOMAIN_CFG}"
 echo "Mask utility: ${MASKUTIL}"
 
-if [ ! -f "${DOMAIN_CFG}" ]; then
-    echo "ERROR: domain_cfg.nc not found at ${DOMAIN_CFG}" >&2
-    exit 1
-fi
-if [ ! -f "${MASKUTIL}" ]; then
-    echo "ERROR: maskutil.nc not found at ${MASKUTIL}" >&2
-    exit 1
-fi
-
 TMP_DIR=$(mktemp -d -p "${SCRATCH_ROOT}" tmp_grid_XXXXXX)
 trap 'rm -rf "${TMP_DIR}"' EXIT
 
-# Extract glamt (lon) and gphit (lat) from domain_cfg in NetCDF-4 format
-ncks -O -4 -v glamt,gphit "${DOMAIN_CFG}" "${TMP_DIR}/grid_coords.nc"
-# Extract tmaskutil from maskutil
-ncks -A -4 -v tmaskutil "${MASKUTIL}" "${TMP_DIR}/grid_coords.nc"
+if [ -f "${DOMAIN_CFG}" ] && [ -f "${MASKUTIL}" ]; then
+    echo "Extracting grid coordinates from ${DOMAIN_CFG} and ${MASKUTIL}..."
+    ncks -O -4 -v glamt,gphit "${DOMAIN_CFG}" "${TMP_DIR}/grid_coords.nc"
+    ncks -A -4 -v tmaskutil "${MASKUTIL}" "${TMP_DIR}/grid_coords.nc"
+    ncrename -v glamt,lon -v gphit,lat "${TMP_DIR}/grid_coords.nc"
+    ncwa -O -a time_counter "${TMP_DIR}/grid_coords.nc" "${TMP_DIR}/grid_coords.nc" 2>/dev/null || true
+    ncwa -O -a t "${TMP_DIR}/grid_coords.nc" "${TMP_DIR}/grid_coords.nc" 2>/dev/null || true
+    ncatted -O \
+        -a coordinates,tmaskutil,c,c,"lon lat" \
+        -a units,lon,c,c,"degrees_east" \
+        -a units,lat,c,c,"degrees_north" \
+        -a standard_name,lon,c,c,"longitude" \
+        -a standard_name,lat,c,c,"latitude" \
+        "${TMP_DIR}/grid_coords.nc"
+    mv "${TMP_DIR}/grid_coords.nc" "${TARGET_GRID_NC}"
+elif [ "${GRID_NAME}" = "ORCA2" ] && [ -f "${RAW_DIR}/official_v5.0.0/bathy.orca.nc" ]; then
+    echo "Domain config not found; constructing ORCA2 target grid from official SETTE bathy.orca.nc..."
+    ncks -O -4 -v nav_lon,nav_lat,bathy "${RAW_DIR}/official_v5.0.0/bathy.orca.nc" "${TMP_DIR}/grid_coords.nc"
+    ncrename -v nav_lon,lon -v nav_lat,lat -v bathy,tmaskutil "${TMP_DIR}/grid_coords.nc"
+    ncwa -O -a time_counter "${TMP_DIR}/grid_coords.nc" "${TMP_DIR}/grid_coords.nc" 2>/dev/null || true
+    ncwa -O -a deptht "${TMP_DIR}/grid_coords.nc" "${TMP_DIR}/grid_coords.nc" 2>/dev/null || true
+    ncatted -O \
+        -a coordinates,tmaskutil,c,c,"lon lat" \
+        -a units,lon,c,c,"degrees_east" \
+        -a units,lat,c,c,"degrees_north" \
+        -a standard_name,lon,c,c,"longitude" \
+        -a standard_name,lat,c,c,"latitude" \
+        "${TMP_DIR}/grid_coords.nc"
+    mv "${TMP_DIR}/grid_coords.nc" "${TARGET_GRID_NC}"
+else
+    echo "ERROR: domain_cfg.nc not found at ${DOMAIN_CFG} and MASKUTIL not found at ${MASKUTIL}" >&2
+    exit 1
+fi
 
-# Rename variables to CF-standard names
-ncrename -v glamt,lon -v gphit,lat "${TMP_DIR}/grid_coords.nc"
-
-# Squeeze degenerate time dimensions so lon/lat are pure 2D curvilinear (y, x)
-ncwa -O -a time_counter "${TMP_DIR}/grid_coords.nc" "${TMP_DIR}/grid_coords.nc" 2>/dev/null || true
-ncwa -O -a t "${TMP_DIR}/grid_coords.nc" "${TMP_DIR}/grid_coords.nc" 2>/dev/null || true
-
-# Set CF coordinates and units attributes for CDO curvilinear recognition
-ncatted -O \
-    -a coordinates,tmaskutil,c,c,"lon lat" \
-    -a units,lon,c,c,"degrees_east" \
-    -a units,lat,c,c,"degrees_north" \
-    -a standard_name,lon,c,c,"longitude" \
-    -a standard_name,lat,c,c,"latitude" \
-    "${TMP_DIR}/grid_coords.nc"
-
-mv "${TMP_DIR}/grid_coords.nc" "${TARGET_GRID_NC}"
 echo "Created target grid description NetCDF: ${TARGET_GRID_NC}"
 
 # Extract text griddes for CDO
 cdo griddes "${TARGET_GRID_NC}" > "${GRIDDES_TXT}"
 echo "Dumped CDO griddes: ${GRIDDES_TXT}"
 
-# Compute horizontal cell area: area = e1t * e2t (in m^2)
-echo "=== [2/3] Computing target horizontal cell areas (e1t * e2t) ==="
-cdo ${CDO_OPTS} ${CDO_COMPRESS} -expr,'area = e1t * e2t' -selname,e1t,e2t "${DOMAIN_CFG}" "${TARGET_AREA_NC}"
+# Compute horizontal cell area
+if [ -f "${DOMAIN_CFG}" ]; then
+    echo "=== [2/3] Computing target horizontal cell areas (e1t * e2t) ==="
+    cdo ${CDO_OPTS} ${CDO_COMPRESS} -expr,'area = e1t * e2t' -selname,e1t,e2t "${DOMAIN_CFG}" "${TARGET_AREA_NC}"
+else
+    echo "=== [2/3] Computing target horizontal cell areas via spherical gridarea ==="
+    cdo ${CDO_OPTS} ${CDO_COMPRESS} gridarea "${TARGET_GRID_NC}" "${TARGET_AREA_NC}" 2>/dev/null || \
+    cdo ${CDO_OPTS} ${CDO_COMPRESS} -setgrid,"${TARGET_GRID_NC}" -gridarea -topo,r360x180 "${TARGET_AREA_NC}"
+fi
 echo "Created target area file: ${TARGET_AREA_NC}"
 
 # Precompute horizontal remapping weights

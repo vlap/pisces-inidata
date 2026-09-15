@@ -26,7 +26,17 @@ fi
 
 mkdir -p "${OUTPUT_DIR}"
 
-if [ -f "${ECE3_PISCES_DIR}/river_global_news_ORCA_R1.nc" ]; then
+local_chosen_river="${PRODUCT_RIVER:-ece3}"
+if [ "${local_chosen_river}" = "sette_orca2" ]; then
+    local_src="${RAW_DIR}/official_v5.0.0/river.orca.nc"
+    if [ "${GRID_NAME}" = "ORCA2" ]; then
+        echo "Copying native ORCA2 SETTE river nutrient forcing..."
+        cp "${local_src}" "${OUT_FILE}"
+        ln -sfn "$(basename "${OUT_FILE}")" "${OUTPUT_DIR}/river_global_news_${GRID_NAME}.nc"
+        echo "=== River forcings completed successfully: ${OUT_FILE} ==="
+        exit 0
+    fi
+elif [ -f "${ECE3_PISCES_DIR}/river_global_news_ORCA_R1.nc" ]; then
     echo "Remapping river nutrient exports from curated ECE3 baseline..."
     cdo ${CDO_OPTS} ${CDO_COMPRESS} -remapnn,"${TARGET_GRID_NC}" -setgrid,"${ORCA1_GRIDDES}" "${ECE3_PISCES_DIR}/river_global_news_ORCA_R1.nc" "${OUT_FILE}"
     ln -sfn "$(basename "${OUT_FILE}")" "${OUTPUT_DIR}/river_global_news_${GRID_NAME}.nc"

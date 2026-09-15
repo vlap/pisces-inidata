@@ -50,8 +50,7 @@ SLURM_PARTITION="${SLURM_PARTITION:-bsc_es}"
 SLURM_TIME="${SLURM_TIME:-01:00:00}"
 SLURM_CPUS_PER_TASK="${SLURM_CPUS_PER_TASK:-16}"
 
-# Command to load required modules on HPC (Nord4 / interactive nodes)
-MODULE_LOAD_CMD="set +u; module load CDO/2.3.0-gompi-2020b NCO/5.1.0-foss-2020b netcdf4-python/1.6.1-foss-2020b-Python-3.8.6 2>/dev/null || module load CDO NCO 2>/dev/null || true; set -u"
+MODULE_LOAD_CMD="set +u; module load CDO/2.3.0-gompi-2020b NCO/5.1.0-foss-2020b netcdf4-python/1.5.7-foss-2020b-Python-3.8.6 2>/dev/null || module load CDO/2.3.0-gompi-2020b NCO/5.1.0-foss-2020b netcdf4-python/1.6.1-foss-2020b-Python-3.8.6 2>/dev/null || module load CDO NCO 2>/dev/null || true; set -u"
 
 # CDO execution options (safe login node limit: 4 threads; full Slurm job: 16 threads)
 if [ -z "${SLURM_JOB_ID:-}" ]; then
@@ -74,11 +73,18 @@ SOURCE_MODE="${SOURCE_MODE:-modern}"
 # GLODAP version configuration (supported: 'v3' [default], 'v2.2023', 'v2.2016b', 'v1.1')
 GLODAP_VERSION="${GLODAP_VERSION:-v3}"
 
+# Source per-variable product configuration file if present
+SCRIPT_DIR_CONFIG="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [ -f "${SCRIPT_DIR_CONFIG}/products.cfg" ]; then
+    source "${SCRIPT_DIR_CONFIG}/products.cfg"
+fi
+
 WOA23_DIR="${RAW_DIR}/woa23"
 GLODAP_V3_DIR="${RAW_DIR}/glodap_v3"
 GLODAP_V2_2023_DIR="${RAW_DIR}/glodap_v2_2023"
 GLODAP_V2_DIR="${RAW_DIR}/glodap_v2"
 GLODAP_V1_DIR="${RAW_DIR}/glodap_v1"
+PANAIOTIS_DOC_DIR="${RAW_DIR}/panaiotis2024_doc"
 
 # Paths to ECE3 / BSC baseline sources
 ECE3_PISCES_DIR="${ECE3_PISCES_DIR:-/gpfs/projects/bsc32/models/ecearth/v3.3.3/inidata/pisces}"
@@ -109,4 +115,4 @@ export SLURM_ACCOUNT SLURM_PARTITION SLURM_TIME SLURM_CPUS_PER_TASK
 export MODULE_LOAD_CMD CDO_THREADS CDO_OPTS CDO_COMPRESS
 export TRACERS_3D RIVER_VARS DUST_VARS NDEP_VARS
 export SOURCE_MODE ECE3_PISCES_DIR ORCA1_GRIDDES
-export WOA23_DIR GLODAP_VERSION GLODAP_V3_DIR GLODAP_V2_2023_DIR GLODAP_V2_DIR GLODAP_V1_DIR
+export WOA23_DIR GLODAP_VERSION GLODAP_V3_DIR GLODAP_V2_2023_DIR GLODAP_V2_DIR GLODAP_V1_DIR PANAIOTIS_DOC_DIR
