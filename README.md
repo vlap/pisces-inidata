@@ -1,7 +1,8 @@
 # PISCES Inidata Processing Tool (`pisces-inidata`)
 
 [![CI](https://github.com/vlap/pisces-inidata/actions/workflows/ci.yml/badge.svg)](https://github.com/vlap/pisces-inidata/actions/workflows/ci.yml)
-[![Documentation Status](https://readthedocs.org/projects/pisces-inidata/badge/?version=latest)](https://pisces-inidata.readthedocs.io/en/latest/?badge=latest)
+[![Documentation (GitHub Pages)](https://img.shields.io/badge/docs-GitHub_Pages-blue.svg)](https://vlap.github.io/pisces-inidata/)
+[![ReadTheDocs](https://readthedocs.org/projects/pisces-inidata/badge/?version=latest)](https://pisces-inidata.readthedocs.io/en/latest/?badge=latest)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Python](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-blue)](https://www.python.org/)
 
@@ -97,8 +98,8 @@ View the generated validation metrics in `VALIDATION_SCOREBOARD_ORCA2.md`.
 
 ## Documentation
 
-Full documentation is hosted on **Read the Docs**:
-👉 [**https://pisces-inidata.readthedocs.io/**](https://pisces-inidata.readthedocs.io/)
+- **Live Documentation (GitHub Pages):** [**https://vlap.github.io/pisces-inidata/**](https://vlap.github.io/pisces-inidata/)
+- **Read the Docs Mirror:** [**https://pisces-inidata.readthedocs.io/**](https://pisces-inidata.readthedocs.io/)
 
 - [Quickstart Guide](docs/quickstart.md)
 - [Pipeline Architecture](docs/architecture.md)
