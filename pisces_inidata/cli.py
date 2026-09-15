@@ -12,6 +12,7 @@ from pisces_inidata.config import load_config, validate_config
 from pisces_inidata.padding import pad_abyssal_depth
 from pisces_inidata.check import run_preflight_checks
 from pisces_inidata.scoreboard import run_validation_suite
+from pisces_inidata.reproduction import run_pipeline_reproduction_test
 
 
 def get_repo_root() -> str:
@@ -66,6 +67,22 @@ def cmd_validate(args):
     code = run_validation_suite(
         test_dir=test_dir,
         ref_dir=ref_dir,
+        output_md=output_md,
+        fail_on_error=args.fail_on_error
+    )
+    sys.exit(code)
+
+
+def cmd_test_reproduction(args):
+    repo_root = get_repo_root()
+    test_dir = args.test_dir or os.path.join(repo_root, "work_eORCA1", "reproduction_test")
+    ref_dir = args.ref_dir or "/gpfs/projects/bsc32/models/ecearth/ece4-trunk/inidata/nemo/pisces"
+    output_md = args.output_md or os.path.join(repo_root, "PIPELINE_REPRODUCTION_REPORT.md")
+
+    code = run_pipeline_reproduction_test(
+        test_dir=test_dir,
+        ref_dir=ref_dir,
+        mask_file=args.mask,
         output_md=output_md,
         fail_on_error=args.fail_on_error
     )
@@ -180,6 +197,36 @@ def main():
         help="Exit with non-zero code if any product encounters a critical validation error"
     )
     val_parser.set_defaults(func=cmd_validate)
+
+    # Command: test-reproduction
+    rep_parser = subparsers.add_parser(
+        "test-reproduction",
+        help="Run precision test verifying reproduction of EC-Earth3 baseline inidata on eORCA1"
+    )
+    rep_parser.add_argument(
+        "--test-dir",
+        required=True,
+        help="Directory containing re-interpolated eORCA1 test files"
+    )
+    rep_parser.add_argument(
+        "--ref-dir",
+        required=True,
+        help="Directory containing official EC-Earth3 eORCA1 reference files"
+    )
+    rep_parser.add_argument(
+        "--mask",
+        help="Path to land-sea mask NetCDF file (maskutil.nc)"
+    )
+    rep_parser.add_argument(
+        "--output-md",
+        help="Path to write Markdown report (default: PIPELINE_REPRODUCTION_REPORT.md)"
+    )
+    rep_parser.add_argument(
+        "--fail-on-error",
+        action="store_true",
+        help="Exit with non-zero code if reproduction precision thresholds are not met"
+    )
+    rep_parser.set_defaults(func=cmd_test_reproduction)
 
     # Command: info
     info_parser = subparsers.add_parser("info", help="Display current configuration and environment status")

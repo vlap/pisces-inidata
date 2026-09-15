@@ -18,6 +18,9 @@ Runs statistical diagnostics against the SETTE reference files on ORCA2 and writ
 ### `pisces-inidata check [--orca {ORCA2,eORCA1,eORCA025}]`
 Runs automated pre-flight verification of system binaries (CDO, NCO), Python environment, target grid & domain definitions, raw observational catalog, and disk space.
 
+### `pisces-inidata test-reproduction --test-dir <DIR> --ref-dir <DIR>`
+Runs the precision benchmark comparing re-interpolated regular unmasked baseline datasets (WOA2009 & GLODAPv1.1) against official EC-Earth3 eORCA1 references ($r > 0.998$, $|\Delta\text{Inv}| < 0.2\%$).
+
 ### `pisces-inidata pad <input.nc> <output.nc> [--depth 6000.0]`
 Directly runs the vertical depth padding utility on any 3D/4D NetCDF file.
 

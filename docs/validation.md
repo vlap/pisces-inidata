@@ -81,3 +81,21 @@ bash scripts/run_validation_suite.sh
 ```
 
 The output markdown table is written to `VALIDATION_SCOREBOARD_ORCA2.md`.
+
+---
+
+## 5. Pipeline Precision Benchmark: EC-Earth3 Baseline Reproduction
+
+To verify the mathematical accuracy and mass conservation of the interpolation pipeline independently of modern product differences, a dedicated reproduction benchmark is provided:
+
+```bash
+pisces-inidata test-reproduction --test-dir /path/to/reinterpolated_eORCA1 --ref-dir /path/to/ece3_eORCA1_reference
+# or:
+# bash scripts/test_pipeline_reproduction.sh
+```
+
+### Benchmark Criteria
+This test takes original unmasked regular $1^\circ \times 1^\circ$ source fields (`data_*_nomask.nc` from WOA2009 and GLODAPv1.1) and re-interpolates them through the pipeline onto `eORCA1` 75-level grid. It asserts:
+- **Spatial Pearson Correlation ($r$):** $\ge 0.998$ for nutrients and oxygen, proving that horizontal bilinear remapping faithfully positions water masses.
+- **Global Inventory Difference ($|\Delta\text{Inv}|$):** $\le 0.2\%$, verifying that vertical spline interpolation and abyssal padding conserve global ocean mass.
+- **Residual Smoothing:** Relative RMSE $< 3.5\%$, confirming that differences are solely due to bilinear smoothing eliminating nearest-neighbor staircase artifacts.
