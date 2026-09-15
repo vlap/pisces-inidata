@@ -77,11 +77,14 @@ submit_job() {
 }
 
 # ------------------------------------------------------------------------------
-# 1. Step 1: Target Grid & Weights Generation
+# 1. Step 1: Target Grid & Weights Generation (Synchronous)
 # ------------------------------------------------------------------------------
-echo "--- [1/5] Submitting Grid and Remapping Weights Job ---"
-job_cmd="bash ${SCRIPT_DIR}/gen_grid_and_weights.sh"
-submit_job "gen_grid_weights" "${job_cmd}"
+echo "--- [1/5] Checking / Generating Target Grid and Remapping Weights ---"
+if [ "${SUBMIT}" = "submit" ]; then
+    bash "${SCRIPT_DIR}/gen_grid_and_weights.sh"
+else
+    echo "[DRY-RUN] Would run: bash ${SCRIPT_DIR}/gen_grid_and_weights.sh"
+fi
 
 # ------------------------------------------------------------------------------
 # 2. Step 2: Submit 3D Tracers in Parallel
