@@ -227,12 +227,17 @@ if [ "${SOURCE_MODE}" = "modern" ]; then
                 cdo ${CDO_OPTS} ${CDO_COMPRESS} -remapnn,"${TARGET_GRID_NC}" -setgrid,"${ORCA1_GRIDDES}" "${ECE3_PISCES_DIR}/Fer_PISCES_monthly_ORCA_R1.nc" "${OUT_FILE}"
             else
                 SRC_FILE="${RAW_DIR}/official_v5.0.0/data_FER_nomask.nc"
-                echo "[Step 1/3] Horizontal remapping to ${GRID_NAME}..."
-                cdo ${CDO_OPTS} remap,"${TARGET_GRID_NC}","${WEIGHTS_BILIN}" -selname,Fer "${SRC_FILE}" "${TMP_DIR}/hremap.nc"
-                echo "[Step 2/3] Extending abyssal depth to 6000m..."
-                python3 "${SCRIPT_DIR}/pad_abyssal_depth.py" "${TMP_DIR}/hremap.nc" "${TMP_DIR}/hremap_padded.nc" 6000.0
-                echo "[Step 3/3] Vertical interpolation to target levels..."
-                cdo ${CDO_OPTS} ${CDO_COMPRESS} -intlevel,"${TARGET_LEVELS}" "${TMP_DIR}/hremap_padded.nc" "${OUT_FILE}"
+                if [ "${GRID_NAME}" = "ORCA2" ]; then
+                    echo "Remapping Fer to ORCA2 (native vertical levels match)..."
+                    cdo ${CDO_OPTS} ${CDO_COMPRESS} remap,"${TARGET_GRID_NC}","${WEIGHTS_BILIN}" -selname,Fer "${SRC_FILE}" "${OUT_FILE}"
+                else
+                    echo "[Step 1/3] Horizontal remapping to ${GRID_NAME}..."
+                    cdo ${CDO_OPTS} remap,"${TARGET_GRID_NC}","${WEIGHTS_BILIN}" -selname,Fer "${SRC_FILE}" "${TMP_DIR}/hremap.nc"
+                    echo "[Step 2/3] Extending abyssal depth to 6000m..."
+                    python3 "${SCRIPT_DIR}/pad_abyssal_depth.py" "${TMP_DIR}/hremap.nc" "${TMP_DIR}/hremap_padded.nc" 6000.0
+                    echo "[Step 3/3] Vertical interpolation to target levels..."
+                    cdo ${CDO_OPTS} ${CDO_COMPRESS} -intlevel,"${TARGET_LEVELS}" "${TMP_DIR}/hremap_padded.nc" "${OUT_FILE}"
+                fi
             fi
 
             ln -sfn "$(basename "${OUT_FILE}")" "${OUTPUT_DIR}/${LINK_NAME}"

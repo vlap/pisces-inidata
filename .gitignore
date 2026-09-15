@@ -12,3 +12,6 @@ ORCA2_INPUTS_PISCES_v*
 tmp_*
 logs/
 sbatch_scripts/
+raw_data/
+*.csv
+__pycache__/

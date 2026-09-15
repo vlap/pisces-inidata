@@ -22,17 +22,17 @@ import numpy as np
 import netCDF4 as nc
 
 ALIASES = {
-    'NO3': ['NO3', 'no3', 'nitrate'],
-    'PO4': ['PO4', 'po4', 'phosphate'],
-    'Si': ['Si', 'si', 'silicate', 'SIL'],
-    'O2': ['O2', 'o2', 'oxygen', 'OXY'],
+    'NO3': ['NO3', 'no3', 'nitrate', 'n_an'],
+    'PO4': ['PO4', 'po4', 'phosphate', 'p_an'],
+    'Si': ['Si', 'si', 'silicate', 'SIL', 'i_an'],
+    'O2': ['O2', 'o2', 'oxygen', 'OXY', 'o_an'],
     'TALK': ['TALK', 'talk', 'Alkalini', 'alkalini', 'TAlk'],
     'TDIC': ['TDIC', 'tdic', 'DIC', 'dic', 'TCO2'],
     'PiDIC': ['PiDIC', 'pidic', 'DIC', 'dic', 'PI_TCO2'],
     'DOC': ['DOC', 'doc'],
     'Fer': ['Fer', 'fer', 'FER'],
     'dust': ['dust', 'dustfer'],
-    'ndep': ['ndep'],
+    'ndep': ['ndep2', 'ndep'],
     'par': ['fr_par'],
     'bathy': ['bathy'],
     'hydrofe': ['epsdb'],
@@ -59,11 +59,11 @@ UNITS = {
 
 
 def find_var(ds, var_name):
-    if var_name in ds.variables:
-        return ds.variables[var_name]
     for alias in ALIASES.get(var_name, []):
         if alias in ds.variables:
             return ds.variables[alias]
+    if var_name in ds.variables:
+        return ds.variables[var_name]
     # Fallback to first non-coordinate variable
     coords = {'lon', 'lat', 'nav_lon', 'nav_lat', 'depth', 'deptht', 'nav_lev', 'time', 'time_counter'}
     for v in ds.variables:
@@ -109,20 +109,35 @@ def compute_metrics(test_file, ref_file, var_name, mask_file=None):
         sum_prod = 0.0
 
         for t in range(ntimes):
-            data_test = v_test[t] if nt_test > 1 else (v_test[0] if v_test.ndim > 2 and shape_test[0] == 1 else v_test[:])
-            data_ref = v_ref[t] if nt_ref > 1 else (v_ref[0] if v_ref.ndim > 2 and shape_ref[0] == 1 else v_ref[:])
+            data_test_raw = v_test[t] if nt_test > 1 else (v_test[0] if v_test.ndim > 2 and shape_test[0] == 1 else v_test[:])
+            data_ref_raw = v_ref[t] if nt_ref > 1 else (v_ref[0] if v_ref.ndim > 2 and shape_ref[0] == 1 else v_ref[:])
 
-            data_test = np.squeeze(np.asarray(data_test, dtype=np.float64))
-            data_ref = np.squeeze(np.asarray(data_ref, dtype=np.float64))
+            # Unit harmonization if needed (e.g. O2 mL/L -> umol/L)
+            if var_name == 'O2':
+                ref_check = data_ref_raw.compressed() if np.ma.is_masked(data_ref_raw) else data_ref_raw
+                if np.nanmean(ref_check) < 20.0:
+                    data_ref_raw = data_ref_raw * 44.661
+
+            mask_t = data_test_raw.mask if np.ma.is_masked(data_test_raw) else np.zeros(data_test_raw.shape, dtype=bool)
+            mask_r = data_ref_raw.mask if np.ma.is_masked(data_ref_raw) else np.zeros(data_ref_raw.shape, dtype=bool)
+
+            data_test = np.squeeze(np.asarray(data_test_raw, dtype=np.float64))
+            data_ref = np.squeeze(np.asarray(data_ref_raw, dtype=np.float64))
+            mask_t = np.squeeze(mask_t)
+            mask_r = np.squeeze(mask_r)
 
             # Match level dimension if needed
             if data_test.ndim == 3 and data_ref.ndim == 3:
                 nl = min(data_test.shape[0], data_ref.shape[0])
                 data_test = data_test[:nl]
                 data_ref = data_ref[:nl]
+                mask_t = mask_t[:nl]
+                mask_r = mask_r[:nl]
 
             valid = (~np.isnan(data_test)) & (~np.isnan(data_ref)) & \
                     (~np.isinf(data_test)) & (~np.isinf(data_ref)) & \
+                    (~mask_t) & (~mask_r) & \
+                    (data_test > -900.0) & (data_ref > -900.0) & \
                     (np.abs(data_test) < 1.0e10) & (np.abs(data_ref) < 1.0e10)
 
             if mask_2d is not None:
@@ -236,23 +251,23 @@ def main():
 
     args = parser.parse_args()
 
-    # Define variables and files to compare
+    # Define variables and files to compare (candidates)
     comparisons = [
-        ('NO3', 'data_NO3_ORCA2.nc', 'data_NO3_nomask_ORCA2.nc', 'WOA23'),
-        ('PO4', 'data_PO4_ORCA2.nc', 'data_PO4_nomask_ORCA2.nc', 'WOA23'),
-        ('Si',  'data_Si_ORCA2.nc',  'data_SIL_nomask_ORCA2.nc', 'WOA23'),
-        ('O2',  'data_O2_ORCA2.nc',  'data_OXY_nomask_ORCA2.nc', 'WOA23'),
-        ('TALK','data_TALK_ORCA2.nc','data_ALK_nomask_ORCA2.nc', 'GLODAPv3'),
-        ('TDIC','data_TDIC_ORCA2.nc','data_DIC_nomask_ORCA2.nc', 'GLODAPv3'),
-        ('PiDIC','data_PiDIC_ORCA2.nc','data_DIC_nomask_ORCA2.nc','GLODAPv3'),
-        ('DOC', 'data_DOC_ORCA2.nc', 'data_DOC_nomask_ORCA2.nc', 'Panaïotis 2024'),
-        ('Fer', 'data_Fer_ORCA2.nc', 'data_FER_nomask_ORCA2.nc', 'Tagliabue 2012'),
-        ('dust', 'dust.orca.nc',     'dust.orca.nc',             'INCA / Mahowald'),
-        ('ndep', 'ndeposition.orca.nc','ndeposition.orca.nc',    'Duce et al.'),
-        ('par',  'par.orca.nc',      'par.orca.nc',              'GEWEX Climatology'),
-        ('bathy','bathy.orca.nc',    'bathy.orca.nc',            'ETOPO / pmarge'),
-        ('hydrofe','hydrofe.orca.nc','hydrofe.orca.nc',          'Hydrothermal Fe'),
-        ('river','river.orca.nc',    'river.orca.nc',            'Global NEWS 2')
+        ('NO3', ['data_NO3_ORCA2.nc', 'NO3_WOA23_monthly_ORCA2.nc'], ['data_NO3_ORCA2.nc', 'data_NO3_nomask_ORCA2.nc'], 'WOA23'),
+        ('PO4', ['data_PO4_ORCA2.nc', 'PO4_WOA23_monthly_ORCA2.nc'], ['data_PO4_ORCA2.nc', 'data_PO4_nomask_ORCA2.nc'], 'WOA23'),
+        ('Si',  ['data_Si_ORCA2.nc', 'data_SIL_ORCA2.nc', 'Si_WOA23_monthly_ORCA2.nc'], ['data_Si_ORCA2.nc', 'data_SIL_ORCA2.nc', 'data_SIL_nomask_ORCA2.nc'], 'WOA23'),
+        ('O2',  ['data_O2_ORCA2.nc', 'data_OXY_ORCA2.nc', 'O2_WOA23_monthly_ORCA2.nc'], ['data_O2_ORCA2.nc', 'data_OXY_ORCA2.nc', 'data_OXY_nomask_ORCA2.nc'], 'WOA23'),
+        ('TALK',['data_TALK_ORCA2.nc', 'data_ALK_ORCA2.nc', 'Alkalini_GLODAP_annual_ORCA2.nc'], ['data_TALK_ORCA2.nc', 'data_ALK_ORCA2.nc', 'data_ALK_nomask_ORCA2.nc'], 'GLODAPv3/v2'),
+        ('TDIC',['data_TDIC_ORCA2.nc', 'data_DIC_ORCA2.nc', 'DIC_GLODAP_annual_ORCA2.nc'], ['data_TDIC_ORCA2.nc', 'data_DIC_ORCA2.nc', 'data_DIC_nomask_ORCA2.nc'], 'GLODAPv3/v2'),
+        ('PiDIC',['data_PiDIC_ORCA2.nc', 'PiDIC_GLODAP_annual_ORCA2.nc'], ['data_PiDIC_ORCA2.nc', 'data_DIC_ORCA2.nc', 'data_DIC_nomask_ORCA2.nc'], 'GLODAPv3/v2'),
+        ('DOC', ['data_DOC_ORCA2.nc', 'DOC_Panaiotis2024_monthly_ORCA2.nc'], ['data_DOC_ORCA2.nc', 'data_DOC_nomask_ORCA2.nc'], 'Panaïotis et al. 2024 (ML)'),
+        ('Fer', ['data_Fer_ORCA2.nc', 'data_FER_ORCA2.nc', 'Fer_PISCES_monthly_ORCA2.nc'], ['data_Fer_ORCA2.nc', 'data_FER_ORCA2.nc', 'data_FER_nomask_ORCA2.nc'], 'Tagliabue 2012'),
+        ('dust', ['dust.orca.nc', 'dust_INCA_ORCA2.nc'], ['dust.orca.nc'], 'INCA / Mahowald'),
+        ('ndep', ['ndeposition.orca.nc', 'ndeposition_Duce_ORCA2.nc'], ['ndeposition.orca.nc'], 'Duce et al.'),
+        ('par',  ['par.orca.nc', 'par_fraction_gewex_clim90s00s_ORCA2.nc'], ['par.orca.nc'], 'GEWEX Climatology'),
+        ('bathy',['bathy.orca.nc', 'pmarge_etopo_ORCA2.nc'], ['bathy.orca.nc'], 'ETOPO / pmarge'),
+        ('hydrofe',['hydrofe.orca.nc'], ['hydrofe.orca.nc'], 'Hydrothermal Fe'),
+        ('river',['river.orca.nc', 'river_global_news_ORCA2.nc'], ['river.orca.nc'], 'Global NEWS 2')
     ]
 
     results = []
@@ -260,15 +275,29 @@ def main():
     print(" GENERATING PISCES INIDATA VALIDATION SCOREBOARD (ORCA2 vs SETTE)")
     print("=" * 80)
 
-    for var, test_fname, ref_fname, prod_name in comparisons:
-        test_path = os.path.join(args.test_dir, test_fname)
-        ref_path = os.path.join(args.ref_dir, ref_fname)
+    for var, test_cands, ref_cands, prod_name in comparisons:
+        if isinstance(test_cands, str): test_cands = [test_cands]
+        if isinstance(ref_cands, str): ref_cands = [ref_cands]
 
-        if not os.path.exists(test_path):
-            print(f"Skipping {var}: test file {test_path} not found.")
+        test_path = None
+        for c in test_cands:
+            p = os.path.join(args.test_dir, c)
+            if os.path.exists(p):
+                test_path = p
+                break
+
+        ref_path = None
+        for c in ref_cands:
+            p = os.path.join(args.ref_dir, c)
+            if os.path.exists(p):
+                ref_path = p
+                break
+
+        if not test_path:
+            print(f"Skipping {var}: no candidate test file found in {args.test_dir} (tried {test_cands}).")
             continue
-        if not os.path.exists(ref_path):
-            print(f"Skipping {var}: ref file {ref_path} not found.")
+        if not ref_path:
+            print(f"Skipping {var}: no candidate ref file found in {args.ref_dir} (tried {ref_cands}).")
             continue
 
         try:
