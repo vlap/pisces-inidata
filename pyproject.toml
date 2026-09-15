@@ -53,7 +53,7 @@ pisces-pad-depth = "pisces_inidata.padding:main"
 
 [project.urls]
 Homepage = "https://github.com/vlap/pisces-inidata"
-Documentation = "https://vlap.github.io/pisces-inidata/"
+Documentation = "https://pisces-inidata.readthedocs.io/"
 Repository = "https://github.com/vlap/pisces-inidata"
 Issues = "https://github.com/vlap/pisces-inidata/issues"
 
