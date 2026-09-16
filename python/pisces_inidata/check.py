@@ -95,7 +95,10 @@ def check_target_grid(grid_name: str, domain_dir: Optional[str] = None) -> List[
     Verifies presence of target grid definition, domain_cfg, or maskutil files.
     """
     results = []
-    base_dir = domain_dir or os.path.join(os.getcwd(), "domain")
+    base_dir = domain_dir or os.environ.get("DOMAIN_BASE_DIR")
+    if not base_dir:
+        standard_bsc = "/gpfs/projects/bsc32/models/ecearth/ece4-trunk/inidata/nemo/domain"
+        base_dir = standard_bsc if os.path.isdir(standard_bsc) else os.path.join(os.getcwd(), "domain")
 
     if grid_name == "ORCA2":
         # Check local target_grid or domain_cfg
