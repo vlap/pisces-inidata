@@ -64,11 +64,13 @@ def test_run_pipeline_reproduction_test():
         code = run_pipeline_reproduction_test(
             test_dir=tmp_test,
             ref_dir=tmp_ref,
-            output_md=out_md
+            output_md=out_md,
+            preset="official_sette"
         )
         assert code == 0
         assert os.path.exists(out_md)
         with open(out_md, 'r') as f:
             content = f.read()
             assert "NO3" in content
+            assert "official_sette" in content
             assert "PASS" in content

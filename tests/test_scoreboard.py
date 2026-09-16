@@ -144,10 +144,19 @@ def test_run_validation_suite():
                 v = ds.createVariable('NO3', 'f4', ('points',))
                 v[:] = arr
 
-        code = run_validation_suite(test_dir=tmp_test, ref_dir=tmp_ref, output_md=out_md)
+        code = run_validation_suite(test_dir=tmp_test, ref_dir=tmp_ref, output_md=out_md, preset="official_sette")
         assert code == 0
         assert os.path.exists(out_md)
         with open(out_md, 'r') as f:
             content = f.read()
-            assert "WOA23" in content
+            assert "SETTE nomask" in content
+            assert "official_sette" in content
             assert "PASS" in content
+
+        out_md_ece4 = os.path.join(tmp_test, "scorecard_ece4.md")
+        code_ece4 = run_validation_suite(test_dir=tmp_test, ref_dir=tmp_ref, output_md=out_md_ece4, preset="ece4")
+        assert code_ece4 == 0
+        with open(out_md_ece4, 'r') as f:
+            content_ece4 = f.read()
+            assert "WOA23" in content_ece4
+            assert "ece4" in content_ece4

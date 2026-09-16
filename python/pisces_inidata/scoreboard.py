@@ -281,15 +281,39 @@ def compute_diagnostics(test_file: str, ref_file: str, var_key: str) -> Dict[str
         }
 
 
+def get_product_name(var: str, preset: str) -> str:
+    if preset == "official_sette":
+        return "SETTE nomask (pure interpolation)"
+    elif preset == "ece3":
+        if var in ['NO3', 'PO4', 'Si', 'O2']:
+            return "WOA2009"
+        elif var in ['TALK', 'TDIC', 'PiDIC']:
+            return "GLODAPv1.1"
+        else:
+            return "SETTE nomask"
+    else:  # ece4
+        if var in ['NO3', 'PO4', 'Si', 'O2']:
+            return "WOA23"
+        elif var in ['TALK', 'TDIC', 'PiDIC']:
+            return "GLODAPv2.2016b"
+        elif var == 'DOC':
+            return "Panaïotis et al. 2024 (ML)"
+        else:
+            return "Tagliabue Fe"
+
+
 def generate_scoreboard(
     results: List[Dict[str, Any]],
-    output_md_path: Optional[str] = None
+    output_md_path: Optional[str] = None,
+    preset: str = "official_sette"
 ) -> str:
     """
     Renders diagnostic results list into a GitHub Flavored Markdown scoreboard table.
     """
     lines = []
     lines.append("# PISCES Inidata Validation Scorecard (ORCA2 vs SETTE Benchmark)")
+    lines.append("")
+    lines.append(f"**Configuration Preset:** `{preset}`  ")
     lines.append("")
     lines.append(
         "Automated procedure validation evaluating newly generated 3D tracer initial conditions "
@@ -353,14 +377,15 @@ def run_validation_suite(
     test_dir: str,
     ref_dir: str,
     output_md: Optional[str] = None,
-    fail_on_error: bool = False
+    fail_on_error: bool = False,
+    preset: str = "official_sette"
 ) -> int:
     """
     Executes product-by-product validation suite comparing test_dir against ref_dir on ORCA2.
     Returns: 0 on success, 1 on critical failure.
     """
     print("=" * 80)
-    print(" PISCES INIDATA VALIDATION SUITE (ORCA2 vs SETTE BENCHMARK)")
+    print(f" PISCES INIDATA VALIDATION SUITE (ORCA2 vs SETTE BENCHMARK, Preset: {preset})")
     print(f" Test Directory:      {test_dir}")
     print(f" Reference Directory: {ref_dir}")
     print("=" * 80)
@@ -372,7 +397,7 @@ def run_validation_suite(
 
     for item in SUPPORTED_PRODUCTS:
         var = item['var']
-        prod = item['product']
+        prod = get_product_name(var, preset)
         test_cands = item['test_cands']
         ref_cands = item['ref_cands']
 
@@ -424,7 +449,7 @@ def run_validation_suite(
     print("=" * 80)
 
     if results:
-        generate_scoreboard(results, output_md_path=output_md)
+        generate_scoreboard(results, output_md_path=output_md, preset=preset)
         if output_md:
             print(f"Saved comprehensive scorecard to: {output_md}")
 
@@ -441,6 +466,12 @@ def main():
     parser.add_argument("--test-dir", default="output_ORCA2", help="Directory with generated ORCA2 files")
     parser.add_argument("--ref-dir", default="sette_reference_ORCA2", help="Directory with SETTE ORCA2 references")
     parser.add_argument("--output-md", default="VALIDATION_SCOREBOARD_ORCA2.md", help="Output markdown scorecard path")
+    parser.add_argument(
+        "--preset",
+        choices=["ece4", "ece3", "official_sette"],
+        default="official_sette",
+        help="Configuration preset tested (default: official_sette)"
+    )
     parser.add_argument("--fail-on-error", action="store_true", help="Exit with non-zero code on any failure")
     args = parser.parse_args()
 
@@ -448,7 +479,8 @@ def main():
         test_dir=args.test_dir,
         ref_dir=args.ref_dir,
         output_md=args.output_md,
-        fail_on_error=args.fail_on_error
+        fail_on_error=args.fail_on_error,
+        preset=args.preset
     )
     exit(code)
 

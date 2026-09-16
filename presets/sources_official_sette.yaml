@@ -1,11 +1,12 @@
 # ==============================================================================
-# PISCES Initial Conditions Source Configuration: SETTE (Official Reference)
+# PISCES Initial Conditions Source Configuration: SETTE Official Reference
 # ==============================================================================
 # Direct usage of official regular unmasked NEMO/PISCES SETTE reference fields:
-# All 3D tracers interpolated directly from the SETTE repository inputs.
+# All 3D tracers and boundary forcings are taken from SETTE with pure interpolation
+# applied to the target grid.
 # ==============================================================================
 
-preset: sette
+preset: official_sette
 
 tracers_3d:
   NO3: sette_nomask

@@ -1,6 +1,6 @@
 """
 Configuration Module for PISCES Inidata.
-Loads sources.yaml, applies configuration presets (ece4, ece3, sette), validates
+Loads sources.yaml, applies configuration presets (ece4, ece3, official_sette), validates
 source climatology choices, rejects invalid ece3 sources, and exports environment
 variables for pipeline shell scripts.
 """
@@ -78,7 +78,7 @@ PRESETS = {
         'PRODUCT_HYDROFE': 'sette_orca2',
         'PRODUCT_RIVER': 'sette_orca2',
     },
-    'sette': {
+    'official_sette': {
         'PRODUCT_NO3': 'sette_nomask',
         'PRODUCT_PO4': 'sette_nomask',
         'PRODUCT_Si': 'sette_nomask',
@@ -95,12 +95,6 @@ PRESETS = {
         'PRODUCT_HYDROFE': 'sette_orca2',
         'PRODUCT_RIVER': 'sette_orca2',
     },
-}
-
-PRESET_ALIASES = {
-    'modern': 'ece4',
-    'ecearth3_baseline': 'ece3',
-    'official_regular': 'sette',
 }
 
 DEFAULTS = PRESETS['ece4'].copy()
@@ -149,11 +143,10 @@ YAML_MAP = {
 
 
 def resolve_preset_name(preset: Optional[str]) -> str:
-    """Normalizes preset name using aliases; defaults to ece4."""
+    """Normalizes preset name; defaults to ece4."""
     if not preset:
         return 'ece4'
-    name = preset.strip().lower()
-    return PRESET_ALIASES.get(name, name)
+    return preset.strip().lower()
 
 
 def load_config(config_path: str = "sources.yaml", preset: Optional[str] = None) -> Dict[str, str]:

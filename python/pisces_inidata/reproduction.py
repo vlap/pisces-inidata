@@ -228,17 +228,23 @@ def evaluate_reproduction_closeness(
         }
 
 
-def format_reproduction_report(results: List[Dict[str, Any]], output_md_path: Optional[str] = None) -> str:
+def format_reproduction_report(
+    results: List[Dict[str, Any]],
+    output_md_path: Optional[str] = None,
+    preset: str = "official_sette"
+) -> str:
     """
-    Renders the EC-Earth3 baseline pipeline reproduction test results into a Markdown report.
+    Formats the evaluation results into a Markdown report table matching project documentation.
     """
     lines = []
-    lines.append("# PISCES Pipeline Reproduction Test Report (EC-Earth3 Baseline)")
+    lines.append("# PISCES Pipeline Precision Report: EC-Earth3 Baseline Reproduction")
+    lines.append("")
+    lines.append(f"**Configuration Preset:** `{preset}`  ")
     lines.append("")
     lines.append(
-        "Verification of the interpolation pipeline precision by re-interpolating original "
-        "regular unmasked $1^\\circ \\times 1^\\circ$ sources (WOA2009 & GLODAPv1.1) to `eORCA1` L75 "
-        "and comparing against the official EC-Earth3 baseline reference datasets."
+        "Quantitative precision benchmark verifying that re-interpolating original "
+        "regular unmasked $1^\\circ \\times 1^\\circ$ sources to `eORCA1` L75 "
+        "faithfully reproduces the official EC-Earth3 baseline reference datasets."
     )
     lines.append("")
     lines.append(
@@ -294,14 +300,15 @@ def run_pipeline_reproduction_test(
     ref_dir: str,
     mask_file: Optional[str] = None,
     output_md: Optional[str] = None,
-    fail_on_error: bool = False
+    fail_on_error: bool = False,
+    preset: str = "official_sette"
 ) -> int:
     """
     Executes pipeline reproduction test across all configured regular baseline fields.
     Returns: 0 on success, 1 on failure.
     """
     print("=" * 80)
-    print(" PISCES PIPELINE PRECISION TEST (EC-EARTH3 BASELINE REPRODUCTION)")
+    print(f" PISCES PIPELINE PRECISION TEST (EC-EARTH3 BASELINE REPRODUCTION, Preset: {preset})")
     print(f" Test Directory:      {test_dir}")
     print(f" Reference Directory: {ref_dir}")
     print("=" * 80)
@@ -312,14 +319,24 @@ def run_pipeline_reproduction_test(
 
     for cfg in BASELINE_TEST_CONFIG:
         v = cfg['var']
-        test_path = os.path.join(test_dir, cfg['test_filename'])
-        if not os.path.exists(test_path):
-            test_path = os.path.join(test_dir, cfg['ref_filename'])
+        candidates = [
+            cfg['test_filename'],
+            cfg['ref_filename'],
+            f"data_{v}_eORCA1.nc",
+            f"data_{v}.nc",
+            f"reg_{cfg['ref_filename']}",
+        ]
+        test_path = None
+        for c in candidates:
+            p = os.path.join(test_dir, c)
+            if os.path.exists(p):
+                test_path = p
+                break
 
         ref_path = os.path.join(ref_dir, cfg['ref_filename'])
 
-        if not os.path.exists(test_path):
-            print(f"  [SKIP] {v:6s} : Test file not found at {test_path}")
+        if not test_path:
+            print(f"  [SKIP] {v:6s} : Test file not found in {test_dir} (tried {candidates[:3]})")
             continue
         if not os.path.exists(ref_path):
             print(f"  [SKIP] {v:6s} : Reference file not found at {ref_path}")
@@ -360,7 +377,7 @@ def run_pipeline_reproduction_test(
     print("=" * 80)
 
     if results:
-        format_reproduction_report(results, output_md)
+        format_reproduction_report(results, output_md, preset=preset)
         if output_md:
             print(f"Saved reproduction report to: {output_md}")
 
@@ -373,9 +390,15 @@ def main():
     parser = argparse.ArgumentParser(description="PISCES Pipeline Precision & EC-Earth3 Baseline Reproduction Test")
     parser.add_argument("--test-dir", required=True, help="Directory containing re-interpolated eORCA1 files")
     parser.add_argument("--ref-dir", required=True, help="Directory containing official EC-Earth3 eORCA1 references")
-    parser.add_argument("--mask", default=None, help="Path to land-sea mask NetCDF (maskutil.nc)")
+    parser.add_argument("--mask", help="Path to land-sea mask NetCDF file")
     parser.add_argument("--output-md", default="PIPELINE_REPRODUCTION_REPORT.md", help="Path to write Markdown report")
-    parser.add_argument("--fail-on-error", action="store_true", help="Exit with non-zero code if test fails")
+    parser.add_argument(
+        "--preset",
+        choices=["ece4", "ece3", "official_sette"],
+        default="official_sette",
+        help="Configuration preset tested (default: official_sette)"
+    )
+    parser.add_argument("--fail-on-error", action="store_true", help="Exit with non-zero code if any test fails")
     args = parser.parse_args()
 
     code = run_pipeline_reproduction_test(
@@ -383,6 +406,7 @@ def main():
         ref_dir=args.ref_dir,
         mask_file=args.mask,
         output_md=args.output_md,
+        preset=args.preset,
         fail_on_error=args.fail_on_error
     )
     exit(code)

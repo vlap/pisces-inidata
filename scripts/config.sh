@@ -72,7 +72,7 @@ CDO_COMPRESS="-f nc4 -z zip_4"
 # ------------------------------------------------------------------------------
 # 4. Source Data Catalog & References
 # ------------------------------------------------------------------------------
-# Active configuration preset (e.g. ece4, ece3, sette)
+# Active configuration preset (e.g. ece4, ece3, official_sette)
 PRESET="${PRESET:-${INIDATA_PRESET:-ece4}}"
 
 # GLODAP version configuration (supported: 'v2.2016b' [default 3D gridded], 'v2.2023', 'v1.1')

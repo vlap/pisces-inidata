@@ -1,6 +1,6 @@
 # Configuration & CLI Reference
 
-`pisces-inidata` provides a transparent, declarative configuration system through presets (`ece4`, `ece3`, `sette`), `sources.yaml`, and a unified command-line interface.
+`pisces-inidata` provides a transparent, declarative configuration system through presets (`ece4`, `ece3`, `official_sette`), `sources.yaml`, and a unified command-line interface.
 
 ---
 
@@ -12,24 +12,24 @@ Instead of selecting sources variable-by-variable, users can choose curated conf
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | **`ece4`** *(Default)* | Modern observational datasets for **EC-Earth4** production runs | WOA23 (102 levels) | GLODAPv2.2016b | Panaïotis et al. 2024 (ML) | Tagliabue (2012) & SETTE |
 | **`ece3`** | Observational sources originally used in **EC-Earth3** (baseline reproduction) | WOA2009 | GLODAPv1.1 | Hansell (2009) | Tagliabue (2012) & SETTE |
-| **`sette`** | Official regular unmasked **NEMO/PISCES SETTE** reference fields | `sette_nomask` | `sette_nomask` | `sette_nomask` | Tagliabue (2012) & SETTE |
+| **`official_sette`** | Official regular unmasked **NEMO/PISCES SETTE** reference (all vars from SETTE, pure interpolation) | `sette_nomask` | `sette_nomask` | `sette_nomask` | `sette_nomask` & `sette_orca2` |
 
 Presets can be selected in three ways:
 
 1. **In `sources.yaml`:**
    ```yaml
-   preset: ece4  # Options: ece4 (default) | ece3 | sette
+   preset: ece4  # Options: ece4 (default) | ece3 | official_sette
    ```
 2. **Via dedicated preset files:**
    Preset template files are available in the `presets/` directory:
    - `presets/sources_ece4.yaml`
    - `presets/sources_ece3.yaml`
-   - `presets/sources_sette.yaml`
+   - `presets/sources_official_sette.yaml`
 3. **Via the `--preset` CLI flag or `PRESET` environment variable:**
    ```bash
    pisces-inidata info --preset ece3
    pisces-inidata run --orca eORCA1 --preset ece3
-   pisces-inidata config --preset sette --export
+   pisces-inidata config --preset official_sette --export
    ```
 
 ---
@@ -102,7 +102,8 @@ pisces-inidata run --orca eORCA1 --preset ece3
 ### `pisces-inidata validate`
 Executes statistical procedure validation against official NEMO/SETTE ORCA2 benchmark:
 ```bash
-pisces-inidata validate --test-dir output_ORCA2 --ref-dir sette_reference_ORCA2
+# Validate generated ORCA2 outputs (default preset: official_sette)
+pisces-inidata validate --preset official_sette --test-dir output_ORCA2 --ref-dir sette_reference_ORCA2
 # Enforce non-zero exit code in CI:
 pisces-inidata validate --fail-on-error
 ```
@@ -110,8 +111,12 @@ pisces-inidata validate --fail-on-error
 ### `pisces-inidata test-reproduction`
 Executes pipeline reproduction benchmark against EC-Earth3 eORCA1 baseline:
 ```bash
+# Validate reproduction against EC-Earth3 baseline (default preset: official_sette)
+pisces-inidata test-reproduction --preset official_sette
+# Or with explicit paths:
 pisces-inidata test-reproduction \
-    --test-dir work_eORCA1/reproduction_test \
+    --preset official_sette \
+    --test-dir output_eORCA1 \
     --ref-dir /path/to/ece3_eORCA1_reference \
     --mask domain/eORCA1/maskutil.nc
 ```

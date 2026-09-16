@@ -65,10 +65,12 @@ def cmd_run(args):
 
 def cmd_validate(args):
     repo_root = get_repo_root()
+    preset = getattr(args, 'preset', 'official_sette')
     test_dir = args.test_dir
     if not test_dir:
         candidates = [
             os.path.join(repo_root, "output_ORCA2"),
+            os.path.join(repo_root, "work_ORCA2", "output_ORCA2"),
             os.path.join(repo_root, "work_ORCA2"),
             os.path.join(repo_root, "work_orca2"),
             repo_root
@@ -87,23 +89,58 @@ def cmd_validate(args):
         test_dir=test_dir,
         ref_dir=ref_dir,
         output_md=output_md,
-        fail_on_error=args.fail_on_error
+        fail_on_error=args.fail_on_error,
+        preset=preset
     )
     sys.exit(code)
 
 
 def cmd_test_reproduction(args):
     repo_root = get_repo_root()
-    test_dir = args.test_dir or os.path.join(repo_root, "work_eORCA1", "reproduction_test")
-    ref_dir = args.ref_dir or "/gpfs/projects/bsc32/models/ecearth/ece4-trunk/inidata/nemo/pisces"
+    preset = getattr(args, 'preset', 'official_sette')
+    test_dir = args.test_dir
+    if not test_dir:
+        candidates = [
+            os.path.join(repo_root, "output_eORCA1"),
+            os.path.join(repo_root, "work_eORCA1", "output_eORCA1"),
+            os.path.join(repo_root, "work_eORCA1", "reproduction_test"),
+            os.path.join(repo_root, "work_eORCA1"),
+            repo_root
+        ]
+        for c in candidates:
+            if os.path.exists(c):
+                test_dir = c
+                break
+        if not test_dir:
+            test_dir = os.path.join(repo_root, "output_eORCA1")
+
+    ref_dir = args.ref_dir or os.environ.get(
+        "ECE4_PISCES_REF",
+        os.environ.get(
+            "ECE3_PISCES_DIR",
+            "/gpfs/projects/bsc32/models/ecearth/ece4-trunk/inidata/nemo/pisces"
+        )
+    )
+
+    mask_file = args.mask
+    if not mask_file:
+        domain_base = os.environ.get(
+            "DOMAIN_BASE_DIR",
+            "/gpfs/projects/bsc32/models/ecearth/ece4-trunk/inidata/nemo/domain"
+        )
+        cand_mask = os.path.join(domain_base, "eORCA1", "maskutil.nc")
+        if os.path.exists(cand_mask):
+            mask_file = cand_mask
+
     output_md = args.output_md or os.path.join(repo_root, "PIPELINE_REPRODUCTION_REPORT.md")
 
     code = run_pipeline_reproduction_test(
         test_dir=test_dir,
         ref_dir=ref_dir,
-        mask_file=args.mask,
+        mask_file=mask_file,
         output_md=output_md,
-        fail_on_error=args.fail_on_error
+        fail_on_error=args.fail_on_error,
+        preset=preset
     )
     sys.exit(code)
 
@@ -208,8 +245,9 @@ def main():
     )
     check_parser.add_argument(
         "--preset",
-        choices=["ece4", "ece3", "sette", "modern", "ecearth3_baseline", "official_regular"],
-        help="Configuration preset (ece4: modern [default], ece3: WOA09+GLODAPv1, sette: official regular)"
+        choices=["ece4", "ece3", "official_sette"],
+        help="Configuration preset (ece4: modern [default], ece3: WOA09+GLODAPv1, "
+             "official_sette: all from SETTE with pure interpolation)"
     )
     check_parser.set_defaults(func=cmd_check)
 
@@ -228,8 +266,9 @@ def main():
     )
     run_parser.add_argument(
         "--preset",
-        choices=["ece4", "ece3", "sette", "modern", "ecearth3_baseline", "official_regular"],
-        help="Configuration preset (ece4: modern [default], ece3: WOA09+GLODAPv1, sette: official regular)"
+        choices=["ece4", "ece3", "official_sette"],
+        help="Configuration preset (ece4: modern [default], ece3: WOA09+GLODAPv1, "
+             "official_sette: all from SETTE with pure interpolation)"
     )
     run_parser.set_defaults(func=cmd_run)
 
@@ -245,6 +284,12 @@ def main():
     val_parser.add_argument(
         "--ref-dir",
         help="Directory containing SETTE ORCA2 benchmark reference files (default: sette_reference_ORCA2/)"
+    )
+    val_parser.add_argument(
+        "--preset",
+        choices=["ece4", "ece3", "official_sette"],
+        default="official_sette",
+        help="Configuration preset tested in validation (default: official_sette)"
     )
     val_parser.add_argument(
         "--output-md",
@@ -264,17 +309,21 @@ def main():
     )
     rep_parser.add_argument(
         "--test-dir",
-        required=True,
-        help="Directory containing re-interpolated eORCA1 test files"
+        help="Directory containing re-interpolated eORCA1 test files (default: output_eORCA1/)"
     )
     rep_parser.add_argument(
         "--ref-dir",
-        required=True,
         help="Directory containing official EC-Earth3 eORCA1 reference files"
     )
     rep_parser.add_argument(
         "--mask",
         help="Path to land-sea mask NetCDF file (maskutil.nc)"
+    )
+    rep_parser.add_argument(
+        "--preset",
+        choices=["ece4", "ece3", "official_sette"],
+        default="official_sette",
+        help="Configuration preset tested for reproduction (default: official_sette)"
     )
     rep_parser.add_argument(
         "--output-md",
@@ -292,7 +341,7 @@ def main():
     info_parser.add_argument("--file", help="Path to custom sources.yaml")
     info_parser.add_argument(
         "--preset",
-        choices=["ece4", "ece3", "sette", "modern", "ecearth3_baseline", "official_regular"],
+        choices=["ece4", "ece3", "official_sette"],
         help="Configuration preset to preview"
     )
     info_parser.set_defaults(func=cmd_info)
@@ -302,7 +351,7 @@ def main():
     cfg_parser.add_argument("--file", help="Path to custom sources.yaml")
     cfg_parser.add_argument(
         "--preset",
-        choices=["ece4", "ece3", "sette", "modern", "ecearth3_baseline", "official_regular"],
+        choices=["ece4", "ece3", "official_sette"],
         help="Configuration preset to export"
     )
     cfg_parser.add_argument("--export", action="store_true", help="Print bash export statements")
@@ -316,7 +365,7 @@ def main():
     dl_parser.add_argument("--raw-dir", help="Target directory to store raw sources")
     dl_parser.add_argument(
         "--preset",
-        choices=["ece4", "ece3", "sette", "modern", "ecearth3_baseline", "official_regular"],
+        choices=["ece4", "ece3", "official_sette"],
         help="Configuration preset to download"
     )
     dl_parser.add_argument(

@@ -9,6 +9,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 export GRID_NAME="ORCA2"
+export PRESET="${PRESET:-official_sette}"
 source "${SCRIPT_DIR}/config.sh" 2>/dev/null || true
 
 TEST_DIR="${OUTPUT_DIR:-${PWD}/output_ORCA2}"
@@ -22,9 +23,10 @@ fi
 
 echo "========================================================================"
 echo " Running PISCES Validation Suite on ORCA2 vs SETTE Benchmark"
+echo " Preset:              ${PRESET}"
 echo " Test Directory:      ${TEST_DIR}"
 echo " Reference Directory: ${REF_DIR}"
 echo " Output Scorecard:    ${OUTPUT_MD}"
 echo "========================================================================"
 
-pisces-inidata validate --test-dir "${TEST_DIR}" --ref-dir "${REF_DIR}" --output-md "${OUTPUT_MD}"
+pisces-inidata validate --preset "${PRESET}" --test-dir "${TEST_DIR}" --ref-dir "${REF_DIR}" --output-md "${OUTPUT_MD}"

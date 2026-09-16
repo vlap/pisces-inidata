@@ -88,7 +88,7 @@ boundary_forcings:
 
 
 def test_presets():
-    # ECE4 preset (modern)
+    # ECE4 preset (modern EC-Earth4)
     cfg_ece4 = load_config("sources.yaml", preset="ece4")
     assert cfg_ece4['INIDATA_PRESET'] == 'ece4'
     assert cfg_ece4['PRODUCT_NO3'] == 'woa23'
@@ -101,13 +101,11 @@ def test_presets():
     assert cfg_ece3['PRODUCT_TALK'] == 'glodap_v1'
     assert cfg_ece3['PRODUCT_DOC'] == 'sette_nomask'
 
-    # SETTE preset (official regular)
-    cfg_sette = load_config("sources.yaml", preset="sette")
-    assert cfg_sette['INIDATA_PRESET'] == 'sette'
+    # official_sette preset (all from SETTE with pure interpolation)
+    cfg_sette = load_config("sources.yaml", preset="official_sette")
+    assert cfg_sette['INIDATA_PRESET'] == 'official_sette'
     assert cfg_sette['PRODUCT_NO3'] == 'sette_nomask'
     assert cfg_sette['PRODUCT_TALK'] == 'sette_nomask'
-
-    # Aliases
-    assert load_config("sources.yaml", preset="modern")['INIDATA_PRESET'] == 'ece4'
-    assert load_config("sources.yaml", preset="ecearth3_baseline")['INIDATA_PRESET'] == 'ece3'
-    assert load_config("sources.yaml", preset="official_regular")['INIDATA_PRESET'] == 'sette'
+    assert cfg_sette['PRODUCT_DOC'] == 'sette_nomask'
+    assert cfg_sette['PRODUCT_DUST'] == 'sette_orca2'
+    assert cfg_sette['PRODUCT_RIVER'] == 'sette_orca2'

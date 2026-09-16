@@ -38,7 +38,7 @@ pisces-inidata/
 ├── presets/                     # Curated source configuration presets
 │   ├── sources_ece4.yaml        # Modern observational climatologies for EC-Earth4 [Default]
 │   ├── sources_ece3.yaml        # Baseline observational sources originally used in EC-Earth3
-│   └── sources_sette.yaml       # Official regular unmasked NEMO/PISCES SETTE reference
+│   └── sources_official_sette.yaml # Official regular unmasked NEMO/PISCES SETTE reference
 ├── python/                      # Python library and CLI package
 │   └── pisces_inidata/
 │       ├── __init__.py
@@ -95,7 +95,7 @@ pisces-inidata info
 Choose a curated configuration preset or customize per-tracer sources:
 - **`ece4`** *(Default)*: Modern observational climatologies for **EC-Earth4** (WOA23, GLODAPv2.2016b, Panaïotis DOC).
 - **`ece3`**: Baseline observational sources originally used in **EC-Earth3** (WOA2009, GLODAPv1.1, Hansell DOC).
-- **`sette`**: Official regular unmasked **NEMO/PISCES SETTE** reference fields (`sette_nomask`).
+- **`official_sette`**: Official regular unmasked **NEMO/PISCES SETTE** reference fields (all vars from SETTE, pure interpolation).
 
 Switch presets in `sources.yaml` (`preset: ece4`), load from `presets/`, or pass `--preset`:
 ```bash
@@ -128,10 +128,10 @@ pisces-inidata run --orca eORCA1 --domain-dir /path/to/nemo/domain
 ### 5. Validate Against Reference
 ```bash
 # Statistical validation against SETTE ORCA2 reference:
-pisces-inidata validate
+pisces-inidata validate --preset official_sette
 
 # Or reproduction verification against EC-Earth3 baseline on eORCA1:
-pisces-inidata test-reproduction
+pisces-inidata test-reproduction --preset official_sette
 ```
 
 ---

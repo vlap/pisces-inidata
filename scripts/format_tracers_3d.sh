@@ -3,7 +3,7 @@
 # format_tracers_3d.sh
 # Process and interpolate 3D biogeochemical tracers for PISCES:
 #   NO3, PO4, Si, O2, TALK, TDIC, PiDIC, DOC, Fer
-# Dynamic source selection driven by presets (ece4, ece3, sette) and sources.yaml
+# Dynamic source selection driven by presets (ece4, ece3, official_sette) and sources.yaml
 # ==============================================================================
 
 set -euo pipefail
