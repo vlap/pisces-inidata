@@ -95,9 +95,9 @@ export PATH="${REPO_DIR}/bin:${HOME}/.local/bin:${PATH}"
 export PYTHONPATH="${REPO_DIR}/python:${PYTHONPATH:-}"
 
 if [ -f "${REPO_DIR}/sources.yaml" ]; then
-    eval "$(python3 -m pisces_inidata.config export "${REPO_DIR}/sources.yaml" --preset "${PRESET}" 2>/dev/null || pisces-inidata config --export --file "${REPO_DIR}/sources.yaml" --preset "${PRESET}" 2>/dev/null || true)"
+    eval "$(python3 -m pisces_inidata.cli config --export --file "${REPO_DIR}/sources.yaml" --preset "${PRESET}")"
 elif [ -f "${SCRIPT_DIR_CONFIG}/sources.yaml" ]; then
-    eval "$(python3 -m pisces_inidata.config export "${SCRIPT_DIR_CONFIG}/sources.yaml" --preset "${PRESET}" 2>/dev/null || pisces-inidata config --export --file "${SCRIPT_DIR_CONFIG}/sources.yaml" --preset "${PRESET}" 2>/dev/null || true)"
+    eval "$(python3 -m pisces_inidata.cli config --export --file "${SCRIPT_DIR_CONFIG}/sources.yaml" --preset "${PRESET}")"
 fi
 
 WOA23_DIR="${RAW_DIR}/woa23"

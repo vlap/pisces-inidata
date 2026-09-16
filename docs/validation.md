@@ -94,9 +94,6 @@ pisces-inidata validate --preset official_sette --test-dir output_ORCA2 --ref-di
 
 # Enforce strict CI exit codes:
 pisces-inidata validate --fail-on-error
-
-# Or via shell wrapper:
-bash scripts/run_validation_suite.sh
 ```
 *Output Report:* `VALIDATION_SCOREBOARD_ORCA2.md`
 
@@ -114,8 +111,5 @@ pisces-inidata test-reproduction \
     --test-dir output_eORCA1 \
     --ref-dir /path/to/ece3_eORCA1_reference \
     --mask domain/eORCA1/maskutil.nc
-
-# Or via shell wrapper:
-bash scripts/test_pipeline_reproduction.sh
 ```
 *Output Report:* `PIPELINE_REPRODUCTION_REPORT.md`

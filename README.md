@@ -51,18 +51,15 @@ pisces-inidata/
 │       ├── woa23.py             # WOA23 12-month depth profile builder
 │       ├── doc.py               # Panaïotis et al. (2024) DOC NetCDF generator
 │       ├── scoreboard.py        # Validation scoreboard generator
-│       └── reproduction.py      # EC-Earth3 baseline precision benchmark
+│       ├── reproduction.py      # EC-Earth3 baseline precision benchmark
+│       └── verify.py            # Non-blank output inspection & bounds checker
 ├── scripts/                     # Modular Bash execution pipeline
 │   ├── config.sh                # Environment, paths, and module configuration
-│   ├── download_sources.sh      # Thin wrapper calling pisces-inidata download
 │   ├── gen_grid_and_weights.sh  # Grid description and CDO remapping weights
-│   ├── format_tracers_3d.sh     # 3D tracers formatting and interpolation
-│   ├── format_surface_forcings.sh # Atmospheric dust, N-dep, PAR forcings
-│   ├── format_bathy_hydrofe.sh  # Bathymetric shelf factor & hydrothermal iron
-│   ├── format_rivers.sh         # Mass-conserving river nutrient discharge
-│   ├── launcher_pisces_inidata.sh # End-to-end Slurm master pipeline driver
-│   ├── run_validation_suite.sh  # Automated validation suite
-│   └── verify_outputs.py        # Output files integrity & statistical bounds checker
+│   ├── prepare_standard_sources.sh # Stage 1: Grid-agnostic source data standardization
+│   ├── remap_field.sh           # Stage 2: Pure CDO target remapping driver
+│   ├── prepare_sette_reference_orca2.sh # Ground-truth benchmark setup
+│   └── launcher_pisces_inidata.sh # End-to-end Slurm master pipeline driver
 ├── tests/                       # Unit tests (pytest)
 ├── sources.yaml                 # Active source dataset configuration (preset: ece4)
 ├── pyproject.toml               # Modern PEP 517/621 package metadata

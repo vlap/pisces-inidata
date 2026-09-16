@@ -6,7 +6,6 @@ Verifies units, physical ranges, spatial patterns, and boundary mass conservatio
 """
 
 import os
-import argparse
 from typing import Dict, Any, Optional, List
 import numpy as np
 import netCDF4 as nc
@@ -457,33 +456,3 @@ def run_validation_suite(
         print("Validation suite encountered critical failure(s).")
         return 1
     return 0
-
-
-def main():
-    parser = argparse.ArgumentParser(
-        description="Generate PISCES inidata validation scorecard against SETTE ground truth."
-    )
-    parser.add_argument("--test-dir", default="output_ORCA2", help="Directory with generated ORCA2 files")
-    parser.add_argument("--ref-dir", default="sette_reference_ORCA2", help="Directory with SETTE ORCA2 references")
-    parser.add_argument("--output-md", default="VALIDATION_SCOREBOARD_ORCA2.md", help="Output markdown scorecard path")
-    parser.add_argument(
-        "--preset",
-        choices=["ece4", "ece3", "official_sette"],
-        default="official_sette",
-        help="Configuration preset tested (default: official_sette)"
-    )
-    parser.add_argument("--fail-on-error", action="store_true", help="Exit with non-zero code on any failure")
-    args = parser.parse_args()
-
-    code = run_validation_suite(
-        test_dir=args.test_dir,
-        ref_dir=args.ref_dir,
-        output_md=args.output_md,
-        fail_on_error=args.fail_on_error,
-        preset=args.preset
-    )
-    exit(code)
-
-
-if __name__ == "__main__":
-    main()

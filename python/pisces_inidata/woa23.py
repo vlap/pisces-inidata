@@ -8,7 +8,6 @@ Dynamically handles variables with different monthly vertical resolutions
 Follows HPC login node memory constraints: writes chunked per-timestep.
 """
 
-import sys
 import os
 import netCDF4 as nc
 import numpy as np
@@ -107,10 +106,3 @@ def process_tracer(var_code, woa_dir, out_file):
             v_var[m_idx, :, :, :] = step_data
 
     print(f"Successfully generated combined WOA23 file: {out_file}")
-
-
-if __name__ == "__main__":
-    if len(sys.argv) < 4:
-        print("Usage: prepare_woa23_tracer.py <n|p|i|o> <woa_dir> <out_file>")
-        sys.exit(1)
-    process_tracer(sys.argv[1], sys.argv[2], sys.argv[3])

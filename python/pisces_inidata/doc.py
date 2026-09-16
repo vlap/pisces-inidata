@@ -11,7 +11,6 @@ Reference:
     SEANOE. https://doi.org/10.17882/101170
 """
 
-import sys
 import os
 import csv
 import urllib.request
@@ -194,9 +193,3 @@ def build_doc_climatology(raw_dir, output_nc):
         vdoc[:] = doc_4d
 
     print(f"Successfully generated {output_nc}")
-
-
-if __name__ == "__main__":
-    raw_dir = sys.argv[1] if len(sys.argv) > 1 else os.path.join(os.getcwd(), "pisces_raw_sources", "panaiotis2024_doc")
-    output_nc = sys.argv[2] if len(sys.argv) > 2 else os.path.join(raw_dir, "panaiotis2024_doc_1deg.nc")
-    build_doc_climatology(raw_dir, output_nc)

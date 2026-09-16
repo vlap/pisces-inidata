@@ -6,7 +6,6 @@ variables for pipeline shell scripts.
 """
 
 import os
-import sys
 try:
     import yaml
 except ImportError:
@@ -252,32 +251,3 @@ def export_env_commands(config: Dict[str, str]) -> str:
     for k, v in sorted(config.items()):
         lines.append(f"export {k}=\"{v}\"")
     return "\n".join(lines)
-
-
-if __name__ == "__main__":
-    preset_arg = None
-    cfg_file = "sources.yaml"
-    args = sys.argv[1:]
-
-    # Parse command line flags
-    export_mode = False
-    idx = 0
-    while idx < len(args):
-        arg = args[idx]
-        if arg in ("--export", "export"):
-            export_mode = True
-        elif arg == "--preset" and idx + 1 < len(args):
-            preset_arg = args[idx + 1]
-            idx += 1
-        elif not arg.startswith("-"):
-            cfg_file = arg
-        idx += 1
-
-    cfg = load_config(cfg_file, preset=preset_arg)
-    if export_mode:
-        print(export_env_commands(cfg))
-    else:
-        valid = validate_config(cfg)
-        for k, v in sorted(cfg.items()):
-            print(f"{k} = {v}")
-        sys.exit(0 if valid else 1)

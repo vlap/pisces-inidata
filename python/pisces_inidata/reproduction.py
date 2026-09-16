@@ -6,7 +6,6 @@ historical EC-Earth3 PISCES inidata on eORCA1.
 """
 
 import os
-import argparse
 from typing import Dict, Any, Optional, List
 import numpy as np
 import netCDF4 as nc
@@ -384,33 +383,3 @@ def run_pipeline_reproduction_test(
     if n_fail > 0 and fail_on_error:
         return 1
     return 0
-
-
-def main():
-    parser = argparse.ArgumentParser(description="PISCES Pipeline Precision & EC-Earth3 Baseline Reproduction Test")
-    parser.add_argument("--test-dir", required=True, help="Directory containing re-interpolated eORCA1 files")
-    parser.add_argument("--ref-dir", required=True, help="Directory containing official EC-Earth3 eORCA1 references")
-    parser.add_argument("--mask", help="Path to land-sea mask NetCDF file")
-    parser.add_argument("--output-md", default="PIPELINE_REPRODUCTION_REPORT.md", help="Path to write Markdown report")
-    parser.add_argument(
-        "--preset",
-        choices=["ece4", "ece3", "official_sette"],
-        default="official_sette",
-        help="Configuration preset tested (default: official_sette)"
-    )
-    parser.add_argument("--fail-on-error", action="store_true", help="Exit with non-zero code if any test fails")
-    args = parser.parse_args()
-
-    code = run_pipeline_reproduction_test(
-        test_dir=args.test_dir,
-        ref_dir=args.ref_dir,
-        mask_file=args.mask,
-        output_md=args.output_md,
-        preset=args.preset,
-        fail_on_error=args.fail_on_error
-    )
-    exit(code)
-
-
-if __name__ == "__main__":
-    main()
