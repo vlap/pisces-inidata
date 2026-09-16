@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+# ==============================================================================
+# Standalone executable entrypoint for pisces-inidata CLI
+# Ensures immediate portability without requiring pip installation in every env.
+# ==============================================================================
+set -euo pipefail
+BIN_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "${BIN_DIR}/.." && pwd)"
+export PYTHONPATH="${REPO_ROOT}/python:${PYTHONPATH:-}"
+exec python3 -m pisces_inidata.cli "$@"

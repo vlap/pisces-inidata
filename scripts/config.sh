@@ -85,6 +85,11 @@ GLODAP_VERSION="${GLODAP_VERSION:-v2.2016b}"
 # Load per-variable source configuration (sources.yaml) via Python exporter
 SCRIPT_DIR_CONFIG="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_DIR="$(cd "${SCRIPT_DIR_CONFIG}/.." && pwd)"
+
+# Ensure pisces-inidata binary and Python module are discoverable everywhere
+export PATH="${REPO_DIR}/bin:${HOME}/.local/bin:${PATH}"
+export PYTHONPATH="${REPO_DIR}/python:${PYTHONPATH:-}"
+
 if [ -f "${REPO_DIR}/sources.yaml" ]; then
     eval "$(python3 -m pisces_inidata.config export "${REPO_DIR}/sources.yaml" 2>/dev/null || pisces-inidata config --export --file "${REPO_DIR}/sources.yaml" 2>/dev/null || true)"
 elif [ -f "${SCRIPT_DIR_CONFIG}/sources.yaml" ]; then
