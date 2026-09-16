@@ -108,14 +108,18 @@ if [ "${SOURCE_MODE}" = "modern" ]; then
                 echo "Assembling WOA23 12-month profile for ${VAR}..."
                 pisces-inidata prepare-woa "${CODE}" "${WOA23_DIR}" "${SRC_12M}"
             fi
-            echo "[Step 1/3] Filling missing land values with cdo fillmiss..."
+            echo "[Step 1/3] Filling missing land values on source 1x1 grid..."
             cdo ${CDO_OPTS} fillmiss "${SRC_12M}" "${TMP_DIR}/filled.nc"
 
-            echo "[Step 2/3] Horizontal remapping to ${GRID_NAME}..."
-            cdo ${CDO_OPTS} remap,"${TARGET_GRID_NC}","${WEIGHTS_BILIN}" "${TMP_DIR}/filled.nc" "${TMP_DIR}/hremap.nc"
-
-            echo "[Step 3/3] Vertical interpolation to target L75 levels..."
-            cdo ${CDO_OPTS} ${CDO_COMPRESS} -intlevel,"${TARGET_LEVELS}" "${TMP_DIR}/hremap.nc" "${OUT_FILE}"
+            if [ -n "${TARGET_LEVELS:-}" ]; then
+                echo "[Step 2/3] Vertical interpolation to target levels on source grid..."
+                cdo ${CDO_OPTS} -intlevel,"${TARGET_LEVELS}" "${TMP_DIR}/filled.nc" "${TMP_DIR}/vint.nc"
+                echo "[Step 3/3] Horizontal remapping to ${GRID_NAME}..."
+                cdo ${CDO_OPTS} ${CDO_COMPRESS} remap,"${TARGET_GRID_NC}","${WEIGHTS_BILIN}" "${TMP_DIR}/vint.nc" "${OUT_FILE}"
+            else
+                echo "[Step 2/2] Horizontal remapping to ${GRID_NAME}..."
+                cdo ${CDO_OPTS} ${CDO_COMPRESS} remap,"${TARGET_GRID_NC}","${WEIGHTS_BILIN}" "${TMP_DIR}/filled.nc" "${OUT_FILE}"
+            fi
 
             # Create symlink matching observational product and EC-Earth4 setup-nemo.yml links
             ln -sfn "$(basename "${OUT_FILE}")" "${OUTPUT_DIR}/${VAR}_WOA23_monthly_${GRID_NAME}.nc"
@@ -145,20 +149,24 @@ if [ "${SOURCE_MODE}" = "modern" ]; then
             esac
 
             echo "Using GLODAP source file: ${SRC_FILE}"
-            echo "[Step 1/4] Setting missing values to -999. and selecting ${SRC_VAR}..."
+            echo "[Step 1/5] Setting missing values to -999. and selecting ${SRC_VAR}..."
             cdo ${CDO_OPTS} setmissval,-999. -selname,"${SRC_VAR}" "${SRC_FILE}" "${TMP_DIR}/sel.nc"
 
-            echo "[Step 2/4] Filling missing values with cdo fillmiss..."
+            echo "[Step 2/5] Filling missing values with cdo fillmiss..."
             cdo ${CDO_OPTS} fillmiss "${TMP_DIR}/sel.nc" "${TMP_DIR}/filled.nc"
 
-            echo "[Step 3/5] Horizontal remapping to ${GRID_NAME}..."
-            cdo ${CDO_OPTS} remap,"${TARGET_GRID_NC}","${WEIGHTS_BILIN}" "${TMP_DIR}/filled.nc" "${TMP_DIR}/hremap.nc"
+            echo "[Step 3/5] Extending abyssal depth to 6000m on source grid..."
+            pisces-inidata pad "${TMP_DIR}/filled.nc" "${TMP_DIR}/padded.nc" --depth 6000.0
 
-            echo "[Step 4/5] Extending abyssal depth to 6000m..."
-            pisces-inidata pad "${TMP_DIR}/hremap.nc" "${TMP_DIR}/hremap_padded.nc" --depth 6000.0
-
-            echo "[Step 5/5] Vertical interpolation to target L75 levels..."
-            cdo ${CDO_OPTS} ${CDO_COMPRESS} -intlevel,"${TARGET_LEVELS}" "${TMP_DIR}/hremap_padded.nc" "${OUT_FILE}"
+            if [ -n "${TARGET_LEVELS:-}" ]; then
+                echo "[Step 4/5] Vertical interpolation to target levels on source grid..."
+                cdo ${CDO_OPTS} -intlevel,"${TARGET_LEVELS}" "${TMP_DIR}/padded.nc" "${TMP_DIR}/vint.nc"
+                echo "[Step 5/5] Horizontal remapping to ${GRID_NAME}..."
+                cdo ${CDO_OPTS} ${CDO_COMPRESS} remap,"${TARGET_GRID_NC}","${WEIGHTS_BILIN}" "${TMP_DIR}/vint.nc" "${OUT_FILE}"
+            else
+                echo "[Step 4/4] Horizontal remapping to ${GRID_NAME}..."
+                cdo ${CDO_OPTS} ${CDO_COMPRESS} remap,"${TARGET_GRID_NC}","${WEIGHTS_BILIN}" "${TMP_DIR}/padded.nc" "${OUT_FILE}"
+            fi
 
             if [ "${SRC_VAR}" != "${OUT_VAR_NAME}" ]; then
                 ncrename -O -v "${SRC_VAR},${OUT_VAR_NAME}" "${OUT_FILE}"
@@ -182,25 +190,37 @@ if [ "${SOURCE_MODE}" = "modern" ]; then
                 echo "[Step 1/4] Filling missing values with cdo fillmiss..."
                 cdo ${CDO_OPTS} fillmiss "${SRC_FILE}" "${TMP_DIR}/filled.nc"
 
-                echo "[Step 2/4] Horizontal remapping to ${GRID_NAME}..."
-                cdo ${CDO_OPTS} remap,"${TARGET_GRID_NC}","${WEIGHTS_BILIN}" "${TMP_DIR}/filled.nc" "${TMP_DIR}/hremap.nc"
+                echo "[Step 2/4] Extending abyssal depth to 6000m on source grid..."
+                pisces-inidata pad "${TMP_DIR}/filled.nc" "${TMP_DIR}/padded.nc" --depth 6000.0
 
-                echo "[Step 3/4] Extending abyssal depth to 6000m..."
-                pisces-inidata pad "${TMP_DIR}/hremap.nc" "${TMP_DIR}/hremap_padded.nc" --depth 6000.0
-
-                echo "[Step 4/4] Vertical interpolation to target levels..."
-                cdo ${CDO_OPTS} ${CDO_COMPRESS} -intlevel,"${TARGET_LEVELS}" "${TMP_DIR}/hremap_padded.nc" "${OUT_FILE}"
+                if [ -n "${TARGET_LEVELS:-}" ]; then
+                    echo "[Step 3/4] Vertical interpolation to target levels on source grid..."
+                    cdo ${CDO_OPTS} -intlevel,"${TARGET_LEVELS}" "${TMP_DIR}/padded.nc" "${TMP_DIR}/vint.nc"
+                    echo "[Step 4/4] Horizontal remapping to ${GRID_NAME}..."
+                    cdo ${CDO_OPTS} ${CDO_COMPRESS} remap,"${TARGET_GRID_NC}","${WEIGHTS_BILIN}" "${TMP_DIR}/vint.nc" "${OUT_FILE}"
+                else
+                    echo "[Step 3/3] Horizontal remapping to ${GRID_NAME}..."
+                    cdo ${CDO_OPTS} ${CDO_COMPRESS} remap,"${TARGET_GRID_NC}","${WEIGHTS_BILIN}" "${TMP_DIR}/padded.nc" "${OUT_FILE}"
+                fi
                 ln -sfn "$(basename "${OUT_FILE}")" "${OUTPUT_DIR}/DOC_Panaiotis2024_monthly_${GRID_NAME}.nc"
 
             else
                 # sette_nomask (Hansell 2009)
                 SRC_FILE="${RAW_DIR}/official_v5.0.0/data_DOC_nomask.nc"
-                echo "[Step 1/3] Horizontal remapping to ${GRID_NAME}..."
-                cdo ${CDO_OPTS} remap,"${TARGET_GRID_NC}","${WEIGHTS_BILIN}" -selname,DOC "${SRC_FILE}" "${TMP_DIR}/hremap.nc"
-                echo "[Step 2/3] Extending abyssal depth to 6000m..."
-                pisces-inidata pad "${TMP_DIR}/hremap.nc" "${TMP_DIR}/hremap_padded.nc" --depth 6000.0
-                echo "[Step 3/3] Vertical interpolation to target levels..."
-                cdo ${CDO_OPTS} ${CDO_COMPRESS} -intlevel,"${TARGET_LEVELS}" "${TMP_DIR}/hremap_padded.nc" "${OUT_FILE}"
+                echo "[Step 1/3] Selecting DOC variable..."
+                cdo ${CDO_OPTS} -selname,DOC "${SRC_FILE}" "${TMP_DIR}/src_sel.nc"
+                echo "[Step 2/3] Extending abyssal depth to 6000m on source grid..."
+                pisces-inidata pad "${TMP_DIR}/src_sel.nc" "${TMP_DIR}/padded.nc" --depth 6000.0
+
+                if [ -n "${TARGET_LEVELS:-}" ] && [ "${GRID_NAME}" != "ORCA2" ]; then
+                    echo "[Step 3/4] Vertical interpolation to target levels on source grid..."
+                    cdo ${CDO_OPTS} -intlevel,"${TARGET_LEVELS}" "${TMP_DIR}/padded.nc" "${TMP_DIR}/vint.nc"
+                    echo "[Step 4/4] Horizontal remapping to ${GRID_NAME}..."
+                    cdo ${CDO_OPTS} ${CDO_COMPRESS} remap,"${TARGET_GRID_NC}","${WEIGHTS_BILIN}" "${TMP_DIR}/vint.nc" "${OUT_FILE}"
+                else
+                    echo "[Step 3/3] Horizontal remapping to ${GRID_NAME}..."
+                    cdo ${CDO_OPTS} ${CDO_COMPRESS} remap,"${TARGET_GRID_NC}","${WEIGHTS_BILIN}" "${TMP_DIR}/padded.nc" "${OUT_FILE}"
+                fi
             fi
 
             ln -sfn "$(basename "${OUT_FILE}")" "${OUTPUT_DIR}/${LINK_NAME}"
@@ -214,12 +234,19 @@ if [ "${SOURCE_MODE}" = "modern" ]; then
                 echo "Remapping Fer to ORCA2 (native vertical levels match)..."
                 cdo ${CDO_OPTS} ${CDO_COMPRESS} remap,"${TARGET_GRID_NC}","${WEIGHTS_BILIN}" -selname,Fer "${SRC_FILE}" "${OUT_FILE}"
             else
-                echo "[Step 1/3] Horizontal remapping to ${GRID_NAME}..."
-                cdo ${CDO_OPTS} remap,"${TARGET_GRID_NC}","${WEIGHTS_BILIN}" -selname,Fer "${SRC_FILE}" "${TMP_DIR}/hremap.nc"
-                echo "[Step 2/3] Extending abyssal depth to 6000m..."
-                pisces-inidata pad "${TMP_DIR}/hremap.nc" "${TMP_DIR}/hremap_padded.nc" --depth 6000.0
-                echo "[Step 3/3] Vertical interpolation to target levels..."
-                cdo ${CDO_OPTS} ${CDO_COMPRESS} -intlevel,"${TARGET_LEVELS}" "${TMP_DIR}/hremap_padded.nc" "${OUT_FILE}"
+                echo "[Step 1/3] Selecting Fer variable..."
+                cdo ${CDO_OPTS} -selname,Fer "${SRC_FILE}" "${TMP_DIR}/src_sel.nc"
+                echo "[Step 2/3] Extending abyssal depth to 6000m on source grid..."
+                pisces-inidata pad "${TMP_DIR}/src_sel.nc" "${TMP_DIR}/padded.nc" --depth 6000.0
+                if [ -n "${TARGET_LEVELS:-}" ]; then
+                    echo "[Step 3/4] Vertical interpolation to target levels on source grid..."
+                    cdo ${CDO_OPTS} -intlevel,"${TARGET_LEVELS}" "${TMP_DIR}/padded.nc" "${TMP_DIR}/vint.nc"
+                    echo "[Step 4/4] Horizontal remapping to ${GRID_NAME}..."
+                    cdo ${CDO_OPTS} ${CDO_COMPRESS} remap,"${TARGET_GRID_NC}","${WEIGHTS_BILIN}" "${TMP_DIR}/vint.nc" "${OUT_FILE}"
+                else
+                    echo "[Step 3/3] Horizontal remapping to ${GRID_NAME}..."
+                    cdo ${CDO_OPTS} ${CDO_COMPRESS} remap,"${TARGET_GRID_NC}","${WEIGHTS_BILIN}" "${TMP_DIR}/padded.nc" "${OUT_FILE}"
+                fi
             fi
 
             ln -sfn "$(basename "${OUT_FILE}")" "${OUTPUT_DIR}/${LINK_NAME}"
@@ -243,9 +270,13 @@ elif [ "${SOURCE_MODE}" = "official_regular" ]; then
     SRC_FILE="${RAW_DIR}/official_v5.0.0/data_${FILE_VAR}_nomask.nc"
 
     cdo ${CDO_OPTS} -selname,"${INTERNAL_VAR}" "${SRC_FILE}" "${TMP_DIR}/src_sel.nc"
-    cdo ${CDO_OPTS} remap,"${TARGET_GRID_NC}","${WEIGHTS_BILIN}" "${TMP_DIR}/src_sel.nc" "${TMP_DIR}/hremap.nc"
-    pisces-inidata pad "${TMP_DIR}/hremap.nc" "${TMP_DIR}/hremap_padded.nc" --depth 6000.0
-    cdo ${CDO_OPTS} ${CDO_COMPRESS} -intlevel,"${TARGET_LEVELS}" "${TMP_DIR}/hremap_padded.nc" "${OUT_FILE}"
+    pisces-inidata pad "${TMP_DIR}/src_sel.nc" "${TMP_DIR}/padded.nc" --depth 6000.0
+    if [ -n "${TARGET_LEVELS:-}" ] && [ "${GRID_NAME}" != "ORCA2" ]; then
+        cdo ${CDO_OPTS} -intlevel,"${TARGET_LEVELS}" "${TMP_DIR}/padded.nc" "${TMP_DIR}/vint.nc"
+        cdo ${CDO_OPTS} ${CDO_COMPRESS} remap,"${TARGET_GRID_NC}","${WEIGHTS_BILIN}" "${TMP_DIR}/vint.nc" "${OUT_FILE}"
+    else
+        cdo ${CDO_OPTS} ${CDO_COMPRESS} remap,"${TARGET_GRID_NC}","${WEIGHTS_BILIN}" "${TMP_DIR}/padded.nc" "${OUT_FILE}"
+    fi
 fi
 
 if [ "${SOURCE_MODE}" != "modern" ]; then
