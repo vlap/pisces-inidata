@@ -6,11 +6,8 @@ default scratch and domain paths) to decouple HPC cluster specifics from scripts
 
 import os
 import socket
+import yaml
 from typing import Dict, Any, List, Optional
-try:
-    import yaml
-except ImportError:
-    yaml = None
 
 GENERIC_PLATFORM_PROFILE: Dict[str, Any] = {
     "description": "Generic Linux Workstation or Cluster",
@@ -47,7 +44,7 @@ def load_all_platforms(config_path: Optional[str] = None) -> Dict[str, Dict[str,
     resolved_path = _find_platforms_yaml(config_path)
     profiles: Dict[str, Dict[str, Any]] = {}
 
-    if resolved_path and os.path.exists(resolved_path) and yaml is not None:
+    if resolved_path and os.path.exists(resolved_path):
         try:
             with open(resolved_path, 'r', encoding='utf-8') as f:
                 data = yaml.safe_load(f) or {}

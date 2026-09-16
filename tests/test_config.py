@@ -63,9 +63,7 @@ def test_export_env_commands():
     assert 'export PRODUCT_DOC="panaiotis2024"' in export_str
 
 
-def test_fallback_yaml_parsing_without_pyyaml(monkeypatch):
-    import pisces_inidata.config as config_mod
-    monkeypatch.setattr(config_mod, "yaml", None)
+def test_yaml_comments_and_formatting():
     content = """
 tracers_3d:
   NO3: woa2009 # test inline comment
@@ -78,7 +76,7 @@ boundary_forcings:
         f_name = f.name
 
     try:
-        cfg = config_mod.load_config(f_name)
+        cfg = load_config(f_name)
         assert cfg['PRODUCT_NO3'] == 'woa2009'
         assert cfg['PRODUCT_TALK'] == 'glodap_v1'
         assert cfg['PRODUCT_DUST'] == 'sette_orca2'

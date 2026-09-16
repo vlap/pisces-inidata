@@ -30,6 +30,7 @@ def test_check_python_packages():
     names = [r[0] for r in results]
     assert "netCDF4" in names
     assert "numpy" in names
+    assert "yaml" in names
     for name, ok, ver in results:
         assert ok is True
 
@@ -41,7 +42,7 @@ def test_check_disk_space():
     assert req_gb == 2.0
 
     # With huge required disk space, should fail
-    with patch.dict("pisces_inidata.check.MIN_DISK_SPACE_GB", {"ORCA2": 999999.0}):
+    with patch("pisces_inidata.check.load_grid_config", return_value={"disk_space_gb": 999999.0}):
         ok_fail, _, _ = check_disk_space(".", "ORCA2")
         assert ok_fail is False
 

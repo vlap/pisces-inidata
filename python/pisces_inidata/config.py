@@ -6,40 +6,8 @@ variables for pipeline shell scripts.
 """
 
 import os
-try:
-    import yaml
-except ImportError:
-    yaml = None
+import yaml
 from typing import Dict, Optional
-
-
-def _parse_simple_yaml(text: str) -> dict:
-    """
-    Minimal fallback parser for simple two-level key-value YAML files (such as sources.yaml)
-    when PyYAML is not installed in the cluster environment.
-    """
-    result = {}
-    current_section = None
-    for raw_line in text.splitlines():
-        line = raw_line.strip()
-        if not line or line.startswith('#'):
-            continue
-        if '#' in line:
-            line = line.split('#', 1)[0].strip()
-        if not line:
-            continue
-        if line.endswith(':'):
-            current_section = line[:-1].strip()
-            result[current_section] = {}
-        elif ':' in line:
-            k, v = line.split(':', 1)
-            k = k.strip()
-            v = v.strip().strip("'\"")
-            if current_section is not None:
-                result[current_section][k] = v
-            else:
-                result[k] = v
-    return result
 
 
 PRESETS = {
@@ -187,20 +155,12 @@ def load_config(config_path: str = "sources.yaml", preset: Optional[str] = None)
 
     data = {}
     if resolved_path:
-        with open(resolved_path, 'r', encoding='utf-8') as f:
-            content = f.read()
-        if yaml is not None:
-            try:
-                data = yaml.safe_load(content) or {}
-            except Exception as e:
-                print(f"Warning: Failed to parse YAML from {resolved_path}: {e}")
-                data = {}
-        else:
-            try:
-                data = _parse_simple_yaml(content)
-            except Exception as e:
-                print(f"Warning: Failed to parse configuration from {resolved_path}: {e}")
-                data = {}
+        try:
+            with open(resolved_path, 'r', encoding='utf-8') as f:
+                data = yaml.safe_load(f) or {}
+        except Exception as e:
+            print(f"Warning: Failed to parse YAML from {resolved_path}: {e}")
+            data = {}
 
     # Determine active preset
     active_preset = preset or os.environ.get('PRESET') or os.environ.get('INIDATA_PRESET')

@@ -13,13 +13,7 @@ from pisces_inidata.grids import load_grid_config
 
 REQUIRED_BINARIES = ["cdo", "ncks", "ncap2", "ncatted"]
 OPTIONAL_BINARIES = ["sbatch", "ncdump"]
-REQUIRED_PYTHON_PKGS = ["netCDF4", "numpy"]
-
-MIN_DISK_SPACE_GB = {
-    "ORCA2": 2.0,
-    "eORCA1": 10.0,
-    "eORCA025": 40.0
-}
+REQUIRED_PYTHON_PKGS = ["netCDF4", "numpy", "yaml"]
 
 
 def check_binaries() -> List[Tuple[str, bool, str, bool]]:
@@ -73,7 +67,7 @@ def check_disk_space(target_path: str, grid_name: str) -> Tuple[bool, float, flo
     Returns: (is_sufficient, free_gb, required_gb)
     """
     grid_cfg = load_grid_config(grid_name)
-    req_gb = MIN_DISK_SPACE_GB.get(grid_name, grid_cfg.get("disk_space_gb", 10.0))
+    req_gb = float(grid_cfg.get("disk_space_gb", 10.0))
     check_dir = target_path
     while check_dir and not os.path.exists(check_dir):
         parent = os.path.dirname(check_dir)

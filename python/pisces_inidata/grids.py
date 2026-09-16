@@ -5,11 +5,8 @@ disk space limits, and remapping behaviors for target NEMO grids without hardcod
 """
 
 import os
+import yaml
 from typing import Dict, Any, List, Optional
-try:
-    import yaml
-except ImportError:
-    yaml = None
 
 GENERIC_DEFAULT_PROFILE: Dict[str, Any] = {
     "description": "Generic NEMO target grid",
@@ -45,7 +42,7 @@ def load_all_grids(config_path: Optional[str] = None) -> Dict[str, Dict[str, Any
     profiles: Dict[str, Dict[str, Any]] = {}
     resolved_path = _find_grids_yaml(config_path)
 
-    if resolved_path and os.path.exists(resolved_path) and yaml is not None:
+    if resolved_path and os.path.exists(resolved_path):
         try:
             with open(resolved_path, 'r', encoding='utf-8') as f:
                 data = yaml.safe_load(f) or {}
