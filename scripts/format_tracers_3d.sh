@@ -151,23 +151,20 @@ if [ "${SOURCE_MODE}" = "modern" ]; then
             esac
 
             echo "Using GLODAP source file: ${SRC_FILE}"
-            echo "[Step 1/5] Setting missing values to -999. and selecting ${SRC_VAR}..."
-            cdo ${CDO_OPTS} setmissval,-999. -selname,"${SRC_VAR}" "${SRC_FILE}" "${TMP_DIR}/sel.nc"
+            echo "[Step 1/4] Standardizing GLODAP vertical coordinate and abyssal padding..."
+            pisces-inidata prepare-glodap "${SRC_VAR}" "${SRC_FILE}" "${TMP_DIR}/clean.nc"
 
-            echo "[Step 2/5] Filling missing values with cdo fillmiss..."
-            cdo ${CDO_OPTS} fillmiss "${TMP_DIR}/sel.nc" "${TMP_DIR}/filled.nc"
-
-            echo "[Step 3/5] Extending abyssal depth to 6000m on source grid..."
-            pisces-inidata pad "${TMP_DIR}/filled.nc" "${TMP_DIR}/padded.nc" --depth 6000.0
+            echo "[Step 2/4] Filling missing values with cdo fillmiss..."
+            cdo ${CDO_OPTS} fillmiss "${TMP_DIR}/clean.nc" "${TMP_DIR}/filled.nc"
 
             if [ -n "${TARGET_LEVELS:-}" ]; then
-                echo "[Step 4/5] Vertical interpolation to target levels on source grid..."
-                cdo ${CDO_OPTS} -intlevel,"${TARGET_LEVELS}" "${TMP_DIR}/padded.nc" "${TMP_DIR}/vint.nc"
-                echo "[Step 5/5] Horizontal remapping to ${GRID_NAME}..."
+                echo "[Step 3/4] Vertical interpolation to target levels on source grid..."
+                cdo ${CDO_OPTS} -intlevel,"${TARGET_LEVELS}" "${TMP_DIR}/filled.nc" "${TMP_DIR}/vint.nc"
+                echo "[Step 4/4] Horizontal remapping to ${GRID_NAME}..."
                 cdo ${CDO_OPTS} ${CDO_COMPRESS} remap,"${TARGET_GRID_NC}","${WEIGHTS_BILIN}" "${TMP_DIR}/vint.nc" "${OUT_FILE}"
             else
-                echo "[Step 4/4] Horizontal remapping to ${GRID_NAME}..."
-                cdo ${CDO_OPTS} ${CDO_COMPRESS} remap,"${TARGET_GRID_NC}","${WEIGHTS_BILIN}" "${TMP_DIR}/padded.nc" "${OUT_FILE}"
+                echo "[Step 3/3] Horizontal remapping to ${GRID_NAME}..."
+                cdo ${CDO_OPTS} ${CDO_COMPRESS} remap,"${TARGET_GRID_NC}","${WEIGHTS_BILIN}" "${TMP_DIR}/filled.nc" "${OUT_FILE}"
             fi
 
             if [ "${SRC_VAR}" != "${OUT_VAR_NAME}" ]; then

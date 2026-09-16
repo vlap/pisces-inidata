@@ -35,6 +35,11 @@ def cmd_prepare_doc(args):
     build_doc_climatology(args.raw_dir, args.out_file)
 
 
+def cmd_prepare_glodap(args):
+    from pisces_inidata.glodap import prepare_glodap_tracer
+    prepare_glodap_tracer(args.src_file, args.var_name, args.out_file)
+
+
 def cmd_run(args):
     repo_root = get_repo_root()
     script = os.path.join(repo_root, 'scripts', 'launcher_pisces_inidata.sh')
@@ -305,6 +310,16 @@ def main():
     doc_parser.add_argument("raw_dir", help="Directory containing or downloading DOC CSVs")
     doc_parser.add_argument("out_file", help="Path to output 12-month 3D NetCDF")
     doc_parser.set_defaults(func=cmd_prepare_doc)
+
+    # Command: prepare-glodap
+    glodap_parser = subparsers.add_parser(
+        "prepare-glodap",
+        help="Standardize GLODAP vertical coordinate and pad to 6000m"
+    )
+    glodap_parser.add_argument("var_name", help="GLODAP variable name (TAlk, TCO2, PI_TCO2)")
+    glodap_parser.add_argument("src_file", help="Path to raw GLODAP NetCDF file")
+    glodap_parser.add_argument("out_file", help="Path to standardized output NetCDF file")
+    glodap_parser.set_defaults(func=cmd_prepare_glodap)
 
     args = parser.parse_args()
     if hasattr(args, "func"):
