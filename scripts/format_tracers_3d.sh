@@ -76,6 +76,8 @@ resolve_glodap_source() {
         v2.2016b|v2|2)
             candidate="${GLODAP_V2_DIR}/GLODAPv2.2016b.${param}.nc"
             if [ -f "${candidate}" ]; then echo "${candidate}"; return 0; fi
+            candidate="${GLODAP_V2_DIR}/GLODAPv2.2016b_MappedClimatologies/GLODAPv2.2016b.${param}.nc"
+            if [ -f "${candidate}" ]; then echo "${candidate}"; return 0; fi
             ;;
         v1.1|v1|1)
             candidate="${GLODAP_V1_DIR}/glodap_v1.${param}.nc"
