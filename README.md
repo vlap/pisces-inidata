@@ -143,11 +143,11 @@ pisces-inidata download --dry-run
 ### 4. Generate Initial Conditions
 The pipeline cleanly decouples **Stage 1 (Source Standardization)** from **Stage 2 (Target Remapping)**:
 ```bash
-# End-to-end generation for ORCA2 (or eORCA1, eORCA025):
-pisces-inidata run --grid ORCA2
+# End-to-end production for eORCA1 (or ORCA2, eORCA025):
+pisces-inidata produce --grid eORCA1
 
 # Or for arbitrary grids with custom domain:
-pisces-inidata run --grid eORCA1 --domain-dir /path/to/nemo/domain
+pisces-inidata produce --grid eORCA1 --domain-dir /path/to/nemo/domain
 
 # Prepare Stage 1 regular standardized sources only (cached and shared across grids):
 pisces-inidata prepare-sources

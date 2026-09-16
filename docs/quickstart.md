@@ -53,8 +53,8 @@ pisces-inidata check --grid eORCA1
 # 3. Download & prepare sources
 pisces-inidata download --preset ece4 --prepare
 
-# 4. Run end-to-end generation
-pisces-inidata run --grid eORCA1
+# 4. Produce inidata
+pisces-inidata produce --grid eORCA1
 
 # 5. Verify outputs
 pisces-inidata verify --grid eORCA1

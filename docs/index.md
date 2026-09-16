@@ -74,8 +74,8 @@ pisces-inidata check --grid ORCA2
 ### 3. Configure & Execute Pipeline
 Select preferred source products in `sources.yaml` (or override via environment variables), then run:
 ```bash
-# Generate inidata on ORCA2 (or eORCA1, eORCA025)
-pisces-inidata run --grid ORCA2 --domain-dir /path/to/nemo/domain
+# Produce inidata on eORCA1 (or ORCA2, eORCA025)
+pisces-inidata produce --grid eORCA1 --domain-dir /path/to/nemo/domain
 ```
 
 ### 4. Verify & Validate

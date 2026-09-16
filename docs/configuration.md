@@ -53,7 +53,7 @@ Presets can be configured in multiple ways:
 4. **Via CLI `--preset` or `PRESET` environment variable:**
    ```bash
    pisces-inidata info --preset ece3
-   pisces-inidata run --grid eORCA1 --preset my_experiment
+   pisces-inidata produce --grid eORCA1 --preset my_experiment
    pisces-inidata config --preset official_sette --export
    ```
 
@@ -117,20 +117,20 @@ pisces-inidata check --grid eORCA1 --preset ece3
 - Confirms presence of target domain files (`domain_cfg.nc`, `maskutil.nc`).
 - Checks raw input catalog and verifies filesystem storage capacity.
 
-### `pisces-inidata run`
+### `pisces-inidata produce`
 Executes initial conditions generation pipeline (Stage 1 ETL followed by Stage 2 parallel remapping):
 ```bash
-# Generate inidata on ORCA2 (or eORCA1, eORCA025)
-pisces-inidata run --grid ORCA2 --domain-dir /path/to/nemo/domain
+# Produce inidata on eORCA1 (or ORCA2, eORCA025)
+pisces-inidata produce --grid eORCA1 --domain-dir /path/to/nemo/domain
 
-# Run with specific preset:
-pisces-inidata run --grid eORCA1 --preset ece3
+# Produce with specific preset:
+pisces-inidata produce --grid eORCA1 --preset ece3
 
 # Run only Stage 1 source preparation:
-pisces-inidata run --grid eORCA1 --stage stage1
+pisces-inidata produce --grid eORCA1 --stage stage1
 
 # Dry-run inspection of generated batch jobs:
-pisces-inidata run --grid eORCA025 --dry-run
+pisces-inidata produce --grid eORCA025 --dry-run
 ```
 
 ### `pisces-inidata prepare-sources`

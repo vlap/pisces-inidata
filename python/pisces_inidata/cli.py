@@ -131,10 +131,6 @@ def cmd_produce(args):
     sys.exit(res.returncode)
 
 
-def cmd_run(args):
-    cmd_produce(args)
-
-
 def get_default_workspace() -> str:
     """Resolves default PISCES workspace from environment or platform profile."""
     if os.environ.get("PISCES_WORKSPACE"):
@@ -463,7 +459,8 @@ def main():
 
     # Command: produce
     produce_parser = subparsers.add_parser(
-        "produce", parents=[make_config_parent(), make_domain_parent(), make_dry_run_parent()],
+        "produce", aliases=["run"],
+        parents=[make_config_parent(), make_domain_parent(), make_dry_run_parent()],
         help="Produce PISCES initial conditions for target grid (defaults: eORCA1, stage2 parallel remapping)"
     )
     add_grid_argument(produce_parser, default="eORCA1")
@@ -472,18 +469,6 @@ def main():
         help="Pipeline execution stage (default: stage2 [parallel remapping])"
     )
     produce_parser.set_defaults(func=cmd_produce)
-
-    # Command: run
-    run_parser = subparsers.add_parser(
-        "run", parents=[make_config_parent(), make_domain_parent(), make_dry_run_parent()],
-        help="Run end-to-end PISCES initial conditions generation"
-    )
-    add_grid_argument(run_parser, default="ORCA2")
-    run_parser.add_argument(
-        "--stage", choices=["all", "stage1", "stage2"], default="all",
-        help="Pipeline execution stage: 'all' (default), 'stage1' (prepare sources), or 'stage2' (remap)"
-    )
-    run_parser.set_defaults(func=cmd_run)
 
     # Command: validate
     val_parser = subparsers.add_parser(
