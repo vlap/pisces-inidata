@@ -10,6 +10,7 @@ from typing import Dict, Any, Optional, List
 import numpy as np
 import netCDF4 as nc
 from pisces_inidata.verify import find_var, VAR_ALIASES
+from pisces_inidata.diagnostics import format_markdown_table
 
 ALIASES = VAR_ALIASES
 
@@ -228,14 +229,12 @@ def format_reproduction_report(
         "faithfully reproduces the official EC-Earth3 baseline reference datasets."
     )
     lines.append("")
-    lines.append(
-        "| Variable | Raw Source Grid | Mean Ref | Rel RMSE (%) | Pearson $r$ | "
-        "$\\Delta$ Inventory (%) | Status |"
-    )
-    lines.append(
-        "| :--- | :--- | :---: | :---: | :---: | :---: | :---: |"
-    )
-
+    headers = [
+        "Variable", "Raw Source Grid", "Mean Ref", "Rel RMSE (%)", "Pearson $r$",
+        "$\\Delta$ Inventory (%)", "Status"
+    ]
+    alignments = ["left", "left", "center", "center", "center", "center", "center"]
+    rows = []
     for r in results:
         v = r['var']
         source = r.get('source_nomask', 'nomask regular')
@@ -246,10 +245,12 @@ def format_reproduction_report(
         passed = r.get('passed', True)
         stat = "**PASS**" if passed else "<span style='color:red;'>**FAIL**</span>"
 
-        lines.append(
-            f"| **{v}** | `{source}` | {mean_ref_str} | {rel_rmse_str} | "
-            f"{r_str} | {inv_str} | {stat} |"
-        )
+        rows.append([
+            f"**{v}**", f"`{source}`", mean_ref_str, rel_rmse_str,
+            r_str, inv_str, stat
+        ])
+
+    lines.append(format_markdown_table(headers, rows, alignments))
 
     lines.append("")
     lines.append("### Scientific Validation Conclusions:")

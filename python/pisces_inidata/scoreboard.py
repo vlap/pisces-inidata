@@ -10,6 +10,7 @@ from typing import Dict, Any, Optional, List
 import numpy as np
 import netCDF4 as nc
 from pisces_inidata.verify import find_var, VAR_ALIASES
+from pisces_inidata.diagnostics import compute_array_stats, format_markdown_table
 
 ALIASES = VAR_ALIASES
 
@@ -174,33 +175,14 @@ def compute_diagnostics(test_file: str, ref_file: str, var_key: str) -> Dict[str
                 'issue': 'No valid ocean cells found'
             }
 
-        diff = valid_test - valid_ref
-        abs_diff = np.abs(diff)
-
-        mean_ref = float(np.mean(valid_ref))
-        mean_test = float(np.mean(valid_test))
-        min_test = float(np.min(valid_test))
-        max_test = float(np.max(valid_test))
-        min_ref = float(np.min(valid_ref))
-        max_ref = float(np.max(valid_ref))
-
-        rmse = float(np.sqrt(np.mean(diff ** 2)))
-        mae = float(np.mean(abs_diff))
-        mbe = float(np.mean(diff))
-        max_diff = float(np.max(abs_diff))
-
-        nrmse_pct = (rmse / abs(mean_ref) * 100.0) if abs(mean_ref) > 1e-12 else np.nan
-        rel_bias_pct = (mbe / abs(mean_ref) * 100.0) if abs(mean_ref) > 1e-12 else np.nan
-
-        std_test = np.std(valid_test)
-        std_ref = np.std(valid_ref)
-        if std_test > 1e-12 and std_ref > 1e-12:
-            r = float(np.corrcoef(valid_test, valid_ref)[0, 1])
-        else:
-            r = 1.0 if rmse < 1e-6 else np.nan
+        stats = compute_array_stats(valid_test, valid_ref)
+        mean_ref = stats['mean_ref']
+        mean_test = stats['mean_test']
+        min_test = stats['min_test']
+        scale_ratio = stats['scale_ratio']
+        r = stats['pearson_r']
 
         # Sanity Checks: Units, Coordinates, Sign
-        scale_ratio = (mean_test / mean_ref) if abs(mean_ref) > 1e-12 else 1.0
         scale_error = (scale_ratio > 10.0 or scale_ratio < 0.10) if abs(mean_ref) > 1e-12 else False
         negative_error = (min_test < -1e-4)
         inverted_error = (not np.isnan(r) and r < -0.1)
@@ -228,19 +210,19 @@ def compute_diagnostics(test_file: str, ref_file: str, var_key: str) -> Dict[str
             'var': var_key,
             'valid_count': n_valid,
             'coverage_pct': coverage_pct,
-            'rmse': rmse,
-            'nrmse_pct': nrmse_pct,
-            'mae': mae,
-            'mbe': mbe,
-            'rel_bias_pct': rel_bias_pct,
+            'rmse': stats['rmse'],
+            'nrmse_pct': stats['rel_rmse_pct'],
+            'mae': stats['mae'],
+            'mbe': stats['mbe'],
+            'rel_bias_pct': (stats['mbe'] / abs(mean_ref) * 100.0) if abs(mean_ref) > 1e-12 else np.nan,
             'r': r,
-            'max_diff': max_diff,
+            'max_diff': stats['max_diff'],
             'mean_ref': mean_ref,
             'mean_test': mean_test,
             'min_test': min_test,
-            'max_test': max_test,
-            'min_ref': min_ref,
-            'max_ref': max_ref,
+            'max_test': stats['max_test'],
+            'min_ref': stats['min_ref'],
+            'max_ref': stats['max_ref'],
             'scale_ratio': scale_ratio,
             'unit': UNITS.get(var_key, ''),
             'status': status,
@@ -296,14 +278,12 @@ def generate_scoreboard(
     lines.append("")
     lines.append("## Supported Products Scorecard (3D Tracers)")
     lines.append("")
-    lines.append(
-        "| Variable | Product Evaluated | Unit | Physical Range [min, max] | Mean Ratio | "
-        "Pearson $r$ | Rel RMSE (%) | Status |"
-    )
-    lines.append(
-        "| :--- | :--- | :--- | :---: | :---: | :---: | :---: | :---: |"
-    )
-
+    headers = [
+        "Variable", "Product Evaluated", "Unit", "Physical Range [min, max]",
+        "Mean Ratio", "Pearson $r$", "Rel RMSE (%)", "Status"
+    ]
+    alignments = ["left", "left", "left", "center", "center", "center", "center", "center"]
+    rows = []
     for r in results:
         r_val = f"**{r['r']:.4f}**" if (not np.isnan(r['r']) and r['r'] >= 0.85) else (
             f"{r['r']:.4f}" if not np.isnan(r['r']) else "N/A"
@@ -317,10 +297,12 @@ def generate_scoreboard(
             f"**{r['status']}**" if r['status'] == 'WARN' else f"<span style='color:red;'>**{r['status']}**</span>"
         )
 
-        lines.append(
-            f"| **{r['var']}** | `{prod}` | {r['unit']} | {range_str} | {ratio_str} | "
-            f"{r_val} | {nrmse_val} | {stat_str} |"
-        )
+        rows.append([
+            f"**{r['var']}**", f"`{prod}`", r['unit'], range_str, ratio_str,
+            r_val, nrmse_val, stat_str
+        ])
+
+    lines.append(format_markdown_table(headers, rows, alignments))
 
     lines.append("")
     lines.append("### Diagnostic Notes:")

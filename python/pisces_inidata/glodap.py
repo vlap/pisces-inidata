@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Optional, Union
 import netCDF4 as nc
 import numpy as np
+from pisces_inidata.provenance import create_cf_coordinates
 
 
 def resolve_glodap_source(
@@ -74,28 +75,13 @@ def prepare_glodap_tracer(src_path: str, var_name: str, out_path: str) -> None:
             depths = np.append(depths, np.float32(6000.0))
             pad_bottom = True
 
-        # Create dimensions
-        dst.createDimension('depth', len(depths))
-        dst.createDimension('lat', len(src.dimensions['lat']))
-        dst.createDimension('lon', len(src.dimensions['lon']))
-
-        # Create CF-compliant coordinate variables
-        v_depth = dst.createVariable('depth', 'f4', ('depth',))
-        v_depth.units = 'm'
-        v_depth.positive = 'down'
-        v_depth.axis = 'Z'
-        v_depth.standard_name = 'depth'
-        v_depth[:] = depths
-
-        v_lat = dst.createVariable('lat', 'f4', ('lat',))
-        v_lat.units = 'degrees_north'
-        v_lat.standard_name = 'latitude'
-        v_lat[:] = src.variables['lat'][:]
-
-        v_lon = dst.createVariable('lon', 'f4', ('lon',))
-        v_lon.units = 'degrees_east'
-        v_lon.standard_name = 'longitude'
-        v_lon[:] = src.variables['lon'][:]
+        # Create CF-compliant dimensions and coordinate variables
+        create_cf_coordinates(
+            dst,
+            lons=np.array(src.variables['lon'][:], dtype=np.float32),
+            lats=np.array(src.variables['lat'][:], dtype=np.float32),
+            depths=depths,
+        )
 
         # Extract and copy data variable
         fill_val = getattr(src.variables[var_name], '_FillValue', -999.0)

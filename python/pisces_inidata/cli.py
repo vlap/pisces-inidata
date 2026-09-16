@@ -7,6 +7,7 @@ import sys
 import os
 import argparse
 import subprocess
+from typing import Optional, List
 from pisces_inidata import __version__
 from pisces_inidata.config import load_config, validate_config, export_env_commands
 from pisces_inidata.padding import pad_abyssal_depth
@@ -144,47 +145,62 @@ def get_default_workspace() -> str:
     return os.path.join(scratch, "pisces_inidata")
 
 
+def resolve_output_dir(
+    grid_name: str,
+    preferred: Optional[str] = None,
+    extra_candidates: Optional[List[str]] = None
+) -> str:
+    """Resolves output directory by checking preferred, workspace, and repo-level fallback paths."""
+    if preferred:
+        return preferred
+    repo_root = get_repo_root()
+    workspace = get_default_workspace()
+    candidates = []
+    if workspace:
+        candidates.append(os.path.join(workspace, "grids", grid_name, "inidata"))
+    candidates.extend([
+        os.path.join(repo_root, "grids", grid_name, "inidata"),
+        os.path.join(repo_root, f"output_{grid_name}"),
+        os.path.join(repo_root, f"work_{grid_name}", f"output_{grid_name}"),
+    ])
+    if extra_candidates:
+        candidates.extend(extra_candidates)
+    candidates.extend([
+        os.path.join(repo_root, f"work_{grid_name}"),
+        os.path.join(repo_root, f"work_{grid_name.lower()}"),
+    ])
+    for c in candidates:
+        if os.path.exists(c) and os.path.isdir(c):
+            return c
+    return candidates[0]
+
+
+def resolve_sette_ref_dir(preferred: Optional[str] = None) -> str:
+    """Resolves SETTE benchmark reference directory from environment or standard paths."""
+    if preferred:
+        return preferred
+    if os.environ.get("SETTE_REF_DIR"):
+        return os.environ["SETTE_REF_DIR"]
+    repo_root = get_repo_root()
+    workspace = get_default_workspace()
+    candidates = []
+    if workspace:
+        candidates.append(os.path.join(workspace, "grids", "ORCA2", "sette_reference"))
+    candidates.extend([
+        os.path.join(repo_root, "sette_reference_ORCA2"),
+        os.path.join(repo_root, "work_ORCA2", "sette_reference_ORCA2"),
+    ])
+    for rc in candidates:
+        if os.path.exists(rc) and os.path.isdir(rc):
+            return rc
+    return candidates[0] if candidates else os.path.join(repo_root, "sette_reference_ORCA2")
+
+
 def cmd_validate(args):
     repo_root = get_repo_root()
     preset = getattr(args, 'preset', 'official_sette')
-    workspace = get_default_workspace()
-    test_dir = args.test_dir
-    if not test_dir:
-        candidates = []
-        if workspace:
-            candidates.append(os.path.join(workspace, "grids", "ORCA2", "inidata"))
-        candidates.extend([
-            os.path.join(repo_root, "grids", "ORCA2", "inidata"),
-            os.path.join(repo_root, "output_ORCA2"),
-            os.path.join(repo_root, "work_ORCA2", "output_ORCA2"),
-            os.path.join(repo_root, "work_ORCA2"),
-            os.path.join(repo_root, "work_orca2"),
-        ])
-        for c in candidates:
-            if os.path.exists(c) and os.path.isdir(c):
-                test_dir = c
-                break
-        if not test_dir:
-            test_dir = candidates[0]
-
-    ref_dir = args.ref_dir
-    if not ref_dir:
-        ref_candidates = []
-        if os.environ.get("SETTE_REF_DIR"):
-            ref_candidates.append(os.environ["SETTE_REF_DIR"])
-        if workspace:
-            ref_candidates.append(os.path.join(workspace, "grids", "ORCA2", "sette_reference"))
-        ref_candidates.extend([
-            os.path.join(repo_root, "sette_reference_ORCA2"),
-            os.path.join(repo_root, "work_ORCA2", "sette_reference_ORCA2"),
-        ])
-        for rc in ref_candidates:
-            if os.path.exists(rc) and os.path.isdir(rc):
-                ref_dir = rc
-                break
-        if not ref_dir:
-            ref_dir = ref_candidates[0]
-
+    test_dir = resolve_output_dir("ORCA2", args.test_dir)
+    ref_dir = resolve_sette_ref_dir(args.ref_dir)
     output_md = args.output_md or os.path.join(repo_root, "VALIDATION_SCOREBOARD_ORCA2.md")
 
     code = run_validation_suite(
@@ -200,26 +216,8 @@ def cmd_validate(args):
 def cmd_test_reproduction(args):
     repo_root = get_repo_root()
     preset = getattr(args, 'preset', 'official_sette')
-    workspace = get_default_workspace()
-    test_dir = args.test_dir
-    if not test_dir:
-        candidates = []
-        if workspace:
-            candidates.append(os.path.join(workspace, "grids", "eORCA1", "inidata"))
-        candidates.extend([
-            os.path.join(repo_root, "grids", "eORCA1", "inidata"),
-            os.path.join(repo_root, "output_eORCA1"),
-            os.path.join(repo_root, "work_eORCA1", "output_eORCA1"),
-            os.path.join(repo_root, "work_eORCA1", "reproduction_test"),
-            os.path.join(repo_root, "work_eORCA1"),
-        ])
-        for c in candidates:
-            if os.path.exists(c) and os.path.isdir(c):
-                test_dir = c
-                break
-        if not test_dir:
-            test_dir = candidates[0]
-
+    extra = [os.path.join(repo_root, "work_eORCA1", "reproduction_test")]
+    test_dir = resolve_output_dir("eORCA1", args.test_dir, extra_candidates=extra)
     ref_dir = args.ref_dir or os.environ.get(
         "ECE4_PISCES_REF",
         os.environ.get(
@@ -253,18 +251,8 @@ def cmd_test_reproduction(args):
 
 def cmd_verify(args):
     from pisces_inidata.verify import verify_output_directory
-    repo_root = get_repo_root()
     grid_name = getattr(args, 'grid', None) or getattr(args, 'orca', None) or "eORCA1"
-    out_dir = args.out_dir
-    if not out_dir:
-        workspace = get_default_workspace()
-        candidates = [
-            os.path.join(workspace, "grids", grid_name, "inidata"),
-            os.path.join(repo_root, "grids", grid_name, "inidata"),
-            os.path.join(repo_root, f"output_{grid_name}"),
-            os.path.join(repo_root, f"work_{grid_name}", f"output_{grid_name}"),
-        ]
-        out_dir = next((c for c in candidates if os.path.isdir(c)), candidates[0])
+    out_dir = resolve_output_dir(grid_name, args.out_dir)
 
     print(f"Inspecting PISCES inidata outputs for {grid_name} in: {out_dir}")
     exit_code, _ = verify_output_directory(out_dir, grid_name=grid_name)
@@ -417,6 +405,43 @@ def cmd_check(args):
     sys.exit(code)
 
 
+def make_config_parent():
+    p = argparse.ArgumentParser(add_help=False)
+    p.add_argument("--config", "--file", dest="config", help="Path to custom sources.yaml")
+    p.add_argument(
+        "--preset",
+        help="Configuration preset (default: ece4; e.g. ece4, ece3, official_sette, or custom)"
+    )
+    return p
+
+
+def make_domain_parent():
+    p = argparse.ArgumentParser(add_help=False)
+    p.add_argument(
+        "--domain-dir",
+        help="Path to directory containing target NEMO domain files (${GRID_NAME}/domain_cfg.nc)"
+    )
+    return p
+
+
+def make_dry_run_parent():
+    p = argparse.ArgumentParser(add_help=False)
+    p.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Inspect sbatch job scripts without submitting"
+    )
+    return p
+
+
+def add_grid_argument(parser, default="ORCA2", help_text=None):
+    parser.add_argument(
+        "--grid", "--orca",
+        default=default,
+        help=help_text or f"Target NEMO grid resolution (default: {default})"
+    )
+
+
 def main():
     parser = argparse.ArgumentParser(
         prog="pisces-inidata",
@@ -427,107 +452,42 @@ def main():
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
 
     # Command: check
-    check_parser = subparsers.add_parser("check", help="Run pre-flight system and data integrity verification")
-    check_parser.add_argument(
-        "--grid", "--orca",
-        default="ORCA2",
-        help="Target NEMO grid resolution to verify (default: ORCA2)"
+    check_parser = subparsers.add_parser(
+        "check", parents=[make_config_parent(), make_domain_parent()],
+        help="Run pre-flight system and data integrity verification"
     )
-    check_parser.add_argument(
-        "--domain-dir",
-        help="Path to directory containing target NEMO domain files (${GRID_NAME}/domain_cfg.nc)"
-    )
-    check_parser.add_argument(
-        "--raw-dir",
-        help="Path to directory containing raw input products"
-    )
-    check_parser.add_argument(
-        "--out-dir",
-        help="Target output directory for free disk space check"
-    )
-    check_parser.add_argument(
-        "--config",
-        help="Path to custom sources.yaml"
-    )
-    check_parser.add_argument(
-        "--preset",
-        help="Configuration preset (default: ece4; e.g. ece4, ece3, official_sette, or custom)"
-    )
+    add_grid_argument(check_parser, default="ORCA2", help_text="Target NEMO grid resolution to verify (default: ORCA2)")
+    check_parser.add_argument("--raw-dir", help="Path to directory containing raw input products")
+    check_parser.add_argument("--out-dir", help="Target output directory for free disk space check")
     check_parser.set_defaults(func=cmd_check)
 
     # Command: produce
     produce_parser = subparsers.add_parser(
-        "produce",
+        "produce", parents=[make_config_parent(), make_domain_parent(), make_dry_run_parent()],
         help="Produce PISCES initial conditions for target grid (defaults: eORCA1, stage2 parallel remapping)"
     )
+    add_grid_argument(produce_parser, default="eORCA1")
     produce_parser.add_argument(
-        "--grid", "--orca",
-        default="eORCA1",
-        help="Target NEMO grid resolution (default: eORCA1)"
-    )
-    produce_parser.add_argument(
-        "--preset",
-        default="ece4",
-        help="Configuration preset (default: ece4; e.g. ece4, ece3, official_sette)"
-    )
-    produce_parser.add_argument(
-        "--stage",
-        choices=["stage2", "all", "stage1"],
-        default="stage2",
+        "--stage", choices=["stage2", "all", "stage1"], default="stage2",
         help="Pipeline execution stage (default: stage2 [parallel remapping])"
-    )
-    produce_parser.add_argument(
-        "--domain-dir",
-        help="Path to directory containing target NEMO domain files (${GRID_NAME}/domain_cfg.nc)"
-    )
-    produce_parser.add_argument(
-        "--config",
-        help="Path to custom sources.yaml"
-    )
-    produce_parser.add_argument(
-        "--dry-run",
-        action="store_true",
-        help="Inspect sbatch job scripts without submitting"
     )
     produce_parser.set_defaults(func=cmd_produce)
 
     # Command: run
-    run_parser = subparsers.add_parser("run", help="Run end-to-end PISCES initial conditions generation")
-    run_parser.add_argument(
-        "--grid", "--orca",
-        default="ORCA2",
-        help="Target NEMO grid resolution (default: ORCA2)"
+    run_parser = subparsers.add_parser(
+        "run", parents=[make_config_parent(), make_domain_parent(), make_dry_run_parent()],
+        help="Run end-to-end PISCES initial conditions generation"
     )
+    add_grid_argument(run_parser, default="ORCA2")
     run_parser.add_argument(
-        "--domain-dir",
-        help="Path to directory containing target NEMO domain files (${GRID_NAME}/domain_cfg.nc). "
-             "See https://ec-earth-4-docs.readthedocs.io/ for obtaining official EC-Earth4 inidata."
-    )
-    run_parser.add_argument(
-        "--config",
-        help="Path to custom sources.yaml"
-    )
-    run_parser.add_argument(
-        "--preset",
-        help="Configuration preset (default: ece4; e.g. ece4, ece3, official_sette, or custom)"
-    )
-    run_parser.add_argument(
-        "--stage",
-        choices=["all", "stage1", "stage2"],
-        default="all",
+        "--stage", choices=["all", "stage1", "stage2"], default="all",
         help="Pipeline execution stage: 'all' (default), 'stage1' (prepare sources), or 'stage2' (remap)"
-    )
-    run_parser.add_argument(
-        "--dry-run",
-        action="store_true",
-        help="Inspect sbatch job scripts without submitting"
     )
     run_parser.set_defaults(func=cmd_run)
 
     # Command: validate
     val_parser = subparsers.add_parser(
-        "validate",
-        help="Run procedure validation scorecard on ORCA2 vs SETTE benchmark"
+        "validate", help="Run procedure validation scorecard on ORCA2 vs SETTE benchmark"
     )
     val_parser.add_argument(
         "--test-dir",
@@ -555,21 +515,14 @@ def main():
 
     # Command: test-reproduction
     rep_parser = subparsers.add_parser(
-        "test-reproduction",
-        help="Run precision test verifying reproduction of EC-Earth3 baseline inidata on eORCA1"
+        "test-reproduction", help="Run precision test verifying reproduction of EC-Earth3 baseline inidata on eORCA1"
     )
     rep_parser.add_argument(
         "--test-dir",
         help="Directory containing re-interpolated eORCA1 test files (default: output_eORCA1/)"
     )
-    rep_parser.add_argument(
-        "--ref-dir",
-        help="Directory containing official EC-Earth3 eORCA1 reference files"
-    )
-    rep_parser.add_argument(
-        "--mask",
-        help="Path to land-sea mask NetCDF file (maskutil.nc)"
-    )
+    rep_parser.add_argument("--ref-dir", help="Directory containing official EC-Earth3 eORCA1 reference files")
+    rep_parser.add_argument("--mask", help="Path to land-sea mask NetCDF file (maskutil.nc)")
     rep_parser.add_argument(
         "--preset",
         default="official_sette",
@@ -587,22 +540,16 @@ def main():
     rep_parser.set_defaults(func=cmd_test_reproduction)
 
     # Command: info
-    info_parser = subparsers.add_parser("info", help="Display current configuration and environment status")
-    info_parser.add_argument("--file", help="Path to custom sources.yaml")
-    info_parser.add_argument("--config", help="Path to custom sources.yaml")
-    info_parser.add_argument(
-        "--preset",
-        help="Configuration preset to preview"
+    info_parser = subparsers.add_parser(
+        "info", parents=[make_config_parent()],
+        help="Display current configuration and environment status"
     )
     info_parser.set_defaults(func=cmd_info)
 
     # Command: config
-    cfg_parser = subparsers.add_parser("config", help="Inspect sources.yaml or export shell environment variables")
-    cfg_parser.add_argument("--file", help="Path to custom sources.yaml")
-    cfg_parser.add_argument("--config", help="Path to custom sources.yaml")
-    cfg_parser.add_argument(
-        "--preset",
-        help="Configuration preset to export"
+    cfg_parser = subparsers.add_parser(
+        "config", parents=[make_config_parent()],
+        help="Inspect sources.yaml or export shell environment variables"
     )
     cfg_parser.add_argument("--export", action="store_true", help="Print bash export statements")
     cfg_parser.set_defaults(func=cmd_config)
@@ -611,59 +558,33 @@ def main():
     grid_cfg_parser = subparsers.add_parser(
         "grid-config", help="Inspect or export declarative grid profile from grids.yaml"
     )
-    grid_cfg_parser.add_argument(
-        "--grid", "--orca",
-        help="Target grid identifier (e.g. ORCA2, eORCA1, eORCA025, eORCA12)"
+    add_grid_argument(
+        grid_cfg_parser, default=None,
+        help_text="Target grid identifier (e.g. ORCA2, eORCA1, eORCA025, eORCA12)"
     )
-    grid_cfg_parser.add_argument(
-        "--file", "--config",
-        help="Path to custom grids.yaml"
-    )
-    grid_cfg_parser.add_argument(
-        "--export",
-        action="store_true",
-        help="Print bash export statements for grid"
-    )
+    grid_cfg_parser.add_argument("--file", "--config", dest="config", help="Path to custom grids.yaml")
+    grid_cfg_parser.add_argument("--export", action="store_true", help="Print bash export statements for grid")
     grid_cfg_parser.set_defaults(func=cmd_grid_config)
 
     # Command: platform-config
     plat_cfg_parser = subparsers.add_parser(
-        "platform-config",
-        help="Inspect HPC platform profile (Slurm, modules, scratch) or emit shell exports"
+        "platform-config", help="Inspect HPC platform profile (Slurm, modules, scratch) or emit shell exports"
     )
-    plat_cfg_parser.add_argument(
-        "--platform",
-        help="Platform identifier (e.g. nord4, mn5, generic)"
-    )
-    plat_cfg_parser.add_argument(
-        "--file", "--config",
-        help="Path to custom platforms.yaml"
-    )
-    plat_cfg_parser.add_argument(
-        "--export",
-        action="store_true",
-        help="Print bash export statements for platform"
-    )
+    plat_cfg_parser.add_argument("--platform", help="Platform identifier (e.g. nord4, mn5, generic)")
+    plat_cfg_parser.add_argument("--file", "--config", dest="config", help="Path to custom platforms.yaml")
+    plat_cfg_parser.add_argument("--export", action="store_true", help="Print bash export statements for platform")
     plat_cfg_parser.set_defaults(func=cmd_platform_config)
 
     # Command: download
     dl_parser = subparsers.add_parser(
-        "download", help="Fetch and stage raw observational datasets based on sources.yaml"
+        "download", parents=[make_config_parent(), make_dry_run_parent()],
+        help="Fetch and stage raw observational datasets based on sources.yaml"
     )
-    dl_parser.add_argument("--sources", help="Path to custom sources.yaml")
-    dl_parser.add_argument("--config", help="Path to custom sources.yaml")
+    dl_parser.add_argument("--sources", dest="config", help="Path to custom sources.yaml")
     dl_parser.add_argument("--raw-dir", help="Target directory to store raw sources")
     dl_parser.add_argument(
-        "--preset",
-        help="Configuration preset to download"
-    )
-    dl_parser.add_argument(
-        "--dry-run", action="store_true", help="Inspect what would be downloaded without downloading"
-    )
-    dl_parser.add_argument(
-        "--prepare",
-        action="store_true",
-        help="Automatically run Stage 1 source standardization (prepare-sources) immediately after download"
+        "--prepare", action="store_true",
+        help="Automatically run Stage 1 source standardization immediately after download"
     )
     dl_parser.set_defaults(func=cmd_download)
 
@@ -676,10 +597,7 @@ def main():
 
     # Command: prepare-woa
     woa_parser = subparsers.add_parser("prepare-woa", help="Combine monthly WOA23 files with annual deep levels")
-    woa_parser.add_argument(
-        "var_code", choices=["n", "p", "i", "o"],
-        help="Tracer code: n (NO3), p (PO4), i (Si), o (O2)"
-    )
+    woa_parser.add_argument("var_code", help="Tracer code: n (NO3), p (PO4), i (Si), o (O2) [also accepts aliases]")
     woa_parser.add_argument("woa_dir", help="Directory containing WOA23 raw files")
     woa_parser.add_argument("out_file", help="Path to output 12-month 3D NetCDF")
     woa_parser.set_defaults(func=cmd_prepare_woa)
@@ -692,8 +610,7 @@ def main():
 
     # Command: prepare-glodap
     glodap_parser = subparsers.add_parser(
-        "prepare-glodap",
-        help="Standardize GLODAP vertical coordinate and pad to 6000m"
+        "prepare-glodap", help="Standardize GLODAP vertical coordinate and pad to 6000m"
     )
     glodap_parser.add_argument("var_name", help="GLODAP variable name (TAlk, TCO2, PI_TCO2)")
     glodap_parser.add_argument("src_file", help="Path to raw GLODAP NetCDF file")
@@ -717,13 +634,11 @@ def main():
 
     # Command: prepare-sources (Stage 1 ETL)
     prep_src_parser = subparsers.add_parser(
-        "prepare-sources",
+        "prepare-sources", parents=[make_config_parent()],
         help="Stage 1 (Grid-Agnostic ETL): Format, pad, and standardize regular NetCDF sources"
     )
     prep_src_parser.add_argument(
-        "variable",
-        nargs="?",
-        default="all",
+        "variable", nargs="?", default="all",
         choices=[
             "all", "NO3", "PO4", "Si", "O2", "TALK", "TDIC", "PiDIC",
             "DOC", "Fer", "dust", "ndep", "par", "bathy", "hydrofe", "river"
@@ -731,68 +646,33 @@ def main():
         help="Variable or component to standardize (default: all)"
     )
     prep_src_parser.add_argument(
-        "--config",
-        help="Path to custom sources.yaml"
-    )
-    prep_src_parser.add_argument(
-        "--preset",
-        help="Configuration preset (default: ece4; e.g. ece4, ece3, official_sette, or custom)"
-    )
-    prep_src_parser.add_argument(
-        "--force",
-        action="store_true",
+        "--force", action="store_true",
         help="Force regeneration even if standardized source file already exists"
     )
     prep_src_parser.set_defaults(func=cmd_prepare_sources)
 
     # Command: remap (Stage 2 Remap)
     remap_parser = subparsers.add_parser(
-        "remap",
+        "remap", parents=[make_config_parent(), make_domain_parent()],
         help="Stage 2 (Target Remap): Interpolate standardized source to target NEMO grid"
     )
     remap_parser.add_argument(
-        "variable",
-        nargs="?",
-        default="all",
+        "variable", nargs="?", default="all",
         choices=[
             "all", "NO3", "PO4", "Si", "O2", "TALK", "TDIC", "PiDIC",
             "DOC", "Fer", "dust", "ndep", "par", "bathy", "hydrofe", "river"
         ],
         help="Variable or component to remap (default: all)"
     )
-    remap_parser.add_argument(
-        "--grid", "--orca",
-        default="ORCA2",
-        help="Target NEMO grid resolution (default: ORCA2)"
-    )
-    remap_parser.add_argument(
-        "--domain-dir",
-        help="Path to directory containing target NEMO domain files (${GRID_NAME}/domain_cfg.nc)"
-    )
-    remap_parser.add_argument(
-        "--config",
-        help="Path to custom sources.yaml"
-    )
-    remap_parser.add_argument(
-        "--preset",
-        help="Configuration preset (default: ece4; e.g. ece4, ece3, official_sette, or custom)"
-    )
+    add_grid_argument(remap_parser, default="ORCA2")
     remap_parser.set_defaults(func=cmd_remap)
 
     # Command: verify
     verify_parser = subparsers.add_parser(
-        "verify",
-        help="Inspect output files, check shapes, physical min/mean/max, and ensure no blank files"
+        "verify", help="Inspect output files, check shapes, physical min/mean/max, and ensure no blank files"
     )
-    verify_parser.add_argument(
-        "--grid", "--orca",
-        default="eORCA025",
-        help="Target NEMO grid resolution (default: eORCA025)"
-    )
-    verify_parser.add_argument(
-        "--out-dir",
-        help="Path to output directory to inspect (default: output_${GRID_NAME})"
-    )
+    add_grid_argument(verify_parser, default="eORCA025")
+    verify_parser.add_argument("--out-dir", help="Path to output directory to inspect (default: output_${GRID_NAME})")
     verify_parser.set_defaults(func=cmd_verify)
 
     args = parser.parse_args()

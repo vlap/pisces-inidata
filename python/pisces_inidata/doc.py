@@ -16,6 +16,7 @@ import csv
 import numpy as np
 import netCDF4 as nc
 from pisces_inidata.download import download_file
+from pisces_inidata.provenance import create_cf_coordinates
 
 SEANOE_ANNUAL_URL = "https://www.seanoe.org/data/00900/101170/data/111994.csv"
 SEANOE_SEASONAL_URL = "https://www.seanoe.org/data/00900/101170/data/111995.csv"
@@ -140,40 +141,15 @@ def build_doc_climatology(raw_dir, output_nc):
         ds.references = "https://doi.org/10.17882/101170"
         ds.Conventions = "CF-1.6"
 
-        # Dimensions
-        ds.createDimension('lon', nlons)
-        ds.createDimension('lat', nlats)
-        ds.createDimension('depth', ndepths)
-        ds.createDimension('time_counter', ntimes)
-
-        # Coordinate variables
-        vlon = ds.createVariable('lon', 'f4', ('lon',))
-        vlon.units = "degrees_east"
-        vlon.long_name = "Longitude"
-        vlon.standard_name = "longitude"
-        vlon.axis = "X"
-        vlon[:] = lons
-
-        vlat = ds.createVariable('lat', 'f4', ('lat',))
-        vlat.units = "degrees_north"
-        vlat.long_name = "Latitude"
-        vlat.standard_name = "latitude"
-        vlat.axis = "Y"
-        vlat[:] = lats
-
-        vdepth = ds.createVariable('depth', 'f4', ('depth',))
-        vdepth.units = "m"
-        vdepth.long_name = "Depth"
-        vdepth.standard_name = "depth"
-        vdepth.positive = "down"
-        vdepth.axis = "Z"
-        vdepth[:] = DEPTH_LEVELS
-
-        vtime = ds.createVariable('time_counter', 'f4', ('time_counter',))
-        vtime.units = "months since 0000-01-01"
-        vtime.long_name = "Time"
-        vtime.calendar = "noleap"
-        vtime[:] = np.arange(1, 13, dtype=np.float32)
+        # Dimensions & CF-compliant coordinates
+        create_cf_coordinates(
+            ds,
+            lons=lons,
+            lats=lats,
+            depths=np.array(DEPTH_LEVELS, dtype=np.float32),
+            times=np.arange(1, 13, dtype=np.float32),
+            time_units="months since 0000-01-01",
+        )
 
         # Main data variable
         vdoc = ds.createVariable('DOC', 'f4', ('time_counter', 'depth', 'lat', 'lon'),

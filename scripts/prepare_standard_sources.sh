@@ -181,85 +181,48 @@ prepare_tracer_3d() {
 # ------------------------------------------------------------------------------
 # 2. Surface & Boundary Forcings Standardization
 # ------------------------------------------------------------------------------
-prepare_dust() {
-    local std_file="${STANDARDIZED_DIR}/std_dust.nc"
+prepare_boundary_forcing() {
+    local comp="$1"
+    local desc="$2"
+    local src_file="$3"
+    shift 3
+    local vars=("$@")
+    local std_file="${STANDARDIZED_DIR}/std_${comp}.nc"
+
     if [ "${FORCE}" -ne 1 ] && [ -f "${std_file}" ] && [ -s "${std_file}" ]; then
-        echo "[Stage 1 Cache] Standardized source for dust already exists: ${std_file}"
+        echo "[Stage 1 Cache] Standardized source for ${comp} already exists: ${std_file}"
         return 0
     fi
-    echo "=== Standardizing Atmospheric Dust Deposition ==="
-    local src_file="${RAW_DIR}/official_v5.0.0/dust.orca.new.nc"
-    [ -f "${src_file}" ] || src_file="${RAW_DIR}/official_v5.0.0/dust.orca.nc"
+
+    echo "=== Standardizing ${desc} ==="
     if [ ! -f "${src_file}" ]; then
-        echo "ERROR: Source dust file not found at ${src_file}." >&2
+        echo "ERROR: Source ${comp} file not found at ${src_file}." >&2
         return 1
     fi
-    sanitize_source_coords "${src_file}" "${std_file}" "${DUST_VARS[@]}"
+    sanitize_source_coords "${src_file}" "${std_file}" "${vars[@]}"
     echo "Successfully standardized: ${std_file}"
+}
+
+prepare_dust() {
+    local src_file="${RAW_DIR}/official_v5.0.0/dust.orca.new.nc"
+    [ -f "${src_file}" ] || src_file="${RAW_DIR}/official_v5.0.0/dust.orca.nc"
+    prepare_boundary_forcing "dust" "Atmospheric Dust Deposition" "${src_file}" "${DUST_VARS[@]}"
 }
 
 prepare_ndep() {
-    local std_file="${STANDARDIZED_DIR}/std_ndep.nc"
-    if [ "${FORCE}" -ne 1 ] && [ -f "${std_file}" ] && [ -s "${std_file}" ]; then
-        echo "[Stage 1 Cache] Standardized source for ndep already exists: ${std_file}"
-        return 0
-    fi
-    echo "=== Standardizing Atmospheric Nitrogen Deposition ==="
-    local src_file="${RAW_DIR}/official_v5.0.0/ndeposition.orca.nc"
-    if [ ! -f "${src_file}" ]; then
-        echo "ERROR: Source ndep file not found at ${src_file}." >&2
-        return 1
-    fi
-    sanitize_source_coords "${src_file}" "${std_file}" "${NDEP_VARS[@]}"
-    echo "Successfully standardized: ${std_file}"
+    prepare_boundary_forcing "ndep" "Atmospheric Nitrogen Deposition" "${RAW_DIR}/official_v5.0.0/ndeposition.orca.nc" "${NDEP_VARS[@]}"
 }
 
 prepare_par() {
-    local std_file="${STANDARDIZED_DIR}/std_par.nc"
-    if [ "${FORCE}" -ne 1 ] && [ -f "${std_file}" ] && [ -s "${std_file}" ]; then
-        echo "[Stage 1 Cache] Standardized source for par already exists: ${std_file}"
-        return 0
-    fi
-    echo "=== Standardizing PAR Daily Fraction ==="
-    local src_file="${RAW_DIR}/official_v5.0.0/par.orca.nc"
-    if [ ! -f "${src_file}" ]; then
-        echo "ERROR: Source par file not found at ${src_file}." >&2
-        return 1
-    fi
-    sanitize_source_coords "${src_file}" "${std_file}" "fr_par"
-    echo "Successfully standardized: ${std_file}"
+    prepare_boundary_forcing "par" "PAR Daily Fraction" "${RAW_DIR}/official_v5.0.0/par.orca.nc" "fr_par"
 }
 
 prepare_bathy() {
-    local std_file="${STANDARDIZED_DIR}/std_bathy.nc"
-    if [ "${FORCE}" -ne 1 ] && [ -f "${std_file}" ] && [ -s "${std_file}" ]; then
-        echo "[Stage 1 Cache] Standardized source for bathy already exists: ${std_file}"
-        return 0
-    fi
-    echo "=== Standardizing Bathymetric Shelf Fraction ==="
-    local src_file="${RAW_DIR}/official_v5.0.0/bathy.orca.nc"
-    if [ ! -f "${src_file}" ]; then
-        echo "ERROR: Source bathy file not found at ${src_file}." >&2
-        return 1
-    fi
-    sanitize_source_coords "${src_file}" "${std_file}" "bathy"
-    echo "Successfully standardized: ${std_file}"
+    prepare_boundary_forcing "bathy" "Bathymetric Shelf Fraction" "${RAW_DIR}/official_v5.0.0/bathy.orca.nc" "bathy"
 }
 
 prepare_hydrofe() {
-    local std_file="${STANDARDIZED_DIR}/std_hydrofe.nc"
-    if [ "${FORCE}" -ne 1 ] && [ -f "${std_file}" ] && [ -s "${std_file}" ]; then
-        echo "[Stage 1 Cache] Standardized source for hydrofe already exists: ${std_file}"
-        return 0
-    fi
-    echo "=== Standardizing Hydrothermal Vent Fe ==="
-    local src_file="${RAW_DIR}/official_v5.0.0/hydrofe.orca.nc"
-    if [ ! -f "${src_file}" ]; then
-        echo "ERROR: Source hydrofe file not found at ${src_file}." >&2
-        return 1
-    fi
-    sanitize_source_coords "${src_file}" "${std_file}" "epsdb"
-    echo "Successfully standardized: ${std_file}"
+    prepare_boundary_forcing "hydrofe" "Hydrothermal Vent Fe" "${RAW_DIR}/official_v5.0.0/hydrofe.orca.nc" "epsdb"
 }
 
 prepare_river() {
