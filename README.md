@@ -62,6 +62,7 @@ pisces-inidata/
 │   └── launcher_pisces_inidata.sh # End-to-end Slurm master pipeline driver
 ├── tests/                       # Unit tests (pytest)
 ├── grids.yaml                   # Declarative target grid specifications & HPC resource profiles
+├── platforms.yaml               # Declarative HPC platform profiles (Slurm accounts, partitions, scratch)
 ├── sources.yaml                 # Active source dataset configuration (preset: ece4)
 ├── pyproject.toml               # Modern PEP 517/621 package metadata
 ├── LICENSE                      # Apache-2.0 License
@@ -71,32 +72,26 @@ pisces-inidata/
 
 ---
 
-## ⚡ TL;DR: Production Run on BSC (Hub04 + Nord4 / MN5)
-
-If you have an account at BSC with access to `hub04` and `nord4`, you can generate ready-to-use inidata in 2 steps:
+## ⚡ TL;DR: Production Run
 
 ```bash
-# 1. On hub04 (internet node): Download raw datasets and standardize Stage 1 sources (~2 min):
-ssh hub04
-cd /gpfs/scratch/bsc32/${USER}/pisces-inidata
-module load CDO/2.3.0-gompi-2020b NCO/5.1.0-foss-2020b netcdf4-python/1.5.7-foss-2020b-Python-3.8.6
+# 1. Install & verify
 pip install -e .
+
+# 2. Download and prepare standardized 1°x1° sources (~2 min)
 pisces-inidata download --prepare
 
-# 2. On nord4 (batch cluster): Submit parallel Slurm remapping to target grid:
-ssh nord4
-cd /gpfs/scratch/bsc32/${USER}/pisces-inidata
-module load CDO/2.3.0-gompi-2020b NCO/5.1.0-foss-2020b netcdf4-python/1.5.7-foss-2020b-Python-3.8.6
+# 3. Submit parallel remapping on Slurm cluster (or run locally: pisces-inidata run --grid eORCA1)
 GRID_NAME=eORCA1 ./scripts/launcher_pisces_inidata.sh submit stage2
-# Or for eORCA025:
-# GRID_NAME=eORCA025 ./scripts/launcher_pisces_inidata.sh submit stage2
 
-# 3. Verify generated inidata (all 15 files):
+# 4. Verify outputs
 pisces-inidata verify --grid eORCA1
 ```
 
 All 15 target NetCDF files will be ready in:
 `${PISCES_WORKSPACE}/grids/${GRID_NAME}/inidata/`
+
+> **Note on HPC Clusters:** Ensure `cdo`, `nco`, and `python` are available (`module load CDO NCO python` or via conda). Cluster accounts, partitions, and scratch paths are abstracted in [`platforms.yaml`](platforms.yaml).
 
 ---
 
@@ -112,10 +107,11 @@ cd pisces-inidata
 pip install -e .
 ```
 
-Verify your installation and inspect target grids:
+Verify your installation and inspect target grids / platforms:
 ```bash
 pisces-inidata info
 pisces-inidata grid-config
+pisces-inidata platform-config
 ```
 
 ### 2. Configure Sources & Presets (`sources.yaml`)

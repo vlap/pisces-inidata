@@ -180,6 +180,20 @@ pisces-inidata grid-config --grid eORCA025
 pisces-inidata grid-config --grid eORCA025 --export
 ```
 
+### `pisces-inidata platform-config`
+Inspects declarative HPC platform profiles from `platforms.yaml` or generates shell exports:
+```bash
+# List all configured platforms and detect current system:
+pisces-inidata platform-config
+
+# Inspect a specific platform profile:
+pisces-inidata platform-config --platform nord4
+
+# Export platform environment variables for shell sourcing:
+eval "$(pisces-inidata platform-config --platform nord4 --export)"
+```
+
+
 ### `pisces-inidata validate`
 Executes statistical procedure validation against official NEMO/SETTE ORCA2 benchmark:
 ```bash
@@ -293,7 +307,55 @@ Adding a new grid requires zero changes to shell scripts or Python code. Simply 
 
 ---
 
-## 5. HPC Storage & Directory Structure
+## 5. Declarative HPC Platform Configuration (`platforms.yaml`)
+
+Cluster-specific settings (Slurm accounts, queues/partitions, environment module loading, scratch storage roots, and central model domain directories) are maintained declaratively in `platforms.yaml`. Shell scripts (`scripts/config.sh`) source these settings dynamically via `pisces-inidata platform-config --export`, isolating platform quirks from core remapping logic.
+
+### Structure of `platforms.yaml`
+```yaml
+platforms:
+  nord4:
+    description: "BSC Nord4 Cluster (Intel Xeon Platinum 8480+)"
+    slurm:
+      account: "bsc32"
+      partition: "bsc_es"
+    module_load: "module load CDO NCO 2>/dev/null || true"
+    scratch_root: "/gpfs/scratch/bsc32/${USER}"
+    domain_dir: "/gpfs/projects/bsc32/models/ecearth/ece4-trunk/inidata/nemo/domain"
+
+  mn5:
+    description: "BSC MareNostrum 5 (GPP)"
+    slurm:
+      account: "bsc32"
+      partition: "gpp"
+    module_load: "module load cdo nco 2>/dev/null || true"
+    scratch_root: "/gpfs/scratch/bsc32/${USER}"
+    domain_dir: "/gpfs/projects/bsc32/models/ecearth/ece4-trunk/inidata/nemo/domain"
+
+  generic:
+    description: "Generic Linux Workstation or Cluster"
+    slurm:
+      account: ""
+      partition: ""
+    module_load: ""
+    scratch_root: "${HOME}/scratch"
+    domain_dir: ""
+```
+
+### Environment Variable Overrides
+All platform defaults can be overridden at runtime via standard environment variables:
+- `PLATFORM` or `PISCES_PLATFORM`: Choose platform profile (`nord4`, `mn5`, `generic`). Defaults to auto-detection (e.g. detects `nord` or `mn5` in hostname) or `generic`.
+- `SLURM_ACCOUNT`: Override Slurm project/account (e.g. `export SLURM_ACCOUNT=bsc32`).
+- `SLURM_PARTITION`: Override Slurm partition/queue.
+- `PISCES_WORKSPACE`: Override top-level scratch directory root.
+- `DOMAIN_DIR` / `DOMAIN_BASE_DIR`: Override location of NEMO domain files.
+- `CDO_OPTS`: Override CDO threading and locking flags (default: `-L -P <threads>`).
+- `CDO_COMPRESS`: Override NetCDF4 compression options (default: `-f nc4 -z zip_4`).
+- `PISCES_INSTITUTION`: Override CF-1.8 institution provenance metadata (default: `EC-Earth Consortium`).
+
+---
+
+## 6. HPC Storage & Directory Structure
 
 To ensure optimal performance and respect storage policies on HPC clusters (e.g. BSC Nord4 and MareNostrum 5):
 

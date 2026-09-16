@@ -333,6 +333,38 @@ def cmd_grid_config(args):
             print(f"  {k}: {v}")
 
 
+def cmd_platform_config(args):
+    from pisces_inidata.platforms import (
+        load_platform_config,
+        export_platform_env_commands,
+        load_all_platforms,
+        detect_current_platform,
+    )
+    plat_name = getattr(args, 'platform', None)
+    config_file = getattr(args, 'config', None) or getattr(args, 'file', None)
+    if not plat_name and not getattr(args, 'export', False):
+        all_plats = load_all_platforms(config_file)
+        detected = detect_current_platform(config_file)
+        print(f"Configured HPC Platforms (Active/Detected: {detected}):")
+        for name, cfg in sorted(all_plats.items()):
+            slurm = cfg.get("slurm", {})
+            tag = " [ACTIVE]" if name == detected else ""
+            print(f"  {name:10s}{tag}: {cfg.get('description', '')}")
+            if slurm.get("account"):
+                print(f"               Account: {slurm.get('account')}, Partition: {slurm.get('partition')}")
+            if cfg.get("scratch_root"):
+                print(f"               Scratch: {cfg.get('scratch_root')}")
+        return
+
+    if getattr(args, 'export', False):
+        print(export_platform_env_commands(plat_name, config_file))
+    else:
+        cfg = load_platform_config(plat_name, config_file)
+        print(f"Platform Configuration ({plat_name or detect_current_platform(config_file)}):")
+        for k, v in sorted(cfg.items()):
+            print(f"  {k}: {v}")
+
+
 def cmd_download(args):
     from pisces_inidata.download import download_sources
     repo_root = get_repo_root()
@@ -558,6 +590,26 @@ def main():
         help="Print bash export statements for grid"
     )
     grid_cfg_parser.set_defaults(func=cmd_grid_config)
+
+    # Command: platform-config
+    plat_cfg_parser = subparsers.add_parser(
+        "platform-config",
+        help="Inspect HPC platform profile (Slurm, modules, scratch) or emit shell exports"
+    )
+    plat_cfg_parser.add_argument(
+        "--platform",
+        help="Platform identifier (e.g. nord4, mn5, generic)"
+    )
+    plat_cfg_parser.add_argument(
+        "--file", "--config",
+        help="Path to custom platforms.yaml"
+    )
+    plat_cfg_parser.add_argument(
+        "--export",
+        action="store_true",
+        help="Print bash export statements for platform"
+    )
+    plat_cfg_parser.set_defaults(func=cmd_platform_config)
 
     # Command: download
     dl_parser = subparsers.add_parser(

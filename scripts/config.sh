@@ -3,107 +3,71 @@
 # Configuration file for PISCES inidata processing tool
 # ==============================================================================
 
-# ------------------------------------------------------------------------------
-# 1. Target Grid & Domain Configuration
-# ------------------------------------------------------------------------------
-# Grid resolution name (e.g. eORCA1, eORCA025, ORCA1, ORCA2)
+SCRIPT_DIR_CONFIG="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_DIR="$(cd "${SCRIPT_DIR_CONFIG}/.." && pwd)"
+
+# Ensure pisces-inidata CLI and Python modules are discoverable
+export PATH="${REPO_DIR}/bin:${PATH}"
+export PYTHONPATH="${REPO_DIR}/python:${PYTHONPATH:-}"
+
+# Target grid resolution (e.g. eORCA1, eORCA025, ORCA2, eORCA12)
 GRID_NAME="${GRID_NAME:-eORCA1}"
 
-# Base directory for NEMO domain files
-if [ -z "${DOMAIN_BASE_DIR:-}" ]; then
-    if [ -d "${PWD}/domain/${GRID_NAME}" ]; then
-        DOMAIN_BASE_DIR="${PWD}/domain"
-    elif [ -d "/gpfs/projects/bsc32/models/ecearth/ece4-trunk/inidata/nemo/domain" ]; then
-        DOMAIN_BASE_DIR="/gpfs/projects/bsc32/models/ecearth/ece4-trunk/inidata/nemo/domain"
-    else
-        DOMAIN_BASE_DIR="${PWD}/domain"
-    fi
-fi
+# ------------------------------------------------------------------------------
+# 1. Platform Configuration (platforms.yaml)
+# ------------------------------------------------------------------------------
+eval "$(python3 -m pisces_inidata.cli platform-config ${PLATFORM:+--platform "${PLATFORM}"} --export 2>/dev/null || true)"
 
-# Paths to grid and mask files (provided by user or official EC-Earth4 inidata)
-DOMAIN_CFG="${DOMAIN_CFG:-${DOMAIN_BASE_DIR}/${GRID_NAME}/domain_cfg.nc}"
-MASKUTIL="${MASKUTIL:-${DOMAIN_BASE_DIR}/${GRID_NAME}/maskutil.nc}"
+SLURM_ACCOUNT="${SLURM_ACCOUNT:-}"
+SLURM_PARTITION="${SLURM_PARTITION:-}"
+MODULE_LOAD_CMD="${MODULE_LOAD_CMD:-}"
 
 # ------------------------------------------------------------------------------
-# 2. Workspaces & Storage Hierarchy (BSC Nord4 / MN5 / hub04 Policy)
+# 2. Target Grid & Resource Profile (grids.yaml)
 # ------------------------------------------------------------------------------
-# Auto-detect BSC GPFS scratch
-if [ -d "/gpfs/scratch/${SLURM_ACCOUNT:-bsc32}/${USER}" ]; then
-    DEFAULT_SCRATCH="/gpfs/scratch/${SLURM_ACCOUNT:-bsc32}/${USER}"
-elif [ -d "/esarchive/scratch/${USER}" ]; then
-    DEFAULT_SCRATCH="/esarchive/scratch/${USER}"
-elif [ -d "/gpfs/scratch/${USER}" ]; then
-    DEFAULT_SCRATCH="/gpfs/scratch/${USER}"
-else
-    DEFAULT_SCRATCH="${HOME}/scratch"
-fi
-SCRATCH_ROOT="${SCRATCH_ROOT:-${DEFAULT_SCRATCH}}"
+eval "$(python3 -m pisces_inidata.cli grid-config --grid "${GRID_NAME}" --export 2>/dev/null || true)"
 
-# Unified root workspace (single top-level folder for the entire pipeline)
+SLURM_TIME="${SLURM_TIME:-${GRID_SLURM_TIME:-01:00:00}}"
+SLURM_MEM="${SLURM_MEM:-${GRID_SLURM_MEM:-16G}}"
+SLURM_CPUS_PER_TASK="${SLURM_CPUS_PER_TASK:-${GRID_SLURM_CPUS:-16}}"
+
+# ------------------------------------------------------------------------------
+# 3. Workspaces & Storage Hierarchy
+# ------------------------------------------------------------------------------
+SCRATCH_ROOT="${SCRATCH_ROOT:-${DEFAULT_PLATFORM_SCRATCH:-${HOME}/scratch}}"
 WORKSPACE="${PISCES_WORKSPACE:-${SCRATCH_ROOT}/pisces_inidata}"
 export WORKSPACE
 export PISCES_WORKSPACE="${WORKSPACE}"
 
-# Shared assets (Grid-agnostic: Stage 0 raw catalog + Stage 1 regular 1x1 ETL)
-if [ -z "${RAW_DIR:-}" ]; then
-    if [ -d "${WORKSPACE}/shared/raw" ]; then
-        RAW_DIR="${WORKSPACE}/shared/raw"
-    elif [ -d "${PWD}/pisces_raw_sources" ] && [ -n "$(ls -A "${PWD}/pisces_raw_sources" 2>/dev/null)" ]; then
-        RAW_DIR="${PWD}/pisces_raw_sources"
-    elif [ -d "${SCRATCH_ROOT}/pisces_raw_sources" ] && [ -n "$(ls -A "${SCRATCH_ROOT}/pisces_raw_sources" 2>/dev/null)" ]; then
-        RAW_DIR="${SCRATCH_ROOT}/pisces_raw_sources"
-    elif [ -d "/esarchive/scratch/vlapin/tmp/pisces_raw_sources" ]; then
-        RAW_DIR="/esarchive/scratch/vlapin/tmp/pisces_raw_sources"
-    else
-        RAW_DIR="${WORKSPACE}/shared/raw"
-    fi
+# Shared assets (Raw catalog & standardized ETL)
+RAW_DIR="${RAW_DIR:-${WORKSPACE}/shared/raw}"
+if [ ! -d "${RAW_DIR}" ] && [ -d "${PWD}/pisces_raw_sources" ] && [ -n "$(ls -A "${PWD}/pisces_raw_sources" 2>/dev/null)" ]; then
+    RAW_DIR="${PWD}/pisces_raw_sources"
 fi
 
-SCRIPT_DIR_CONFIG="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_DIR="$(cd "${SCRIPT_DIR_CONFIG}/.." && pwd)"
+# Target domain directory
+DOMAIN_BASE_DIR="${DOMAIN_BASE_DIR:-${DEFAULT_PLATFORM_DOMAIN:-${PWD}/domain}}"
+DOMAIN_CFG="${DOMAIN_CFG:-${DOMAIN_BASE_DIR}/${GRID_NAME}/domain_cfg.nc}"
+MASKUTIL="${MASKUTIL:-${DOMAIN_BASE_DIR}/${GRID_NAME}/maskutil.nc}"
 
-# Ensure pisces-inidata binary, NCO env, and Python module are discoverable everywhere
-export PATH="${REPO_DIR}/bin:${HOME}/.local/nco-env/bin:${HOME}/.local/bin:${PATH}"
-export PYTHONPATH="${REPO_DIR}/python:${PYTHONPATH:-}"
-
-# Load declarative target grid profile (grids.yaml)
-eval "$(python3 -m pisces_inidata.cli grid-config --grid "${GRID_NAME}" --export)"
-
-# Load per-variable source configuration (sources.yaml or custom PISCES_CONFIG)
-CONFIG_FILE="${PISCES_CONFIG:-${CONFIG_FILE:-}}"
-if [ -z "${CONFIG_FILE}" ]; then
-    if [ -f "${REPO_DIR}/sources.yaml" ]; then
-        CONFIG_FILE="${REPO_DIR}/sources.yaml"
-    elif [ -f "${SCRIPT_DIR_CONFIG}/sources.yaml" ]; then
-        CONFIG_FILE="${SCRIPT_DIR_CONFIG}/sources.yaml"
-    fi
-fi
+# ------------------------------------------------------------------------------
+# 4. Observational Sources & Presets (sources.yaml)
+# ------------------------------------------------------------------------------
+CONFIG_FILE="${PISCES_CONFIG:-${CONFIG_FILE:-${REPO_DIR}/sources.yaml}}"
 export CONFIG_FILE
 export PISCES_CONFIG="${CONFIG_FILE}"
 
-if [ -n "${CONFIG_FILE}" ] && [ -f "${CONFIG_FILE}" ]; then
-    if [ -n "${PRESET:-}" ]; then
-        eval "$(python3 -m pisces_inidata.cli config --export --file "${CONFIG_FILE}" --preset "${PRESET}")"
-    else
-        eval "$(python3 -m pisces_inidata.cli config --export --file "${CONFIG_FILE}")"
-    fi
+if [ -f "${CONFIG_FILE}" ]; then
+    eval "$(python3 -m pisces_inidata.cli config --export --file "${CONFIG_FILE}" ${PRESET:+--preset "${PRESET}"} 2>/dev/null || true)"
 fi
 
 PRESET="${PRESET:-${INIDATA_PRESET:-ece4}}"
 export PRESET INIDATA_PRESET
 
-if [ -z "${STANDARDIZED_DIR:-}" ]; then
-    if [ -d "${WORKSPACE}/shared/standardized/${PRESET}" ]; then
-        STANDARDIZED_DIR="${WORKSPACE}/shared/standardized/${PRESET}"
-    elif [ -d "${SCRATCH_ROOT}/pisces_standardized_${PRESET}" ]; then
-        STANDARDIZED_DIR="${SCRATCH_ROOT}/pisces_standardized_${PRESET}"
-    else
-        STANDARDIZED_DIR="${WORKSPACE}/shared/standardized/${PRESET}"
-    fi
-fi
+STANDARDIZED_DIR="${STANDARDIZED_DIR:-${WORKSPACE}/shared/standardized/${PRESET}}"
 export STANDARDIZED_DIR
 
-# Target grid workspace (Stage 2)
+# Target grid output paths
 GRID_DIR="${WORKSPACE}/grids/${GRID_NAME}"
 WORK_DIR="${WORK_DIR:-${GRID_DIR}}"
 WEIGHTS_DIR="${WEIGHTS_DIR:-${GRID_DIR}/weights}"
@@ -111,63 +75,32 @@ OUTPUT_DIR="${OUTPUT_DIR:-${GRID_DIR}/inidata}"
 LOG_DIR="${LOG_DIR:-${GRID_DIR}/logs}"
 SBATCH_DIR="${SBATCH_DIR:-${GRID_DIR}/jobs}"
 
-# Temporary scratch handling:
-# 1. On compute nodes: $TMPDIR points to local NVMe (/scratch/tmp/$SLURM_JOB_ID)
-# 2. On login nodes: fallback to $WORKSPACE/fallback_tmp (NEVER /tmp per BSC policy)
+# Local NVMe scratch or fallback
 TMP_BASE="${TMPDIR:-${WORKSPACE}/fallback_tmp}"
-mkdir -p "${TMP_BASE}" "${WORKSPACE}" "${OUTPUT_DIR}" "${WEIGHTS_DIR}" "${LOG_DIR}" "${SBATCH_DIR}"
+mkdir -p "${TMP_BASE}" "${WORKSPACE}" "${OUTPUT_DIR}" "${WEIGHTS_DIR}" "${LOG_DIR}" "${SBATCH_DIR}" 2>/dev/null || true
 
 # ------------------------------------------------------------------------------
-# 3. HPC Environment & Slurm Settings (Nord4 / hub02)
+# 5. CDO Execution & Compression Options
 # ------------------------------------------------------------------------------
-SLURM_ACCOUNT="${SLURM_ACCOUNT:-bsc32}"
-SLURM_PARTITION="${SLURM_PARTITION:-bsc_es}"
-SLURM_TIME="${SLURM_TIME:-${GRID_SLURM_TIME:-01:00:00}}"
-SLURM_MEM="${SLURM_MEM:-${GRID_SLURM_MEM:-16G}}"
-SLURM_CPUS_PER_TASK="${SLURM_CPUS_PER_TASK:-${GRID_SLURM_CPUS:-16}}"
-
-MODULE_LOAD_CMD="set +u; module load CDO/2.3.0-gompi-2020b NCO/5.1.0-foss-2020b netcdf4-python/1.5.7-foss-2020b-Python-3.8.6 2>/dev/null || module load CDO/2.3.0-gompi-2020b NCO/5.1.0-foss-2020b netcdf4-python/1.6.1-foss-2020b-Python-3.8.6 2>/dev/null || module load CDO NCO 2>/dev/null || true; set -u"
-
-# CDO execution options (safe login node limit: 4 threads; full Slurm job: 16 threads)
 if [ -z "${SLURM_JOB_ID:-}" ]; then
     CDO_THREADS="${CDO_THREADS:-4}"
 else
     CDO_THREADS="${SLURM_CPUS_PER_TASK:-16}"
 fi
-CDO_OPTS="-L -P ${CDO_THREADS}"
-CDO_COMPRESS="-f nc4 -z zip_4"
+CDO_OPTS="${CDO_OPTS:--L -P ${CDO_THREADS}}"
+CDO_COMPRESS="${CDO_COMPRESS:--f nc4 -z zip_4}"
 
-# ------------------------------------------------------------------------------
-# 4. Source Data Catalog & References
-# ------------------------------------------------------------------------------
-# GLODAP version configuration (supported: 'v2.2016b' [default 3D gridded], 'v2.2023', 'v1.1')
-GLODAP_VERSION="${GLODAP_VERSION:-v2.2016b}"
-
+# Catalog paths
 WOA23_DIR="${RAW_DIR}/woa23"
+GLODAP_VERSION="${GLODAP_VERSION:-v2.2016b}"
 GLODAP_V2_2023_DIR="${RAW_DIR}/glodap_v2_2023"
 GLODAP_V2_DIR="${RAW_DIR}/glodap_v2"
 GLODAP_V1_DIR="${RAW_DIR}/glodap_v1"
 PANAIOTIS_DOC_DIR="${RAW_DIR}/panaiotis2024_doc"
 
-# Paths to ECE3 / BSC baseline sources
-ECE3_PISCES_DIR="${ECE3_PISCES_DIR:-/gpfs/projects/bsc32/models/ecearth/v3.3.3/inidata/pisces}"
-if [ -f "/esarchive/scratch/vlapin/cdo_griddes_files/orca1_grid" ]; then
-    DEFAULT_ORCA1_GRIDDES="/esarchive/scratch/vlapin/cdo_griddes_files/orca1_grid"
-else
-    DEFAULT_ORCA1_GRIDDES="${RAW_DIR}/orca1_grid"
-fi
-ORCA1_GRIDDES="${ORCA1_GRIDDES:-${DEFAULT_ORCA1_GRIDDES}}"
-
-# JASMIN official PISCES inputs reference (fallback baseline)
-JASMIN_PISCES_V5_URL="https://gws-access.jasmin.ac.uk/public/nemo/sette_inputs/extras/ORCA2_INPUTS_PISCES_v5.0.0.tar.gz"
-
-# 3D Tracers to process
+# Tracers and boundary variables
 TRACERS_3D=("NO3" "PO4" "Si" "O2" "TALK" "TDIC" "PiDIC" "DOC" "Fer")
-
-# River export variables (Global NEWS 2)
 RIVER_VARS=("riverdin" "riverdip" "riverdon" "riverdop" "riverdoc" "riverdsi" "riverdic")
-
-# Atmospheric deposition variables
 DUST_VARS=("dust" "dustfer" "dustpo4" "dustsi" "solubility2")
 NDEP_VARS=("ndep" "ndep2")
 
@@ -181,29 +114,24 @@ export GRID_BATCH_WEIGHTS GRID_FALLBACK_COORDS GRID_VERTICAL_LEVELS
 export WOA23_DIR GLODAP_VERSION GLODAP_V2_2023_DIR GLODAP_V2_DIR GLODAP_V1_DIR PANAIOTIS_DOC_DIR
 
 # ------------------------------------------------------------------------------
-# 5. Scientific Provenance & FAIR Metadata Stamping
+# 6. Scientific Provenance & Metadata Stamping (Lightweight CF-1.8)
 # ------------------------------------------------------------------------------
 stamp_provenance() {
     local target_file="$1"
-    if [ -f "${target_file}" ] && command -v ncatted >/dev/null 2>&1; then
-        local git_rev
-        git_rev="$(git -C "${SCRIPT_DIR_CONFIG:-.}" rev-parse --short HEAD 2>/dev/null || echo 'release')"
-        local timestamp
-        timestamp="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
-        local prod_summary="NO3:${PRODUCT_NO3:-woa23}, PO4:${PRODUCT_PO4:-woa23}, Si:${PRODUCT_Si:-woa23}, O2:${PRODUCT_O2:-woa23}, TALK:${PRODUCT_TALK:-glodap_v2_2016b}, TDIC:${PRODUCT_TDIC:-glodap_v2_2016b}, DOC:${PRODUCT_DOC:-panaiotis2024}, Fer:${PRODUCT_Fer:-sette_nomask}"
+    [ -f "${target_file}" ] || return 0
+    command -v ncatted >/dev/null 2>&1 || return 0
 
-        ncatted -h -O \
-            -a title,global,o,c,"PISCES Biogeochemical Initial Conditions for NEMO/EC-Earth4 (${GRID_NAME})" \
-            -a institution,global,o,c,"Barcelona Supercomputing Center (BSC), EC-Earth Consortium" \
-            -a source_pipeline,global,o,c,"pisces-inidata (https://github.com/vlap/pisces-inidata)" \
-            -a inidata_preset,global,o,c,"${INIDATA_PRESET:-custom}" \
-            -a source_products,global,o,c,"${prod_summary}" \
-            -a git_commit,global,o,c,"${git_rev}" \
-            -a generation_timestamp,global,o,c,"${timestamp}" \
-            -a references,global,o,c,"https://pisces-inidata.readthedocs.io/en/latest/" \
-            -a license,global,o,c,"Apache-2.0" \
-            "${target_file}" 2>/dev/null || true
-    fi
+    local timestamp
+    timestamp="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+    local git_rev
+    git_rev="$(git -C "${SCRIPT_DIR_CONFIG}" rev-parse --short HEAD 2>/dev/null || echo 'release')"
+
+    ncatted -h -O \
+        -a title,global,o,c,"PISCES Initial Conditions (${GRID_NAME})" \
+        -a institution,global,o,c,"${PISCES_INSTITUTION:-EC-Earth Consortium}" \
+        -a source_pipeline,global,o,c,"pisces-inidata (git:${git_rev})" \
+        -a inidata_preset,global,o,c,"${INIDATA_PRESET:-custom}" \
+        -a generation_date,global,o,c,"${timestamp}" \
+        "${target_file}" 2>/dev/null || true
 }
 export -f stamp_provenance 2>/dev/null || true
-
