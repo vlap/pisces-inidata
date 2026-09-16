@@ -80,16 +80,6 @@ echo " Standard Source: ${STD_FILE}"
 echo " Target Grid:     ${GRID_NAME}"
 echo "========================================================================"
 
-# Helper: Check whether source NetCDF horizontal grid matches target grid
-is_same_grid() {
-    local src="$1"
-    local tgt="$2"
-    local src_dims tgt_dims
-    src_dims=$(cdo -s griddes "${src}" 2>/dev/null | awk '/xsize/ {x=$3} /ysize/ {y=$3} END {if (x && y) print x "x" y}')
-    tgt_dims=$(cdo -s griddes "${tgt}" 2>/dev/null | awk '/xsize/ {x=$3} /ysize/ {y=$3} END {if (x && y) print x "x" y}')
-    [ -n "${src_dims}" ] && [ "${src_dims}" = "${tgt_dims}" ]
-}
-
 # ------------------------------------------------------------------------------
 # 1. 3D Tracers Remapping
 # ------------------------------------------------------------------------------
@@ -171,17 +161,12 @@ remap_2d_forcing() {
             ;;
     esac
 
-    if is_same_grid "${STD_FILE}" "${TARGET_GRID_NC}"; then
-        echo "Source ${VAR} grid matches target ${GRID_NAME}; copying directly without re-interpolation..."
-        cp "${STD_FILE}" "${out_file}"
-    else
-        local weights_file="${WEIGHTS_DIR}/weights_${VAR}_to_${GRID_NAME}.nc"
-        if [ ! -f "${weights_file}" ]; then
-            cdo ${CDO_OPTS} genbil,"${TARGET_GRID_NC}" "${STD_FILE}" "${weights_file}"
-        fi
-        echo "Remapping ${VAR} to ${GRID_NAME}..."
-        cdo ${CDO_OPTS} ${CDO_COMPRESS} remap,"${TARGET_GRID_NC}","${weights_file}" "${STD_FILE}" "${out_file}"
+    local weights_file="${WEIGHTS_DIR}/weights_${VAR}_to_${GRID_NAME}.nc"
+    if [ ! -f "${weights_file}" ]; then
+        cdo ${CDO_OPTS} genbil,"${TARGET_GRID_NC}" "${STD_FILE}" "${weights_file}"
     fi
+    echo "Remapping ${VAR} to ${GRID_NAME}..."
+    cdo ${CDO_OPTS} ${CDO_COMPRESS} remap,"${TARGET_GRID_NC}","${weights_file}" "${STD_FILE}" "${out_file}"
 
     [ -n "${link1}" ] && ln -sfn "$(basename "${out_file}")" "${link1}"
     [ -n "${link2}" ] && ln -sfn "$(basename "${out_file}")" "${link2}"
@@ -194,13 +179,8 @@ remap_2d_forcing() {
 # ------------------------------------------------------------------------------
 remap_bathy() {
     local out_file="${OUTPUT_DIR}/bathy.orca.nc"
-    if is_same_grid "${STD_FILE}" "${TARGET_GRID_NC}"; then
-        echo "Source bathy grid matches target ${GRID_NAME}; copying directly without re-interpolation..."
-        cp "${STD_FILE}" "${out_file}"
-    else
-        echo "Remapping bathy shelf fraction to ${GRID_NAME} using nearest-neighbor..."
-        cdo ${CDO_OPTS} ${CDO_COMPRESS} remapnn,"${TARGET_GRID_NC}" "${STD_FILE}" "${out_file}"
-    fi
+    echo "Remapping bathy shelf fraction to ${GRID_NAME} using nearest-neighbor..."
+    cdo ${CDO_OPTS} ${CDO_COMPRESS} remapnn,"${TARGET_GRID_NC}" "${STD_FILE}" "${out_file}"
     ln -sfn "$(basename "${out_file}")" "${OUTPUT_DIR}/pmarge_etopo_${GRID_NAME}.nc"
     stamp_provenance "${out_file}"
     echo "Created bathy: ${out_file}"
@@ -211,13 +191,8 @@ remap_bathy() {
 # ------------------------------------------------------------------------------
 remap_hydrofe() {
     local out_file="${OUTPUT_DIR}/hydrofe.orca.nc"
-    if is_same_grid "${STD_FILE}" "${TARGET_GRID_NC}"; then
-        echo "Source hydrofe grid matches target ${GRID_NAME}; copying directly without re-interpolation..."
-        cp "${STD_FILE}" "${out_file}"
-    else
-        echo "Remapping hydrothermal vent Fe to ${GRID_NAME}..."
-        cdo ${CDO_OPTS} ${CDO_COMPRESS} remap,"${TARGET_GRID_NC}","${WEIGHTS_BILIN}" "${STD_FILE}" "${out_file}"
-    fi
+    echo "Remapping hydrothermal vent Fe to ${GRID_NAME}..."
+    cdo ${CDO_OPTS} ${CDO_COMPRESS} remap,"${TARGET_GRID_NC}","${WEIGHTS_BILIN}" "${STD_FILE}" "${out_file}"
     ln -sfn "$(basename "${out_file}")" "${OUTPUT_DIR}/hydrothermal_fe_forcing_${GRID_NAME}.nc"
     stamp_provenance "${out_file}"
     echo "Created hydrofe: ${out_file}"
@@ -228,13 +203,8 @@ remap_hydrofe() {
 # ------------------------------------------------------------------------------
 remap_river() {
     local out_file="${OUTPUT_DIR}/river.orca.nc"
-    if is_same_grid "${STD_FILE}" "${TARGET_GRID_NC}"; then
-        echo "Source river grid matches target ${GRID_NAME}; copying directly without re-interpolation..."
-        cp "${STD_FILE}" "${out_file}"
-    else
-        echo "Remapping river nutrient discharge to ${GRID_NAME}..."
-        cdo ${CDO_OPTS} ${CDO_COMPRESS} remapdis,"${TARGET_GRID_NC}" "${STD_FILE}" "${out_file}"
-    fi
+    echo "Remapping river nutrient discharge to ${GRID_NAME}..."
+    cdo ${CDO_OPTS} ${CDO_COMPRESS} remapdis,"${TARGET_GRID_NC}" "${STD_FILE}" "${out_file}"
     ln -sfn "$(basename "${out_file}")" "${OUTPUT_DIR}/river_global_news_${GRID_NAME}.nc"
     stamp_provenance "${out_file}"
     echo "Created river: ${out_file}"

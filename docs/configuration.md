@@ -287,7 +287,6 @@ grids:
 - **`disk_space_gb`**: Verified by `pisces-inidata check` to ensure target filesystem has enough headroom before running heavy jobs.
 - **`vertical_levels`**: Target vertical resolution (e.g. 31 or 75 levels).
 - **`fallback_coords_source`**: Fallback coordinates file when `domain_cfg.nc` is omitted (e.g. SETTE `bathy.orca.nc` for ORCA2).
-- **Automatic Grid Detection:** The remapping engine automatically inspects source and target grid dimensions. If a source file is already defined on the target mesh (e.g. SETTE boundary forcings on ORCA2), the pipeline copies the field directly to avoid numerical diffusion or distortion; if dimensions differ, it executes CDO horizontal remapping (`remap`, `remapnn`, or `remapdis`).
 
 ### Adding a New Grid
 Adding a new grid requires zero changes to shell scripts or Python code. Simply append your grid specification to `grids.yaml`, or point to a custom file using `PISCES_GRIDS_CONFIG=/path/to/custom_grids.yaml`.
