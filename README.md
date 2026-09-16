@@ -61,12 +61,42 @@ pisces-inidata/
 │   ├── prepare_sette_reference_orca2.sh # Ground-truth benchmark setup
 │   └── launcher_pisces_inidata.sh # End-to-end Slurm master pipeline driver
 ├── tests/                       # Unit tests (pytest)
+├── grids.yaml                   # Declarative target grid specifications & HPC resource profiles
 ├── sources.yaml                 # Active source dataset configuration (preset: ece4)
 ├── pyproject.toml               # Modern PEP 517/621 package metadata
 ├── LICENSE                      # Apache-2.0 License
 ├── CITATION.cff                 # Citation metadata
 └── README.md                    # This document
 ```
+
+---
+
+## ⚡ TL;DR: Production Run on BSC (Hub04 + Nord4 / MN5)
+
+If you have an account at BSC with access to `hub04` and `nord4`, you can generate ready-to-use inidata in 2 steps:
+
+```bash
+# 1. On hub04 (internet node): Download raw datasets and standardize Stage 1 sources (~2 min):
+ssh hub04
+cd /gpfs/scratch/bsc32/${USER}/pisces-inidata
+module load CDO/2.3.0-gompi-2020b NCO/5.1.0-foss-2020b netcdf4-python/1.5.7-foss-2020b-Python-3.8.6
+pip install -e .
+pisces-inidata download --prepare
+
+# 2. On nord4 (batch cluster): Submit parallel Slurm remapping to target grid:
+ssh nord4
+cd /gpfs/scratch/bsc32/${USER}/pisces-inidata
+module load CDO/2.3.0-gompi-2020b NCO/5.1.0-foss-2020b netcdf4-python/1.5.7-foss-2020b-Python-3.8.6
+GRID_NAME=eORCA1 ./scripts/launcher_pisces_inidata.sh submit stage2
+# Or for eORCA025:
+# GRID_NAME=eORCA025 ./scripts/launcher_pisces_inidata.sh submit stage2
+
+# 3. Verify generated inidata (all 15 files):
+pisces-inidata verify --grid eORCA1
+```
+
+All 15 target NetCDF files will be ready in:
+`${PISCES_WORKSPACE}/grids/${GRID_NAME}/inidata/`
 
 ---
 
@@ -82,9 +112,10 @@ cd pisces-inidata
 pip install -e .
 ```
 
-Verify your installation:
+Verify your installation and inspect target grids:
 ```bash
 pisces-inidata info
+pisces-inidata grid-config
 ```
 
 ### 2. Configure Sources & Presets (`sources.yaml`)
@@ -106,8 +137,8 @@ pisces-inidata config --preset ece3 --export
 ### 3. Download Raw Datasets
 Fetch only the active datasets selected in `sources.yaml`:
 ```bash
-# Using the CLI:
-pisces-inidata download
+# Download and immediately prepare Stage 1 standardized regular files:
+pisces-inidata download --prepare
 
 # Or dry-run preview:
 pisces-inidata download --dry-run
@@ -116,23 +147,24 @@ pisces-inidata download --dry-run
 ### 4. Generate Initial Conditions
 The pipeline cleanly decouples **Stage 1 (Source Standardization)** from **Stage 2 (Target Remapping)**:
 ```bash
-# End-to-end generation for ORCA2:
-pisces-inidata run --orca ORCA2
+# End-to-end generation for ORCA2 (or eORCA1, eORCA025):
+pisces-inidata run --grid ORCA2
 
-# Or for arbitrary grids (eORCA1, eORCA025) with custom domain:
-pisces-inidata run --orca eORCA1 --domain-dir /path/to/nemo/domain
+# Or for arbitrary grids with custom domain:
+pisces-inidata run --grid eORCA1 --domain-dir /path/to/nemo/domain
 
 # Prepare Stage 1 regular standardized sources only (cached and shared across grids):
 pisces-inidata prepare-sources
 
 # Remap specific or all components to target grid:
-pisces-inidata remap all --orca eORCA1
+pisces-inidata remap all --grid eORCA1
 ```
+*(Note: `--orca <NAME>` is fully supported as an alias for `--grid <NAME>`.)*
 
 ### 5. Inspect & Verify Outputs
 Inspect generated NetCDF files, verify shapes, and guarantee no blank/all-zero/NaN outputs:
 ```bash
-pisces-inidata verify --orca eORCA025
+pisces-inidata verify --grid eORCA025
 ```
 
 ### 6. Validate Against Reference
@@ -154,14 +186,10 @@ On high-performance computing clusters where compute nodes lack direct internet 
    Formatting raw sources into regular NetCDF climatologies takes only 1–2 minutes and is executed directly on `hub04` alongside the download:
    ```bash
    ssh hub04
-   cd /esarchive/scratch/${USER}/scripts/pisces_inidata
+   cd /gpfs/scratch/bsc32/${USER}/pisces-inidata
 
-   # Option A: Download raw sources and automatically standardize in one shot:
+   # Download raw sources and automatically standardize in one shot:
    pisces-inidata download --prepare
-
-   # Option B: Run step-by-step:
-   pisces-inidata download
-   pisces-inidata prepare-sources
    ```
    *Standardized regular source files (`std_*.nc`) are cached in `${STANDARDIZED_DIR}` on the shared scratch filesystem and reused across all target grids.*
 
@@ -169,7 +197,7 @@ On high-performance computing clusters where compute nodes lack direct internet 
    Batch compute nodes perform only pure interpolation to target curvilinear grids without data formatting overhead:
    ```bash
    ssh nord4
-   cd /esarchive/scratch/${USER}/scripts/pisces_inidata
+   cd /gpfs/scratch/bsc32/${USER}/pisces-inidata
 
    # Submit batch remapping for eORCA1:
    GRID_NAME=eORCA1 ./scripts/launcher_pisces_inidata.sh submit stage2
@@ -178,7 +206,7 @@ On high-performance computing clusters where compute nodes lack direct internet 
    GRID_NAME=eORCA025 ./scripts/launcher_pisces_inidata.sh submit stage2
 
    # Inspect and verify all 15 output products:
-   pisces-inidata verify --orca eORCA025
+   pisces-inidata verify --grid eORCA025
    ```
 
 3. **Storage Hierarchy & Nord4 Guidelines:**

@@ -40,20 +40,20 @@ Presets can be configured in multiple ways:
    And invoke by name:
    ```bash
    pisces-inidata prepare-sources --preset my_experiment
-   pisces-inidata remap all --preset my_experiment --orca eORCA1
+   pisces-inidata remap all --preset my_experiment --grid eORCA1
    ```
 
 3. **Via explicit `--config` flag:**
    Point any command directly to a standalone YAML configuration:
    ```bash
    pisces-inidata prepare-sources --config path/to/my_sources.yaml
-   pisces-inidata remap all --config path/to/my_sources.yaml --orca eORCA1
+   pisces-inidata remap all --config path/to/my_sources.yaml --grid eORCA1
    ```
 
 4. **Via CLI `--preset` or `PRESET` environment variable:**
    ```bash
    pisces-inidata info --preset ece3
-   pisces-inidata run --orca eORCA1 --preset my_experiment
+   pisces-inidata run --grid eORCA1 --preset my_experiment
    pisces-inidata config --preset official_sette --export
    ```
 
@@ -103,12 +103,15 @@ export PRODUCT_DOC="panaiotis2024"
 
 ## 3. Command-Line Interface (`pisces-inidata`)
 
+> [!NOTE]
+> All commands accept `--grid <NAME>` (e.g. `--grid eORCA1`). The legacy flag `--orca <NAME>` remains fully supported as a backwards-compatible alias.
+
 ### `pisces-inidata check`
 Runs pre-flight integrity verification before launching remapping jobs:
 ```bash
-pisces-inidata check --orca ORCA2
+pisces-inidata check --grid ORCA2
 # Check against specific preset:
-pisces-inidata check --orca eORCA1 --preset ece3
+pisces-inidata check --grid eORCA1 --preset ece3
 ```
 - Verifies system binaries (`cdo`, `ncks`, `ncap2`, `ncatted`).
 - Confirms presence of target domain files (`domain_cfg.nc`, `maskutil.nc`).
@@ -118,16 +121,16 @@ pisces-inidata check --orca eORCA1 --preset ece3
 Executes initial conditions generation pipeline (Stage 1 ETL followed by Stage 2 parallel remapping):
 ```bash
 # Generate inidata on ORCA2 (or eORCA1, eORCA025)
-pisces-inidata run --orca ORCA2 --domain-dir /path/to/nemo/domain
+pisces-inidata run --grid ORCA2 --domain-dir /path/to/nemo/domain
 
 # Run with specific preset:
-pisces-inidata run --orca eORCA1 --preset ece3
+pisces-inidata run --grid eORCA1 --preset ece3
 
 # Run only Stage 1 source preparation:
-pisces-inidata run --orca eORCA1 --stage stage1
+pisces-inidata run --grid eORCA1 --stage stage1
 
 # Dry-run inspection of generated batch jobs:
-pisces-inidata run --orca eORCA025 --dry-run
+pisces-inidata run --grid eORCA025 --dry-run
 ```
 
 ### `pisces-inidata prepare-sources`
@@ -148,20 +151,33 @@ Standardized files are cached in `${STANDARDIZED_DIR}` and reused across all tar
 Executes Stage 2 (Target Remapping) to interpolate a standardized regular source to the target NEMO mesh:
 ```bash
 # Remap all variables onto eORCA1:
-pisces-inidata remap all --orca eORCA1
+pisces-inidata remap all --grid eORCA1
 
 # Remap specific forcing:
-pisces-inidata remap dust --orca eORCA025
+pisces-inidata remap dust --grid eORCA025
 ```
 
 ### `pisces-inidata verify`
 Inspects all 15 expected NetCDF output files in an output directory, verifies shapes, calculates min/mean/max bounds, and ensures zero blank/NaN files:
 ```bash
 # Verify outputs for eORCA025:
-pisces-inidata verify --orca eORCA025
+pisces-inidata verify --grid eORCA025
 
 # Verify explicit directory:
-pisces-inidata verify --orca eORCA1 --out-dir /path/to/output_eORCA1
+pisces-inidata verify --grid eORCA1 --out-dir /path/to/output_eORCA1
+```
+
+### `pisces-inidata grid-config`
+Inspects declarative target grid profiles from `grids.yaml` or generates shell exports:
+```bash
+# List all configured grids:
+pisces-inidata grid-config
+
+# Inspect a specific grid:
+pisces-inidata grid-config --grid eORCA025
+
+# Export environment variables for shell evaluation:
+pisces-inidata grid-config --grid eORCA025 --export
 ```
 
 ### `pisces-inidata validate`
@@ -212,3 +228,99 @@ pisces-inidata info
 # Preview configuration for a different preset:
 pisces-inidata info --preset ece3
 ```
+
+---
+
+## 4. Declarative Target Grid Configuration (`grids.yaml`)
+
+Rather than hardcoding allowed grids or embedding resolution-specific conditionals (`if grid == ...`) in Python and Shell scripts, `pisces-inidata` defines target grids declaratively in `grids.yaml`.
+
+### Structure of `grids.yaml`
+```yaml
+grids:
+  ORCA2:
+    description: "NEMO standard 2-degree tripolar grid (148x180, 31 vertical levels)"
+    resources:
+      time: "00:30:00"
+      memory: "8G"
+      cpus: 8
+      batch_weights: false
+    disk_space_gb: 2.0
+    vertical_levels: 31
+    native_forcings: true
+    fallback_coords_source: "official_v5.0.0/bathy.orca.nc"
+
+  eORCA1:
+    description: "Extended ORCA 1-degree global grid (362x292, 75 vertical levels)"
+    resources:
+      time: "01:00:00"
+      memory: "16G"
+      cpus: 16
+      batch_weights: false
+    disk_space_gb: 10.0
+    vertical_levels: 75
+    native_forcings: false
+
+  eORCA025:
+    description: "Extended ORCA 0.25-degree eddy-permitting grid (1442x1207, 75 vertical levels)"
+    resources:
+      time: "02:00:00"
+      memory: "64G"
+      cpus: 16
+      batch_weights: true
+    disk_space_gb: 40.0
+    vertical_levels: 75
+    native_forcings: false
+
+  eORCA12:
+    description: "Extended ORCA 1/12-degree eddy-resolving grid (4322x3606, 75 vertical levels)"
+    resources:
+      time: "04:00:00"
+      memory: "128G"
+      cpus: 32
+      batch_weights: true
+    disk_space_gb: 120.0
+    vertical_levels: 75
+    native_forcings: false
+```
+
+### Key Properties
+- **`resources`**: Configures Slurm execution parameters (`time`, `memory`, `cpus`).
+  - `batch_weights: true`: For high-resolution meshes (like `eORCA025` or `eORCA12`), precomputes SCRIP remapping weights as an asynchronous batch Slurm job before launching parallel field remapping.
+  - `batch_weights: false`: For coarser grids (`ORCA2`, `eORCA1`), weights are computed inline in minutes.
+- **`disk_space_gb`**: Verified by `pisces-inidata check` to ensure target filesystem has enough headroom before running heavy jobs.
+- **`vertical_levels`**: Target vertical resolution (e.g. 31 or 75 levels).
+- **`native_forcings`**: Set to `true` for grids where surface forcings (rivers, dust, bathy) are provided natively without requiring interpolation.
+- **`fallback_coords_source`**: Fallback coordinates file when `domain_cfg.nc` is omitted (e.g. SETTE `bathy.orca.nc` for ORCA2).
+
+### Adding a New Grid
+Adding a new grid requires zero changes to shell scripts or Python code. Simply append your grid specification to `grids.yaml`, or point to a custom file using `PISCES_GRIDS_CONFIG=/path/to/custom_grids.yaml`.
+
+---
+
+## 5. HPC Storage & Directory Structure
+
+To ensure optimal performance and respect storage policies on HPC clusters (e.g. BSC Nord4 and MareNostrum 5):
+
+```text
+${PISCES_WORKSPACE}/               # Default: /gpfs/scratch/bsc32/${USER}/pisces_inidata
+├── shared/
+│   ├── raw/                       # Raw observational archives
+│   └── standardized/              # Stage 1 regular 1°x1° NetCDFs
+│       ├── ece4/                  # Cached and reused across all target grids
+│       └── ece3/
+└── grids/
+    ├── eORCA1/
+    │   ├── weights/               # CDO SCRIP remapping weights
+    │   ├── inidata/               # Final 15 target NetCDF initial condition files
+    │   ├── jobs/                  # Slurm job scripts
+    │   └── logs/                  # Slurm stdout/stderr logs
+    └── eORCA025/
+```
+
+### Local NVMe Scratch (`$TMPDIR`)
+On BSC compute nodes, heavy intermediate CDO operations utilize:
+```bash
+$TMPDIR -> /scratch/tmp/$SLURM_JOB_ID
+```
+Local NVMe solid-state storage provides maximum I/O throughput and ensures shared GPFS file systems remain free of ephemeral scratch files. Temporary directories are automatically cleaned when Slurm terminates the job.
