@@ -117,15 +117,28 @@ pisces-inidata download --dry-run
 ```
 
 ### 4. Generate Initial Conditions
+The pipeline cleanly decouples **Stage 1 (Source Standardization)** from **Stage 2 (Target Remapping)**:
 ```bash
-# Generate for ORCA2:
+# End-to-end generation for ORCA2:
 pisces-inidata run --orca ORCA2
 
 # Or for arbitrary grids (eORCA1, eORCA025) with custom domain:
 pisces-inidata run --orca eORCA1 --domain-dir /path/to/nemo/domain
+
+# Prepare Stage 1 regular standardized sources only (cached and shared across grids):
+pisces-inidata prepare-sources
+
+# Remap specific or all components to target grid:
+pisces-inidata remap all --orca eORCA1
 ```
 
-### 5. Validate Against Reference
+### 5. Inspect & Verify Outputs
+Inspect generated NetCDF files, verify shapes, and guarantee no blank/all-zero/NaN outputs:
+```bash
+pisces-inidata verify --orca eORCA025
+```
+
+### 6. Validate Against Reference
 ```bash
 # Statistical validation against SETTE ORCA2 reference:
 pisces-inidata validate --preset official_sette
@@ -154,8 +167,11 @@ On high-performance computing clusters where compute nodes lack direct internet 
    # Submit batch generation for eORCA1:
    ./scripts/launcher_pisces_inidata.sh submit
 
-   # Submit batch generation for eORCA025:
+   # Submit batch generation for eORCA025 (auto-allocates 64G memory and chains weights dependency):
    GRID_NAME=eORCA025 ./scripts/launcher_pisces_inidata.sh submit
+
+   # Verify all 15 output products:
+   pisces-inidata verify --orca eORCA025
    ```
 
 ---

@@ -1,0 +1,245 @@
+#!/usr/bin/env bash
+# ==============================================================================
+# remap_field.sh
+# Stage 2 (Target-Centric Remapping): Universal, format-agnostic interpolation
+# driver mapping standardized regular source files to target NEMO grid.
+#
+# Takes clean NetCDF from ${STANDARDIZED_DIR}/std_<VAR>.nc and executes:
+#   - 3D: Vertical level interpolation (cdo intlevel) + Horizontal remapping (cdo remap)
+#   - 2D: Horizontal remapping (cdo remap)
+#   - Bathy: Nearest-neighbor remapping (cdo remapnn)
+#   - Rivers: Conservative remapping (cdo remapcon)
+#
+# This script has ZERO dataset-specific branching (e.g. no WOA vs GLODAP logic).
+# It operates strictly on standardized NetCDF files.
+# ==============================================================================
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${SCRIPT_DIR}/config.sh"
+
+# Load modules
+eval "${MODULE_LOAD_CMD}"
+
+if [ "$#" -lt 1 ]; then
+    echo "Usage: $0 <VAR_NAME|all> [TYPE: auto|3d|2d|bathy|hydrofe|river]"
+    exit 1
+fi
+
+VAR="$1"
+FIELD_TYPE="${2:-auto}"
+
+if [ "${VAR}" = "all" ]; then
+    for t in "${TRACERS_3D[@]}"; do
+        bash "${SCRIPT_DIR}/remap_field.sh" "${t}" 3d
+    done
+    for f in dust ndep par; do
+        bash "${SCRIPT_DIR}/remap_field.sh" "${f}" 2d
+    done
+    bash "${SCRIPT_DIR}/remap_field.sh" bathy bathy
+    bash "${SCRIPT_DIR}/remap_field.sh" hydrofe hydrofe
+    bash "${SCRIPT_DIR}/remap_field.sh" river river
+    echo "=== All fields remapped successfully to ${GRID_NAME}! ==="
+    exit 0
+fi
+
+if [ "${FIELD_TYPE}" = "auto" ]; then
+    case "${VAR}" in
+        NO3|PO4|Si|O2|TALK|TDIC|PiDIC|DOC|Fer) FIELD_TYPE="3d" ;;
+        dust|ndep|par) FIELD_TYPE="2d" ;;
+        bathy) FIELD_TYPE="bathy" ;;
+        hydrofe) FIELD_TYPE="hydrofe" ;;
+        river|rivers) FIELD_TYPE="river" ;;
+        *) FIELD_TYPE="3d" ;;
+    esac
+fi
+
+TARGET_GRID_NC="${WEIGHTS_DIR}/target_grid_${GRID_NAME}.nc"
+WEIGHTS_BILIN="${WEIGHTS_DIR}/weights_r360x180_to_${GRID_NAME}_bilin.nc"
+
+mkdir -p "${OUTPUT_DIR}" "${WEIGHTS_DIR}" "${LOG_DIR}"
+
+if [ ! -f "${TARGET_GRID_NC}" ] || ([ ! -f "${WEIGHTS_BILIN}" ] && [ "${FIELD_TYPE}" != "bathy" ]); then
+    echo "Target grid or weights not found. Generating grid and weights first..."
+    bash "${SCRIPT_DIR}/gen_grid_and_weights.sh"
+fi
+
+STD_FILE="${STANDARDIZED_DIR}/std_${VAR}.nc"
+if [ ! -f "${STD_FILE}" ]; then
+    echo "Standardized source file not found: ${STD_FILE}. Invoking Stage 1 preparation..."
+    bash "${SCRIPT_DIR}/prepare_standard_sources.sh" "${VAR}"
+fi
+
+TMP_DIR=$(mktemp -d -p "${SCRATCH_ROOT}" tmp_remap_${VAR}_XXXXXX)
+trap 'rm -rf "${TMP_DIR}"' EXIT
+
+echo "========================================================================"
+echo " Stage 2 [Remap]: Mapping ${VAR} (${FIELD_TYPE}) to ${GRID_NAME}"
+echo " Standard Source: ${STD_FILE}"
+echo " Target Grid:     ${GRID_NAME}"
+echo "========================================================================"
+
+# ------------------------------------------------------------------------------
+# 1. 3D Tracers Remapping
+# ------------------------------------------------------------------------------
+remap_3d_tracer() {
+    local out_file="${OUTPUT_DIR}/data_${VAR}_${GRID_NAME}.nc"
+
+    # Extract target vertical levels from domain_cfg (e.g. L75) or official nomask (ORCA2 L31)
+    local target_levels=""
+    if [ -f "${DOMAIN_CFG}" ]; then
+        target_levels=$(ncks -s '%f,' -H -C -v nav_lev "${DOMAIN_CFG}" 2>/dev/null | sed 's/,$//')
+    fi
+    if [ -z "${target_levels:-}" ] && [ -f "${RAW_DIR}/official_v5.0.0/data_DOC_nomask.nc" ]; then
+        target_levels=$(cdo -s showlevel "${RAW_DIR}/official_v5.0.0/data_DOC_nomask.nc" 2>/dev/null | tr -s ' ' ',' | sed 's/^,//; s/,$//')
+    fi
+
+    if [ -n "${target_levels:-}" ] && [ "${GRID_NAME}" != "ORCA2" ]; then
+        echo "[Step 1/2] Vertical level interpolation to target levels on source grid..."
+        cdo ${CDO_OPTS} -intlevel,"${target_levels}" "${STD_FILE}" "${TMP_DIR}/vint.nc"
+        echo "[Step 2/2] Horizontal remapping to ${GRID_NAME}..."
+        cdo ${CDO_OPTS} ${CDO_COMPRESS} remap,"${TARGET_GRID_NC}","${WEIGHTS_BILIN}" "${TMP_DIR}/vint.nc" "${out_file}"
+    else
+        echo "[Step 1/1] Horizontal remapping to ${GRID_NAME}..."
+        cdo ${CDO_OPTS} ${CDO_COMPRESS} remap,"${TARGET_GRID_NC}","${WEIGHTS_BILIN}" "${STD_FILE}" "${out_file}"
+    fi
+
+    # Standard target symlinks
+    case "${VAR}" in
+        NO3|PO4|Si|O2)
+            ln -sfn "$(basename "${out_file}")" "${OUTPUT_DIR}/${VAR}_WOA23_monthly_${GRID_NAME}.nc"
+            ln -sfn "$(basename "${out_file}")" "${OUTPUT_DIR}/${VAR}_WOA2009_monthly_${GRID_NAME}.nc"
+            ;;
+        TALK)
+            ln -sfn "$(basename "${out_file}")" "${OUTPUT_DIR}/Alkalini_GLODAP_annual_${GRID_NAME}.nc"
+            ;;
+        TDIC)
+            ln -sfn "$(basename "${out_file}")" "${OUTPUT_DIR}/DIC_GLODAP_annual_${GRID_NAME}.nc"
+            ;;
+        PiDIC)
+            ln -sfn "$(basename "${out_file}")" "${OUTPUT_DIR}/PiDIC_GLODAP_annual_${GRID_NAME}.nc"
+            ;;
+        DOC)
+            ln -sfn "$(basename "${out_file}")" "${OUTPUT_DIR}/DOC_PISCES_monthly_${GRID_NAME}.nc"
+            ;;
+        Fer)
+            ln -sfn "$(basename "${out_file}")" "${OUTPUT_DIR}/data_FER_${GRID_NAME}.nc"
+            ;;
+    esac
+
+    stamp_provenance "${out_file}"
+    echo "Created 3D tracer: ${out_file}"
+}
+
+# ------------------------------------------------------------------------------
+# 2. 2D Surface Forcings Remapping (Dust, N-dep, PAR)
+# ------------------------------------------------------------------------------
+remap_2d_forcing() {
+    local out_file=""
+    local link1=""
+    local link2=""
+
+    case "${VAR}" in
+        dust)
+            out_file="${OUTPUT_DIR}/dust.orca.nc"
+            link1="${OUTPUT_DIR}/dust_INCA_${GRID_NAME}.nc"
+            link2="${OUTPUT_DIR}/dust_INCA_Mahowald_monthly_${GRID_NAME}.nc"
+            ;;
+        ndep)
+            out_file="${OUTPUT_DIR}/ndeposition.orca.nc"
+            link1="${OUTPUT_DIR}/ndeposition_Duce_${GRID_NAME}.nc"
+            link2="${OUTPUT_DIR}/ndeposition_Duce_monthly_${GRID_NAME}.nc"
+            ;;
+        par)
+            out_file="${OUTPUT_DIR}/par.orca.nc"
+            link1="${OUTPUT_DIR}/par_GEWEX_${GRID_NAME}.nc"
+            link2="${OUTPUT_DIR}/par_fraction_daily_${GRID_NAME}.nc"
+            ;;
+        *)
+            out_file="${OUTPUT_DIR}/${VAR}.orca.nc"
+            ;;
+    esac
+
+    if [ "${GRID_NAME}" = "ORCA2" ]; then
+        echo "Direct copy for native ORCA2 ${VAR} forcing..."
+        cp "${STD_FILE}" "${out_file}"
+    else
+        local weights_file="${WEIGHTS_DIR}/weights_${VAR}_to_${GRID_NAME}.nc"
+        if [ ! -f "${weights_file}" ]; then
+            cdo ${CDO_OPTS} genbil,"${TARGET_GRID_NC}" "${STD_FILE}" "${weights_file}"
+        fi
+        echo "Remapping ${VAR} to ${GRID_NAME}..."
+        cdo ${CDO_OPTS} ${CDO_COMPRESS} remap,"${TARGET_GRID_NC}","${weights_file}" "${STD_FILE}" "${out_file}"
+    fi
+
+    [ -n "${link1}" ] && ln -sfn "$(basename "${out_file}")" "${link1}"
+    [ -n "${link2}" ] && ln -sfn "$(basename "${out_file}")" "${link2}"
+    stamp_provenance "${out_file}"
+    echo "Created 2D forcing: ${out_file}"
+}
+
+# ------------------------------------------------------------------------------
+# 3. Bathymetric Shelf Fraction Remapping (Nearest-Neighbor)
+# ------------------------------------------------------------------------------
+remap_bathy() {
+    local out_file="${OUTPUT_DIR}/bathy.orca.nc"
+    if [ "${GRID_NAME}" = "ORCA2" ]; then
+        cp "${STD_FILE}" "${out_file}"
+    else
+        echo "Remapping bathy shelf fraction to ${GRID_NAME} using nearest-neighbor..."
+        cdo ${CDO_OPTS} ${CDO_COMPRESS} remapnn,"${TARGET_GRID_NC}" "${STD_FILE}" "${out_file}"
+    fi
+    ln -sfn "$(basename "${out_file}")" "${OUTPUT_DIR}/pmarge_etopo_${GRID_NAME}.nc"
+    stamp_provenance "${out_file}"
+    echo "Created bathy: ${out_file}"
+}
+
+# ------------------------------------------------------------------------------
+# 4. Hydrothermal Iron Remapping
+# ------------------------------------------------------------------------------
+remap_hydrofe() {
+    local out_file="${OUTPUT_DIR}/hydrofe.orca.nc"
+    if [ "${GRID_NAME}" = "ORCA2" ]; then
+        cp "${STD_FILE}" "${out_file}"
+    else
+        echo "Remapping hydrothermal vent Fe to ${GRID_NAME}..."
+        cdo ${CDO_OPTS} ${CDO_COMPRESS} remap,"${TARGET_GRID_NC}","${WEIGHTS_BILIN}" "${STD_FILE}" "${out_file}"
+    fi
+    ln -sfn "$(basename "${out_file}")" "${OUTPUT_DIR}/hydrothermal_fe_forcing_${GRID_NAME}.nc"
+    stamp_provenance "${out_file}"
+    echo "Created hydrofe: ${out_file}"
+}
+
+# ------------------------------------------------------------------------------
+# 5. River Nutrient Forcings Remapping (Conservative)
+# ------------------------------------------------------------------------------
+remap_river() {
+    local out_file="${OUTPUT_DIR}/river.orca.nc"
+    if [ "${GRID_NAME}" = "ORCA2" ]; then
+        cp "${STD_FILE}" "${out_file}"
+    else
+        echo "Remapping river nutrient discharge to ${GRID_NAME}..."
+        cdo ${CDO_OPTS} ${CDO_COMPRESS} remapdis,"${TARGET_GRID_NC}" "${STD_FILE}" "${out_file}"
+    fi
+    ln -sfn "$(basename "${out_file}")" "${OUTPUT_DIR}/river_global_news_${GRID_NAME}.nc"
+    stamp_provenance "${out_file}"
+    echo "Created river: ${out_file}"
+}
+
+# ------------------------------------------------------------------------------
+# Dispatcher
+# ------------------------------------------------------------------------------
+case "${FIELD_TYPE}" in
+    3d)       remap_3d_tracer ;;
+    2d)       remap_2d_forcing ;;
+    bathy)    remap_bathy ;;
+    hydrofe)  remap_hydrofe ;;
+    river|rivers) remap_river ;;
+    *)
+        echo "ERROR: Unknown field type: ${FIELD_TYPE} (Choose: 3d | 2d | bathy | hydrofe | river)" >&2
+        exit 1
+        ;;
+esac
+
+echo "=== Stage 2 Remapping completed successfully for ${VAR}! ==="

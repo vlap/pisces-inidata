@@ -46,6 +46,8 @@ else
     DEFAULT_RAW="${SCRATCH_ROOT}/pisces_raw_sources"
 fi
 RAW_DIR="${RAW_DIR:-${DEFAULT_RAW}}"
+PRESET="${PRESET:-${INIDATA_PRESET:-ece4}}"
+export STANDARDIZED_DIR="${STANDARDIZED_DIR:-${SCRATCH_ROOT}/pisces_standardized_${PRESET}}"
 WEIGHTS_DIR="${WORK_DIR}/weights"
 OUTPUT_DIR="${WORK_DIR}/output_${GRID_NAME}"
 LOG_DIR="${WORK_DIR}/logs"
@@ -55,7 +57,13 @@ LOG_DIR="${WORK_DIR}/logs"
 # ------------------------------------------------------------------------------
 SLURM_ACCOUNT="${SLURM_ACCOUNT:-bsc32}"
 SLURM_PARTITION="${SLURM_PARTITION:-bsc_es}"
-SLURM_TIME="${SLURM_TIME:-01:00:00}"
+if [ "${GRID_NAME}" = "eORCA025" ]; then
+    SLURM_TIME="${SLURM_TIME:-02:00:00}"
+    SLURM_MEM="${SLURM_MEM:-64G}"
+else
+    SLURM_TIME="${SLURM_TIME:-01:00:00}"
+    SLURM_MEM="${SLURM_MEM:-16G}"
+fi
 SLURM_CPUS_PER_TASK="${SLURM_CPUS_PER_TASK:-16}"
 
 MODULE_LOAD_CMD="set +u; module load CDO/2.3.0-gompi-2020b NCO/5.1.0-foss-2020b netcdf4-python/1.5.7-foss-2020b-Python-3.8.6 2>/dev/null || module load CDO/2.3.0-gompi-2020b NCO/5.1.0-foss-2020b netcdf4-python/1.6.1-foss-2020b-Python-3.8.6 2>/dev/null || module load CDO NCO 2>/dev/null || true; set -u"

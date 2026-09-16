@@ -90,13 +90,53 @@ pisces-inidata check --orca eORCA1 --preset ece3
 - Checks raw input catalog and verifies filesystem storage capacity.
 
 ### `pisces-inidata run`
-Executes end-to-end interpolation and formatting:
+Executes initial conditions generation pipeline (Stage 1 ETL followed by Stage 2 parallel remapping):
 ```bash
 # Generate inidata on ORCA2 (or eORCA1, eORCA025)
 pisces-inidata run --orca ORCA2 --domain-dir /path/to/nemo/domain
 
 # Run with specific preset:
 pisces-inidata run --orca eORCA1 --preset ece3
+
+# Run only Stage 1 source preparation:
+pisces-inidata run --orca eORCA1 --stage stage1
+
+# Dry-run inspection of generated batch jobs:
+pisces-inidata run --orca eORCA025 --dry-run
+```
+
+### `pisces-inidata prepare-sources`
+Executes Stage 1 (Grid-Agnostic ETL) to format, pad to 6000 m, fill ocean missing values (`cdo fillmiss`), and standardize observational sources into uniform regular NetCDF files:
+```bash
+# Prepare all 15 components for active preset:
+pisces-inidata prepare-sources
+
+# Prepare specific tracer:
+pisces-inidata prepare-sources NO3
+
+# Force regeneration:
+pisces-inidata prepare-sources TALK --preset ece4 --force
+```
+Standardized files are cached in `${STANDARDIZED_DIR}` and reused across all target resolutions.
+
+### `pisces-inidata remap`
+Executes Stage 2 (Target Remapping) to interpolate a standardized regular source to the target NEMO mesh:
+```bash
+# Remap all variables onto eORCA1:
+pisces-inidata remap all --orca eORCA1
+
+# Remap specific forcing:
+pisces-inidata remap dust --orca eORCA025
+```
+
+### `pisces-inidata verify`
+Inspects all 15 expected NetCDF output files in an output directory, verifies shapes, calculates min/mean/max bounds, and ensures zero blank/NaN files:
+```bash
+# Verify outputs for eORCA025:
+pisces-inidata verify --orca eORCA025
+
+# Verify explicit directory:
+pisces-inidata verify --orca eORCA1 --out-dir /path/to/output_eORCA1
 ```
 
 ### `pisces-inidata validate`

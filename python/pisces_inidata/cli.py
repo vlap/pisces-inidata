@@ -40,6 +40,46 @@ def cmd_prepare_glodap(args):
     prepare_glodap_tracer(args.src_file, args.var_name, args.out_file)
 
 
+def cmd_prepare_sources(args):
+    repo_root = get_repo_root()
+    script = os.path.join(repo_root, 'scripts', 'prepare_standard_sources.sh')
+    if not os.path.exists(script):
+        print(f"Error: prepare script not found at {script}")
+        sys.exit(1)
+
+    env = os.environ.copy()
+    if getattr(args, 'preset', None):
+        env["PRESET"] = args.preset
+        env["INIDATA_PRESET"] = args.preset
+    if getattr(args, 'force', False):
+        env["FORCE"] = "1"
+
+    cmd = ["bash", script, args.variable]
+    res = subprocess.run(cmd, cwd=repo_root, env=env)
+    sys.exit(res.returncode)
+
+
+def cmd_remap(args):
+    repo_root = get_repo_root()
+    script = os.path.join(repo_root, 'scripts', 'remap_field.sh')
+    if not os.path.exists(script):
+        print(f"Error: remap script not found at {script}")
+        sys.exit(1)
+
+    env = os.environ.copy()
+    if args.orca:
+        env["GRID_NAME"] = args.orca
+    if args.domain_dir:
+        env["DOMAIN_BASE_DIR"] = os.path.abspath(args.domain_dir)
+    if getattr(args, 'preset', None):
+        env["PRESET"] = args.preset
+        env["INIDATA_PRESET"] = args.preset
+
+    cmd = ["bash", script, args.variable]
+    res = subprocess.run(cmd, cwd=repo_root, env=env)
+    sys.exit(res.returncode)
+
+
 def cmd_run(args):
     repo_root = get_repo_root()
     script = os.path.join(repo_root, 'scripts', 'launcher_pisces_inidata.sh')
@@ -59,7 +99,9 @@ def cmd_run(args):
         env["PRESET"] = args.preset
         env["INIDATA_PRESET"] = args.preset
 
-    res = subprocess.run(["bash", script], cwd=repo_root, env=env)
+    submit_mode = "dry-run" if getattr(args, 'dry_run', False) else "submit"
+    stage = getattr(args, 'stage', 'all')
+    res = subprocess.run(["bash", script, submit_mode, stage], cwd=repo_root, env=env)
     sys.exit(res.returncode)
 
 
@@ -143,6 +185,29 @@ def cmd_test_reproduction(args):
         preset=preset
     )
     sys.exit(code)
+
+
+def cmd_verify(args):
+    from pisces_inidata.verify import verify_output_directory
+    repo_root = get_repo_root()
+    grid_name = args.orca or "eORCA025"
+    out_dir = args.out_dir
+    if not out_dir:
+        candidates = [
+            os.path.join(repo_root, f"output_{grid_name}"),
+            f"/tmp/{os.environ.get('USER', 'volant')}/pisces/pisces_inidata_{grid_name}/output_{grid_name}",
+            os.path.join(repo_root, f"work_{grid_name}", f"output_{grid_name}"),
+        ]
+        for c in candidates:
+            if os.path.exists(c):
+                out_dir = c
+                break
+        if not out_dir:
+            out_dir = os.path.join(repo_root, f"output_{grid_name}")
+
+    print(f"Inspecting PISCES inidata outputs for {grid_name} in: {out_dir}")
+    exit_code, _ = verify_output_directory(out_dir, grid_name=grid_name)
+    sys.exit(exit_code)
 
 
 def cmd_info(args):
@@ -269,6 +334,17 @@ def main():
         choices=["ece4", "ece3", "official_sette"],
         help="Configuration preset (ece4: modern [default], ece3: WOA09+GLODAPv1, "
              "official_sette: all from SETTE with pure interpolation)"
+    )
+    run_parser.add_argument(
+        "--stage",
+        choices=["all", "stage1", "stage2"],
+        default="all",
+        help="Pipeline execution stage: 'all' (default), 'stage1' (prepare sources), or 'stage2' (remap)"
+    )
+    run_parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Inspect sbatch job scripts without submitting"
     )
     run_parser.set_defaults(func=cmd_run)
 
@@ -405,6 +481,82 @@ def main():
     glodap_parser.add_argument("src_file", help="Path to raw GLODAP NetCDF file")
     glodap_parser.add_argument("out_file", help="Path to standardized output NetCDF file")
     glodap_parser.set_defaults(func=cmd_prepare_glodap)
+
+    # Command: prepare-sources (Stage 1 ETL)
+    prep_src_parser = subparsers.add_parser(
+        "prepare-sources",
+        help="Stage 1 (Grid-Agnostic ETL): Format, pad, and standardize regular NetCDF sources"
+    )
+    prep_src_parser.add_argument(
+        "variable",
+        nargs="?",
+        default="all",
+        choices=[
+            "all", "NO3", "PO4", "Si", "O2", "TALK", "TDIC", "PiDIC",
+            "DOC", "Fer", "dust", "ndep", "par", "bathy", "hydrofe", "river"
+        ],
+        help="Variable or component to standardize (default: all)"
+    )
+    prep_src_parser.add_argument(
+        "--preset",
+        choices=["ece4", "ece3", "official_sette"],
+        help="Configuration preset"
+    )
+    prep_src_parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Force regeneration even if standardized source file already exists"
+    )
+    prep_src_parser.set_defaults(func=cmd_prepare_sources)
+
+    # Command: remap (Stage 2 Remap)
+    remap_parser = subparsers.add_parser(
+        "remap",
+        help="Stage 2 (Target Remap): Interpolate standardized source to target NEMO grid"
+    )
+    remap_parser.add_argument(
+        "variable",
+        nargs="?",
+        default="all",
+        choices=[
+            "all", "NO3", "PO4", "Si", "O2", "TALK", "TDIC", "PiDIC",
+            "DOC", "Fer", "dust", "ndep", "par", "bathy", "hydrofe", "river"
+        ],
+        help="Variable or component to remap (default: all)"
+    )
+    remap_parser.add_argument(
+        "--orca",
+        choices=["ORCA2", "eORCA1", "eORCA025"],
+        default="ORCA2",
+        help="Target NEMO grid resolution (default: ORCA2)"
+    )
+    remap_parser.add_argument(
+        "--domain-dir",
+        help="Path to directory containing target NEMO domain files (${GRID_NAME}/domain_cfg.nc)"
+    )
+    remap_parser.add_argument(
+        "--preset",
+        choices=["ece4", "ece3", "official_sette"],
+        help="Configuration preset"
+    )
+    remap_parser.set_defaults(func=cmd_remap)
+
+    # Command: verify
+    verify_parser = subparsers.add_parser(
+        "verify",
+        help="Inspect output files, check shapes, physical min/mean/max, and ensure no blank files"
+    )
+    verify_parser.add_argument(
+        "--orca",
+        choices=["ORCA2", "eORCA1", "eORCA025"],
+        default="eORCA025",
+        help="Target NEMO grid resolution (default: eORCA025)"
+    )
+    verify_parser.add_argument(
+        "--out-dir",
+        help="Path to output directory to inspect (default: output_${GRID_NAME})"
+    )
+    verify_parser.set_defaults(func=cmd_verify)
 
     args = parser.parse_args()
     if hasattr(args, "func"):
