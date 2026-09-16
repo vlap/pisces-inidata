@@ -38,6 +38,9 @@ read -r -d '' SBATCH_TEMPLATE << 'EOF' || true
 
 set -e
 echo "Starting job pisces.__JOBNAME__ on $(hostname) at $(date)"
+export GRID_NAME="__GRID_NAME__"
+export DOMAIN_BASE_DIR="__DOMAIN_BASE_DIR__"
+export SLURM_CPUS_PER_TASK="__CPUS__"
 eval "__MODULE_LOAD__"
 
 __COMMAND__
@@ -57,6 +60,8 @@ submit_job() {
     script_content="${script_content//__TIME__/${SLURM_TIME}}"
     script_content="${script_content//__JOBNAME__/${jobname}}"
     script_content="${script_content//__LOG_DIR__/${LOG_DIR}}"
+    script_content="${script_content//__GRID_NAME__/${GRID_NAME}}"
+    script_content="${script_content//__DOMAIN_BASE_DIR__/${DOMAIN_BASE_DIR}}"
     script_content="${script_content//__MODULE_LOAD__/${MODULE_LOAD_CMD}}"
     script_content="${script_content//__COMMAND__/${command}}"
 
