@@ -27,66 +27,44 @@ echo " Logs directory: ${LOG_DIR}"
 echo " Jobs directory: ${SBATCH_DIR}"
 echo "========================================================================"
 
-# Template for individual sbatch worker jobs
-read -r -d '' SBATCH_TEMPLATE << 'EOF' || true
-#!/usr/bin/env bash
-
-#SBATCH -A __ACCOUNT__
-#SBATCH -q __PARTITION__
-#SBATCH -n 1
-#SBATCH -c __CPUS__
-#SBATCH --mem=__MEM__
-#SBATCH -t __TIME__
-#SBATCH -J pisces.__JOBNAME__
-#SBATCH -o __LOG_DIR__/slurm-pisces.__JOBNAME__-%j.out
-#SBATCH -e __LOG_DIR__/slurm-pisces.__JOBNAME__-%j.err
-
-set -e
-echo "Starting job pisces.__JOBNAME__ on $(hostname) at $(date)"
-export GRID_NAME="__GRID_NAME__"
-export DOMAIN_BASE_DIR="__DOMAIN_BASE_DIR__"
-export PRESET="__PRESET__"
-export INIDATA_PRESET="__PRESET__"
-export PISCES_WORKSPACE="__WORKSPACE__"
-export PISCES_CONFIG="__PISCES_CONFIG__"
-export GRID_BATCH_WEIGHTS="__GRID_BATCH_WEIGHTS__"
-export GRID_FALLBACK_COORDS="__GRID_FALLBACK_COORDS__"
-export OUTPUT_DIR="__OUTPUT_DIR__"
-export SLURM_CPUS_PER_TASK="__CPUS__"
-eval "__MODULE_LOAD__"
-
-__COMMAND__
-
-echo "Finished job pisces.__JOBNAME__ at $(date)"
-EOF
-
 submit_job() {
     local jobname="$1"
     local command="$2"
     local dependency="${3:-}"
     local script_path="${SBATCH_DIR}/sbatch_${jobname}.sh"
-
     local p_cfg="${PISCES_CONFIG:-${CONFIG_FILE:-}}"
-    local script_content="${SBATCH_TEMPLATE}"
-    script_content="${script_content//__ACCOUNT__/${SLURM_ACCOUNT}}"
-    script_content="${script_content//__PARTITION__/${SLURM_PARTITION}}"
-    script_content="${script_content//__CPUS__/${SLURM_CPUS_PER_TASK}}"
-    script_content="${script_content//__MEM__/${SLURM_MEM}}"
-    script_content="${script_content//__TIME__/${SLURM_TIME}}"
-    script_content="${script_content//__JOBNAME__/${jobname}}"
-    script_content="${script_content//__LOG_DIR__/${LOG_DIR}}"
-    script_content="${script_content//__GRID_NAME__/${GRID_NAME}}"
-    script_content="${script_content//__DOMAIN_BASE_DIR__/${DOMAIN_BASE_DIR}}"
-    script_content="${script_content//__PRESET__/${PRESET}}"
-    script_content="${script_content//__WORKSPACE__/${WORKSPACE}}"
-    script_content="${script_content//__PISCES_CONFIG__/${p_cfg}}"
-    script_content="${script_content//__GRID_BATCH_WEIGHTS__/${GRID_BATCH_WEIGHTS:-0}}"
-    script_content="${script_content//__GRID_FALLBACK_COORDS__/${GRID_FALLBACK_COORDS:-}}"
-    script_content="${script_content//__OUTPUT_DIR__/${OUTPUT_DIR}}"
-    script_content="${script_content//__MODULE_LOAD__/${MODULE_LOAD_CMD}}"
-    script_content="${script_content//__COMMAND__/${command}}"
 
-    echo "${script_content}" > "${script_path}"
+    cat << EOF > "${script_path}"
+#!/usr/bin/env bash
+
+#SBATCH -A ${SLURM_ACCOUNT}
+#SBATCH -q ${SLURM_PARTITION}
+#SBATCH -n 1
+#SBATCH -c ${SLURM_CPUS_PER_TASK}
+#SBATCH --mem=${SLURM_MEM}
+#SBATCH -t ${SLURM_TIME}
+#SBATCH -J pisces.${jobname}
+#SBATCH -o ${LOG_DIR}/slurm-pisces.${jobname}-%j.out
+#SBATCH -e ${LOG_DIR}/slurm-pisces.${jobname}-%j.err
+
+set -e
+echo "Starting job pisces.${jobname} on \$(hostname) at \$(date)"
+export GRID_NAME="${GRID_NAME}"
+export DOMAIN_BASE_DIR="${DOMAIN_BASE_DIR}"
+export PRESET="${PRESET}"
+export INIDATA_PRESET="${PRESET}"
+export PISCES_WORKSPACE="${WORKSPACE}"
+export PISCES_CONFIG="${p_cfg}"
+export GRID_BATCH_WEIGHTS="${GRID_BATCH_WEIGHTS:-0}"
+export GRID_FALLBACK_COORDS="${GRID_FALLBACK_COORDS:-}"
+export OUTPUT_DIR="${OUTPUT_DIR}"
+export SLURM_CPUS_PER_TASK="${SLURM_CPUS_PER_TASK}"
+eval "${MODULE_LOAD_CMD}"
+
+${command}
+
+echo "Finished job pisces.${jobname} at \$(date)"
+EOF
     chmod +x "${script_path}"
 
     local job_id=""

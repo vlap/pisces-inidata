@@ -74,3 +74,9 @@ boundary_forcings:
 
   # River Nutrient Fluxes (Global NEWS 2):
   rivers: sette_orca2
+
+# Sub-variables contained within multi-variable forcing datasets
+sub_variables:
+  river: ["riverdin", "riverdip", "riverdon", "riverdop", "riverdoc", "riverdsi", "riverdic"]
+  dust: ["dust", "dustfer", "dustpo4", "dustsi", "solubility2"]
+  ndep: ["ndep", "ndep2"]

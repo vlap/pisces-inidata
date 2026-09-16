@@ -23,7 +23,7 @@ Raw Climatologies (WOA23, GLODAP, DOC, …)
          + Validation Scorecard
 ```
 
-## ⚡ TL;DR: Generate Inidata in 2 Steps
+## TL;DR: Generate Inidata in 2 Steps
 
 For users with access to BSC machines (or any HPC cluster), producing inidata takes two commands:
 
@@ -40,7 +40,7 @@ For users with access to BSC machines (or any HPC cluster), producing inidata ta
 
 All 15 target NetCDF files will be ready in `${PISCES_WORKSPACE}/grids/${GRID_NAME}/inidata/`.
 
-👉 See the complete [Quickstart & TL;DR Guide](quickstart.md) for full details, local workstation instructions, and target grid options.
+See the complete [Quickstart & TL;DR Guide](quickstart.md) for full details, local workstation instructions, and target grid options.
 
 ```{toctree}
 :maxdepth: 2

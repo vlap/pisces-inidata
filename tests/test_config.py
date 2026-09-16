@@ -138,3 +138,22 @@ def test_custom_preset_cli_override():
     assert cfg['INIDATA_PRESET'] == 'exp_variant'
     assert cfg['PRODUCT_NO3'] == 'woa23'  # inherited from default ece4 base
     assert validate_config(cfg) is True
+
+
+def test_variable_lists_export():
+    cfg = load_config("sources.yaml")
+    assert "TRACERS_3D_LIST" in cfg
+    assert "NO3" in cfg["TRACERS_3D_LIST"].split()
+    assert "Fer" in cfg["TRACERS_3D_LIST"].split()
+    assert "RIVER_VARS_LIST" in cfg
+    assert "riverdin" in cfg["RIVER_VARS_LIST"].split()
+    assert "DUST_VARS_LIST" in cfg
+    assert "dust" in cfg["DUST_VARS_LIST"].split()
+    assert "NDEP_VARS_LIST" in cfg
+    assert "ndep" in cfg["NDEP_VARS_LIST"].split()
+
+    exported = export_env_commands(cfg)
+    assert 'export TRACERS_3D_LIST=' in exported
+    assert 'export RIVER_VARS_LIST=' in exported
+    assert 'export DUST_VARS_LIST=' in exported
+    assert 'export NDEP_VARS_LIST=' in exported

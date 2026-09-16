@@ -67,7 +67,7 @@ else
     echo "to your local directory containing ${GRID_NAME}/domain_cfg.nc." >&2
     echo "" >&2
     echo "For instructions on obtaining official EC-Earth4 inidata, refer to:" >&2
-    echo "👉 https://ec-earth-4-docs.readthedocs.io/" >&2
+    echo "  https://ec-earth-4-docs.readthedocs.io/" >&2
     echo "================================================================================" >&2
     exit 1
 fi

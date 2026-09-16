@@ -9,17 +9,10 @@ import os
 from typing import Dict, Any, Optional, List
 import numpy as np
 import netCDF4 as nc
+from pisces_inidata.verify import find_var, VAR_ALIASES
 
-ALIASES = {
-    'NO3': ['NO3', 'no3', 'nitrate'],
-    'PO4': ['PO4', 'po4', 'phosphate'],
-    'Si': ['Si', 'si', 'silicate', 'SIL'],
-    'O2': ['O2', 'o2', 'oxygen', 'OXY'],
-    'TALK': ['TALK', 'talk', 'Alkalini', 'alkalini'],
-    'TDIC': ['TDIC', 'tdic', 'DIC', 'dic'],
-    'DOC': ['DOC', 'doc'],
-    'Fer': ['Fer', 'fer', 'FER']
-}
+ALIASES = VAR_ALIASES
+
 
 BASELINE_TEST_CONFIG = [
     {
@@ -83,17 +76,6 @@ BASELINE_TEST_CONFIG = [
         'max_inv_diff': 1.5
     }
 ]
-
-
-def find_var(ds: nc.Dataset, candidates: list) -> Optional[str]:
-    for c in candidates:
-        if c in ds.variables:
-            return c
-    for c in candidates:
-        for v in ds.variables:
-            if c.lower() == v.lower():
-                return v
-    return None
 
 
 def evaluate_reproduction_closeness(

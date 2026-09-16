@@ -80,29 +80,27 @@ TMP_BASE="${TMPDIR:-${WORKSPACE}/fallback_tmp}"
 mkdir -p "${TMP_BASE}" "${WORKSPACE}" "${OUTPUT_DIR}" "${WEIGHTS_DIR}" "${LOG_DIR}" "${SBATCH_DIR}" 2>/dev/null || true
 
 # ------------------------------------------------------------------------------
-# 5. CDO Execution & Compression Options
+# 5. CDO Execution & Compression Options (platforms.yaml)
 # ------------------------------------------------------------------------------
-if [ -z "${SLURM_JOB_ID:-}" ]; then
-    CDO_THREADS="${CDO_THREADS:-4}"
-else
-    CDO_THREADS="${SLURM_CPUS_PER_TASK:-16}"
-fi
-CDO_OPTS="${CDO_OPTS:--L -P ${CDO_THREADS}}"
-CDO_COMPRESS="${CDO_COMPRESS:--f nc4 -z zip_4}"
+CDO_THREADS="${CDO_THREADS:-${SLURM_CPUS_PER_TASK:-${DEFAULT_CDO_THREADS:-4}}}"
+CDO_OPTS="${CDO_OPTS:-${DEFAULT_CDO_OPTS:--L -P ${CDO_THREADS}}}"
+CDO_COMPRESS="${CDO_COMPRESS:-${DEFAULT_CDO_COMPRESS:--f nc4 -z zip_4}}"
+PISCES_INSTITUTION="${PISCES_INSTITUTION:-${DEFAULT_PLATFORM_INSTITUTION:-EC-Earth Consortium}}"
+export PISCES_INSTITUTION
 
 # Catalog paths
-WOA23_DIR="${RAW_DIR}/woa23"
+WOA23_DIR="${WOA23_DIR:-${RAW_DIR}/woa23}"
 GLODAP_VERSION="${GLODAP_VERSION:-v2.2016b}"
-GLODAP_V2_2023_DIR="${RAW_DIR}/glodap_v2_2023"
-GLODAP_V2_DIR="${RAW_DIR}/glodap_v2"
-GLODAP_V1_DIR="${RAW_DIR}/glodap_v1"
-PANAIOTIS_DOC_DIR="${RAW_DIR}/panaiotis2024_doc"
+GLODAP_V2_2023_DIR="${GLODAP_V2_2023_DIR:-${RAW_DIR}/glodap_v2_2023}"
+GLODAP_V2_DIR="${GLODAP_V2_DIR:-${RAW_DIR}/glodap_v2}"
+GLODAP_V1_DIR="${GLODAP_V1_DIR:-${RAW_DIR}/glodap_v1}"
+PANAIOTIS_DOC_DIR="${PANAIOTIS_DOC_DIR:-${RAW_DIR}/panaiotis2024_doc}"
 
-# Tracers and boundary variables
-TRACERS_3D=("NO3" "PO4" "Si" "O2" "TALK" "TDIC" "PiDIC" "DOC" "Fer")
-RIVER_VARS=("riverdin" "riverdip" "riverdon" "riverdop" "riverdoc" "riverdsi" "riverdic")
-DUST_VARS=("dust" "dustfer" "dustpo4" "dustsi" "solubility2")
-NDEP_VARS=("ndep" "ndep2")
+# Tracers and boundary variables (declared in sources.yaml)
+IFS=' ' read -r -a TRACERS_3D <<< "${TRACERS_3D_LIST:-NO3 PO4 Si O2 TALK TDIC PiDIC DOC Fer}"
+IFS=' ' read -r -a RIVER_VARS <<< "${RIVER_VARS_LIST:-riverdin riverdip riverdon riverdop riverdoc riverdsi riverdic}"
+IFS=' ' read -r -a DUST_VARS <<< "${DUST_VARS_LIST:-dust dustfer dustpo4 dustsi solubility2}"
+IFS=' ' read -r -a NDEP_VARS <<< "${NDEP_VARS_LIST:-ndep ndep2}"
 
 # Export all variables for sub-scripts
 export GRID_NAME DOMAIN_BASE_DIR DOMAIN_CFG MASKUTIL
@@ -114,24 +112,24 @@ export GRID_BATCH_WEIGHTS GRID_FALLBACK_COORDS GRID_VERTICAL_LEVELS
 export WOA23_DIR GLODAP_VERSION GLODAP_V2_2023_DIR GLODAP_V2_DIR GLODAP_V1_DIR PANAIOTIS_DOC_DIR
 
 # ------------------------------------------------------------------------------
-# 6. Scientific Provenance & Metadata Stamping (Lightweight CF-1.8)
+# 6. Scientific Provenance & Metadata Stamping (CF-1.8)
 # ------------------------------------------------------------------------------
 stamp_provenance() {
     local target_file="$1"
     [ -f "${target_file}" ] || return 0
-    command -v ncatted >/dev/null 2>&1 || return 0
-
-    local timestamp
-    timestamp="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
-    local git_rev
-    git_rev="$(git -C "${SCRIPT_DIR_CONFIG}" rev-parse --short HEAD 2>/dev/null || echo 'release')"
-
-    ncatted -h -O \
-        -a title,global,o,c,"PISCES Initial Conditions (${GRID_NAME})" \
-        -a institution,global,o,c,"${PISCES_INSTITUTION:-EC-Earth Consortium}" \
-        -a source_pipeline,global,o,c,"pisces-inidata (git:${git_rev})" \
-        -a inidata_preset,global,o,c,"${INIDATA_PRESET:-custom}" \
-        -a generation_date,global,o,c,"${timestamp}" \
-        "${target_file}" 2>/dev/null || true
+    python3 -m pisces_inidata.cli stamp "${target_file}" 2>/dev/null || {
+        command -v ncatted >/dev/null 2>&1 || return 0
+        local timestamp
+        timestamp="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+        local git_rev
+        git_rev="$(git -C "${SCRIPT_DIR_CONFIG}" rev-parse --short HEAD 2>/dev/null || echo 'release')"
+        ncatted -h -O \
+            -a title,global,o,c,"PISCES Initial Conditions (${GRID_NAME})" \
+            -a institution,global,o,c,"${PISCES_INSTITUTION:-EC-Earth Consortium}" \
+            -a source_pipeline,global,o,c,"pisces-inidata (git:${git_rev})" \
+            -a inidata_preset,global,o,c,"${INIDATA_PRESET:-custom}" \
+            -a generation_date,global,o,c,"${timestamp}" \
+            "${target_file}" 2>/dev/null || true
+    }
 }
 export -f stamp_provenance 2>/dev/null || true

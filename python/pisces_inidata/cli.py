@@ -7,7 +7,6 @@ import sys
 import os
 import argparse
 import subprocess
-from typing import Optional
 from pisces_inidata import __version__
 from pisces_inidata.config import load_config, validate_config, export_env_commands
 from pisces_inidata.padding import pad_abyssal_depth
@@ -39,6 +38,23 @@ def cmd_prepare_doc(args):
 def cmd_prepare_glodap(args):
     from pisces_inidata.glodap import prepare_glodap_tracer
     prepare_glodap_tracer(args.src_file, args.var_name, args.out_file)
+
+
+def cmd_resolve_glodap(args):
+    from pisces_inidata.glodap import resolve_glodap_source
+    raw_dir = args.raw_dir or os.environ.get("RAW_DIR", os.path.join(os.getcwd(), "pisces_raw_sources"))
+    path = resolve_glodap_source(args.param, raw_dir, args.version)
+    print(str(path))
+
+
+def cmd_stamp(args):
+    from pisces_inidata.provenance import stamp_netcdf_provenance
+    stamp_netcdf_provenance(
+        args.file,
+        grid_name=args.grid,
+        institution=args.institution,
+        preset=args.preset,
+    )
 
 
 def cmd_prepare_sources(args):
@@ -114,20 +130,14 @@ def cmd_run(args):
     sys.exit(res.returncode)
 
 
-def get_default_workspace() -> Optional[str]:
-    """Resolves default PISCES workspace from environment or standard BSC/system scratch."""
+def get_default_workspace() -> str:
+    """Resolves default PISCES workspace from environment or platform profile."""
     if os.environ.get("PISCES_WORKSPACE"):
         return os.environ["PISCES_WORKSPACE"]
-    account = os.environ.get("SLURM_ACCOUNT", "bsc32")
-    user = os.environ.get("USER", "user")
-    for base in [
-        f"/gpfs/scratch/{account}/{user}/pisces_inidata",
-        f"/esarchive/scratch/{user}/pisces_inidata",
-        os.path.join(os.path.expanduser("~"), "scratch", "pisces_inidata"),
-    ]:
-        if os.path.isdir(base):
-            return base
-    return None
+    from pisces_inidata.platforms import load_platform_config
+    plat = load_platform_config()
+    scratch = os.path.expandvars(plat.get("scratch_root", "${HOME}/scratch"))
+    return os.path.join(scratch, "pisces_inidata")
 
 
 def cmd_validate(args):
@@ -240,32 +250,17 @@ def cmd_test_reproduction(args):
 def cmd_verify(args):
     from pisces_inidata.verify import verify_output_directory
     repo_root = get_repo_root()
-    grid_name = getattr(args, 'grid', None) or getattr(args, 'orca', None) or "eORCA025"
-    workspace = os.environ.get("PISCES_WORKSPACE")
+    grid_name = getattr(args, 'grid', None) or getattr(args, 'orca', None) or "eORCA1"
     out_dir = args.out_dir
     if not out_dir:
-        candidates = []
-        if workspace:
-            candidates.append(os.path.join(workspace, "grids", grid_name, "inidata"))
-        account = os.environ.get("SLURM_ACCOUNT", "bsc32")
-        user = os.environ.get("USER", "user")
-        for base in [
-            f"/gpfs/scratch/{account}/{user}/pisces_inidata",
-            f"/esarchive/scratch/{user}/pisces_inidata",
-            os.path.join(os.path.expanduser("~"), "scratch", "pisces_inidata"),
-        ]:
-            candidates.append(os.path.join(base, "grids", grid_name, "inidata"))
-        candidates.extend([
+        workspace = get_default_workspace()
+        candidates = [
+            os.path.join(workspace, "grids", grid_name, "inidata"),
             os.path.join(repo_root, "grids", grid_name, "inidata"),
             os.path.join(repo_root, f"output_{grid_name}"),
             os.path.join(repo_root, f"work_{grid_name}", f"output_{grid_name}"),
-        ])
-        for c in candidates:
-            if os.path.exists(c):
-                out_dir = c
-                break
-        if not out_dir:
-            out_dir = candidates[0]
+        ]
+        out_dir = next((c for c in candidates if os.path.isdir(c)), candidates[0])
 
     print(f"Inspecting PISCES inidata outputs for {grid_name} in: {out_dir}")
     exit_code, _ = verify_output_directory(out_dir, grid_name=grid_name)
@@ -664,6 +659,21 @@ def main():
     glodap_parser.add_argument("src_file", help="Path to raw GLODAP NetCDF file")
     glodap_parser.add_argument("out_file", help="Path to standardized output NetCDF file")
     glodap_parser.set_defaults(func=cmd_prepare_glodap)
+
+    # Command: resolve-glodap
+    res_glodap_parser = subparsers.add_parser("resolve-glodap", help="Resolve path to GLODAP NetCDF file")
+    res_glodap_parser.add_argument("param", help="GLODAP parameter (TAlk, TCO2, PI_TCO2)")
+    res_glodap_parser.add_argument("--raw-dir", help="Directory containing raw datasets")
+    res_glodap_parser.add_argument("--version", help="GLODAP version hint (e.g. v2.2016b, v2.2023, v1)")
+    res_glodap_parser.set_defaults(func=cmd_resolve_glodap)
+
+    # Command: stamp
+    stamp_parser = subparsers.add_parser("stamp", help="Apply CF provenance global attributes to NetCDF file")
+    stamp_parser.add_argument("file", help="Path to NetCDF file to stamp")
+    stamp_parser.add_argument("--grid", help="Target grid name (e.g. eORCA1)")
+    stamp_parser.add_argument("--institution", help="Institution name")
+    stamp_parser.add_argument("--preset", help="Configuration preset name")
+    stamp_parser.set_defaults(func=cmd_stamp)
 
     # Command: prepare-sources (Stage 1 ETL)
     prep_src_parser = subparsers.add_parser(

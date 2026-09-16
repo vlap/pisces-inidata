@@ -5,7 +5,7 @@ and calculates physical min/mean/max bounds to guarantee no blank/all-zero/NaN o
 """
 
 import os
-from typing import Dict, Any, List, Tuple
+from typing import Dict, Any, List, Tuple, Optional
 import netCDF4 as nc
 import numpy as np
 
@@ -29,22 +29,51 @@ EXPECTED_PRODUCTS = [
 ]
 
 VAR_ALIASES = {
-    'Alkalini': ['Alkalini', 'TALK', 'talk', 'alkalini'],
-    'DIC': ['DIC', 'TDIC', 'PiDIC', 'dic', 'tdic', 'pidic'],
+    'NO3': ['NO3', 'no3', 'nitrate', 'n_an'],
+    'PO4': ['PO4', 'po4', 'phosphate', 'p_an'],
+    'Si': ['Si', 'si', 'silicate', 'SIL', 'i_an'],
+    'O2': ['O2', 'o2', 'oxygen', 'OXY', 'o_an'],
+    'TALK': ['TALK', 'talk', 'Alkalini', 'alkalini', 'TAlk'],
+    'Alkalini': ['Alkalini', 'alkalini', 'TALK', 'talk', 'TAlk'],
+    'TDIC': ['TDIC', 'tdic', 'DIC', 'dic', 'TCO2'],
+    'DIC': ['DIC', 'dic', 'TDIC', 'tdic', 'PiDIC', 'pidic', 'TCO2'],
+    'PiDIC': ['PiDIC', 'pidic', 'DIC', 'dic', 'PI_TCO2'],
+    'DOC': ['DOC', 'doc'],
+    'Fer': ['Fer', 'fer', 'FER'],
     'dust': ['dust', 'dustfer'],
-    'ndep': ['ndep', 'ndep2'],
+    'ndep': ['ndep2', 'ndep'],
+    'par': ['fr_par', 'par'],
+    'bathy': ['bathy'],
+    'hydrofe': ['epsdb', 'hydrofe'],
+    'river': ['riverdin', 'riverdic'],
     'riverdin': ['riverdin', 'river_din'],
+    'riverdic': ['riverdic'],
+    'riverdip': ['riverdip'],
+    'riverdon': ['riverdon'],
+    'riverdop': ['riverdop'],
+    'riverdoc': ['riverdoc'],
+    'riverdsi': ['riverdsi'],
 }
+
+
+def find_var(ds: nc.Dataset, candidates: Any) -> Optional[str]:
+    """Finds first matching variable name in dataset among candidates (case-insensitive fallback)."""
+    for c in candidates:
+        if c in ds.variables:
+            return c
+    for c in candidates:
+        c_low = str(c).lower()
+        for v in ds.variables:
+            if c_low == v.lower():
+                return v
+    return None
 
 
 def find_variable(ds: nc.Dataset, target_var: str):
     """Locates target variable or supported aliases within a NetCDF dataset."""
-    if target_var in ds.variables:
-        return ds.variables[target_var]
-    for alias in VAR_ALIASES.get(target_var, []):
-        if alias in ds.variables:
-            return ds.variables[alias]
-    return None
+    candidates = [target_var] + VAR_ALIASES.get(target_var, [])
+    vname = find_var(ds, candidates)
+    return ds.variables[vname] if vname else None
 
 
 def verify_output_directory(out_dir: str, grid_name: str = "eORCA025") -> Tuple[int, List[Dict[str, Any]]]:

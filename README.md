@@ -217,7 +217,7 @@ On high-performance computing clusters where compute nodes lack direct internet 
 ## Documentation
 
 Full documentation is hosted on **Read the Docs**:  
-👉 [**https://pisces-inidata.readthedocs.io/en/latest/**](https://pisces-inidata.readthedocs.io/en/latest/)
+[**https://pisces-inidata.readthedocs.io/en/latest/**](https://pisces-inidata.readthedocs.io/en/latest/)
 
 - [Primary Observational Data Sources](docs/products.md)
 - [Configuration Reference (`sources.yaml`)](docs/configuration.md)

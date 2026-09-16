@@ -13,9 +13,9 @@ Reference:
 
 import os
 import csv
-import urllib.request
 import numpy as np
 import netCDF4 as nc
+from pisces_inidata.download import download_file
 
 SEANOE_ANNUAL_URL = "https://www.seanoe.org/data/00900/101170/data/111994.csv"
 SEANOE_SEASONAL_URL = "https://www.seanoe.org/data/00900/101170/data/111995.csv"
@@ -37,21 +37,13 @@ MONTH_TO_SEASON = {
 }
 
 
-def download_if_missing(url, dest_path):
-    if os.path.exists(dest_path) and os.path.getsize(dest_path) > 0:
-        return
-    print(f"Downloading {url} -> {dest_path}...")
-    urllib.request.urlretrieve(url, dest_path)
-    print(f"Downloaded ({os.path.getsize(dest_path)} bytes).")
-
-
 def build_doc_climatology(raw_dir, output_nc):
     os.makedirs(raw_dir, exist_ok=True)
     ann_csv = os.path.join(raw_dir, "annual_climatologies.csv")
     sea_csv = os.path.join(raw_dir, "seasonal_climatologies.csv")
 
-    download_if_missing(SEANOE_ANNUAL_URL, ann_csv)
-    download_if_missing(SEANOE_SEASONAL_URL, sea_csv)
+    download_file(SEANOE_ANNUAL_URL, ann_csv)
+    download_file(SEANOE_SEASONAL_URL, sea_csv)
 
     # Standard global 1x1 grid
     lons = np.arange(-179.5, 180.5, 1.0)  # 360 values: -179.5 to 179.5

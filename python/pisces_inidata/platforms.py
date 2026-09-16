@@ -18,6 +18,12 @@ GENERIC_PLATFORM_PROFILE: Dict[str, Any] = {
     "module_load": "",
     "scratch_root": "${HOME}/scratch",
     "domain_dir": "",
+    "institution": "EC-Earth Consortium",
+    "cdo": {
+        "threads": 4,
+        "opts": "-L -P 4",
+        "compress": "-f nc4 -z zip_4",
+    },
 }
 
 
@@ -102,15 +108,26 @@ def export_platform_env_commands(platform_name: Optional[str] = None, config_pat
     target_name = platform_name or detect_current_platform(config_path)
     cfg = load_platform_config(target_name, config_path)
     slurm = cfg.get("slurm", {})
+    cdo = cfg.get("cdo", {})
 
     scratch_raw = cfg.get("scratch_root", "${HOME}/scratch")
     domain_raw = cfg.get("domain_dir", "")
     module_load = cfg.get("module_load", "")
+    institution = cfg.get("institution", "EC-Earth Consortium")
+
+    cdo_threads = cdo.get("threads", 4)
+    cdo_opts = cdo.get("opts", f"-L -P {cdo_threads}")
+    cdo_compress = cdo.get("compress", "-f nc4 -z zip_4")
 
     lines = [
         f'export PLATFORM="{target_name}"',
         f'export DEFAULT_PLATFORM_SCRATCH="{scratch_raw}"',
         f'export DEFAULT_PLATFORM_DOMAIN="{domain_raw}"',
+        f'export DEFAULT_PLATFORM_INSTITUTION="{institution}"',
+        f'export PISCES_INSTITUTION="${{PISCES_INSTITUTION:-{institution}}}"',
+        f'export DEFAULT_CDO_THREADS="{cdo_threads}"',
+        f'export DEFAULT_CDO_OPTS="{cdo_opts}"',
+        f'export DEFAULT_CDO_COMPRESS="{cdo_compress}"',
         f'export SLURM_ACCOUNT="${{SLURM_ACCOUNT:-{slurm.get("account", "")}}}"',
         f'export SLURM_PARTITION="${{SLURM_PARTITION:-{slurm.get("partition", "")}}}"',
         f'export MODULE_LOAD_CMD="${{MODULE_LOAD_CMD:-{module_load}}}"',

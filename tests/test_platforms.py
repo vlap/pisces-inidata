@@ -51,6 +51,10 @@ def test_export_platform_env_commands():
     assert 'export PLATFORM="nord4"' in cmds
     assert 'export SLURM_ACCOUNT="${SLURM_ACCOUNT:-bsc32}"' in cmds
     assert 'export SLURM_PARTITION="${SLURM_PARTITION:-bsc_es}"' in cmds
+    assert 'export DEFAULT_CDO_THREADS="16"' in cmds
+    assert 'export DEFAULT_CDO_OPTS="-L -P 16"' in cmds
+    assert 'export DEFAULT_CDO_COMPRESS="-f nc4 -z zip_4"' in cmds
+    assert 'export PISCES_INSTITUTION="${PISCES_INSTITUTION:-EC-Earth Consortium}"' in cmds
 
 
 def test_custom_platforms_yaml():

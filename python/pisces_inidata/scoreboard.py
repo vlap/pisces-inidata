@@ -9,31 +9,10 @@ import os
 from typing import Dict, Any, Optional, List
 import numpy as np
 import netCDF4 as nc
+from pisces_inidata.verify import find_var, VAR_ALIASES
 
-ALIASES = {
-    'NO3': ['NO3', 'no3', 'nitrate', 'n_an'],
-    'PO4': ['PO4', 'po4', 'phosphate', 'p_an'],
-    'Si': ['Si', 'si', 'silicate', 'SIL', 'i_an'],
-    'O2': ['O2', 'o2', 'oxygen', 'OXY', 'o_an'],
-    'TALK': ['TALK', 'talk', 'Alkalini', 'alkalini', 'TAlk'],
-    'TDIC': ['TDIC', 'tdic', 'DIC', 'dic', 'TCO2'],
-    'PiDIC': ['PiDIC', 'pidic', 'DIC', 'dic', 'PI_TCO2'],
-    'DOC': ['DOC', 'doc'],
-    'Fer': ['Fer', 'fer', 'FER'],
-    'dust': ['dust', 'dustfer'],
-    'ndep': ['ndep2', 'ndep'],
-    'par': ['fr_par'],
-    'bathy': ['bathy'],
-    'hydrofe': ['epsdb'],
-    'river': ['riverdin', 'riverdic'],
-    'riverdin': ['riverdin'],
-    'riverdic': ['riverdic'],
-    'riverdip': ['riverdip'],
-    'riverdon': ['riverdon'],
-    'riverdop': ['riverdop'],
-    'riverdoc': ['riverdoc'],
-    'riverdsi': ['riverdsi'],
-}
+ALIASES = VAR_ALIASES
+
 
 UNITS = {
     'NO3': 'umol N/L',
@@ -119,17 +98,6 @@ SUPPORTED_PRODUCTS = [
         'category': 'tracer'
     }
 ]
-
-
-def find_var(ds: nc.Dataset, candidates: list) -> Optional[str]:
-    for c in candidates:
-        if c in ds.variables:
-            return c
-    for c in candidates:
-        for v in ds.variables:
-            if c.lower() == v.lower():
-                return v
-    return None
 
 
 def compute_diagnostics(test_file: str, ref_file: str, var_key: str) -> Dict[str, Any]:

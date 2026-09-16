@@ -109,6 +109,13 @@ YAML_MAP = {
 }
 
 
+DEFAULT_TRACERS_3D = ["NO3", "PO4", "Si", "O2", "TALK", "TDIC", "PiDIC", "DOC", "Fer"]
+DEFAULT_BOUNDARY_FORCINGS = ["dust", "ndep", "par", "bathy", "hydrofe", "rivers"]
+DEFAULT_RIVER_VARS = ["riverdin", "riverdip", "riverdon", "riverdop", "riverdoc", "riverdsi", "riverdic"]
+DEFAULT_DUST_VARS = ["dust", "dustfer", "dustpo4", "dustsi", "solubility2"]
+DEFAULT_NDEP_VARS = ["ndep", "ndep2"]
+
+
 def resolve_preset_name(preset: Optional[str]) -> str:
     """Normalizes preset name; defaults to ece4."""
     if not preset:
@@ -193,8 +200,39 @@ def load_config(config_path: str = "sources.yaml", preset: Optional[str] = None)
             if k in DEFAULTS and isinstance(v, (str, int, float)):
                 config[k] = str(v)
 
+    # Determine declarative tracer and forcing lists
+    tracers = DEFAULT_TRACERS_3D.copy()
+    forcings = DEFAULT_BOUNDARY_FORCINGS.copy()
+    river_vars = DEFAULT_RIVER_VARS.copy()
+    dust_vars = DEFAULT_DUST_VARS.copy()
+    ndep_vars = DEFAULT_NDEP_VARS.copy()
+
+    if isinstance(data, dict):
+        if "tracers_3d" in data and isinstance(data["tracers_3d"], dict):
+            tracers = list(data["tracers_3d"].keys())
+        if "boundary_forcings" in data and isinstance(data["boundary_forcings"], dict):
+            forcings = list(data["boundary_forcings"].keys())
+        sub_vars = data.get("sub_variables", {})
+        if isinstance(sub_vars, dict):
+            if "river" in sub_vars and isinstance(sub_vars["river"], list):
+                river_vars = [str(x) for x in sub_vars["river"]]
+            if "dust" in sub_vars and isinstance(sub_vars["dust"], list):
+                dust_vars = [str(x) for x in sub_vars["dust"]]
+            if "ndep" in sub_vars and isinstance(sub_vars["ndep"], list):
+                ndep_vars = [str(x) for x in sub_vars["ndep"]]
+
+    config['TRACERS_3D_LIST'] = " ".join(tracers)
+    config['BOUNDARY_FORCINGS_LIST'] = " ".join(forcings)
+    config['RIVER_VARS_LIST'] = " ".join(river_vars)
+    config['DUST_VARS_LIST'] = " ".join(dust_vars)
+    config['NDEP_VARS_LIST'] = " ".join(ndep_vars)
+
     # Environment variables override file
-    for k in list(DEFAULTS.keys()) + ['INIDATA_PRESET']:
+    extra_env_keys = [
+        'INIDATA_PRESET', 'TRACERS_3D_LIST', 'BOUNDARY_FORCINGS_LIST',
+        'RIVER_VARS_LIST', 'DUST_VARS_LIST', 'NDEP_VARS_LIST'
+    ]
+    for k in list(DEFAULTS.keys()) + extra_env_keys:
         if k in os.environ:
             config[k] = os.environ[k]
 

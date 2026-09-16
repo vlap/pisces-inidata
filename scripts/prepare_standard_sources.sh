@@ -33,35 +33,9 @@ trap 'rm -rf "${TMP_DIR}"' EXIT
 resolve_glodap_source() {
     local param="$1" # TAlk, TCO2, PI_TCO2
     local ver="${PRODUCT_TALK:-v2.2016b}"
-
-    case "${ver}" in
-        *2023*)
-            local candidate="${GLODAP_V2_2023_DIR}/GLODAPv2.2023.${param}.nc"
-            if [ -f "${candidate}" ]; then echo "${candidate}"; return 0; fi
-            ;;
-        *v1*)
-            local candidate="${GLODAP_V1_DIR}/glodap_v1.${param}.nc"
-            if [ -f "${candidate}" ]; then echo "${candidate}"; return 0; fi
-            ;;
-        *)
-            local candidate="${GLODAP_V2_DIR}/GLODAPv2.2016b.${param}.nc"
-            if [ -f "${candidate}" ]; then echo "${candidate}"; return 0; fi
-            candidate="${GLODAP_V2_DIR}/GLODAPv2.2016b_MappedClimatologies/GLODAPv2.2016b.${param}.nc"
-            if [ -f "${candidate}" ]; then echo "${candidate}"; return 0; fi
-            ;;
-    esac
-
-    for dir in "${GLODAP_V2_2023_DIR}" "${GLODAP_V2_DIR}" "${GLODAP_V1_DIR}"; do
-        if [ -d "${dir}" ]; then
-            local found
-            found=$(find "${dir}" -name "*${param}*.nc" 2>/dev/null | head -n 1)
-            if [ -n "${found}" ]; then echo "${found}"; return 0; fi
-        fi
-    done
-
-    echo "ERROR: Unable to find GLODAP source file for ${param}." >&2
-    return 1
+    pisces-inidata resolve-glodap "${param}" --raw-dir "${RAW_DIR}" --version "${ver}"
 }
+
 
 sanitize_source_coords() {
     local in_file="$1"
