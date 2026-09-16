@@ -22,7 +22,6 @@ DEFAULT_GRID_PROFILES: Dict[str, Dict[str, Any]] = {
         },
         "disk_space_gb": 2.0,
         "vertical_levels": 31,
-        "native_forcings": True,
         "fallback_coords_source": "official_v5.0.0/bathy.orca.nc",
     },
     "eORCA1": {
@@ -35,7 +34,6 @@ DEFAULT_GRID_PROFILES: Dict[str, Dict[str, Any]] = {
         },
         "disk_space_gb": 10.0,
         "vertical_levels": 75,
-        "native_forcings": False,
         "fallback_coords_source": None,
     },
     "eORCA025": {
@@ -48,7 +46,6 @@ DEFAULT_GRID_PROFILES: Dict[str, Dict[str, Any]] = {
         },
         "disk_space_gb": 40.0,
         "vertical_levels": 75,
-        "native_forcings": False,
         "fallback_coords_source": None,
     },
     "eORCA12": {
@@ -61,7 +58,6 @@ DEFAULT_GRID_PROFILES: Dict[str, Dict[str, Any]] = {
         },
         "disk_space_gb": 120.0,
         "vertical_levels": 75,
-        "native_forcings": False,
         "fallback_coords_source": None,
     },
 }
@@ -76,7 +72,6 @@ GENERIC_DEFAULT_PROFILE: Dict[str, Any] = {
     },
     "disk_space_gb": 15.0,
     "vertical_levels": 75,
-    "native_forcings": False,
     "fallback_coords_source": None,
 }
 
@@ -153,7 +148,6 @@ def export_grid_env_commands(grid_name: str, config_path: Optional[str] = None) 
     cfg = load_grid_config(grid_name, config_path)
     resources = cfg.get("resources", {})
     batch_weights = "1" if resources.get("batch_weights", False) else "0"
-    native_forcings = "1" if cfg.get("native_forcings", False) else "0"
     fallback_coords = cfg.get("fallback_coords_source") or ""
 
     lines = [
@@ -163,7 +157,6 @@ def export_grid_env_commands(grid_name: str, config_path: Optional[str] = None) 
         f"export GRID_SLURM_MEM=\"{resources.get('memory', '16G')}\"",
         f"export GRID_SLURM_CPUS=\"{resources.get('cpus', 16)}\"",
         f"export GRID_BATCH_WEIGHTS=\"{batch_weights}\"",
-        f"export GRID_NATIVE_FORCINGS=\"{native_forcings}\"",
         f"export GRID_FALLBACK_COORDS=\"{fallback_coords}\"",
         f"export GRID_MIN_DISK_GB=\"{cfg.get('disk_space_gb', 10.0)}\"",
         f"export GRID_VERTICAL_LEVELS=\"{cfg.get('vertical_levels', 75)}\"",

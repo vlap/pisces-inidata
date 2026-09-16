@@ -247,7 +247,6 @@ grids:
       batch_weights: false
     disk_space_gb: 2.0
     vertical_levels: 31
-    native_forcings: true
     fallback_coords_source: "official_v5.0.0/bathy.orca.nc"
 
   eORCA1:
@@ -259,7 +258,6 @@ grids:
       batch_weights: false
     disk_space_gb: 10.0
     vertical_levels: 75
-    native_forcings: false
 
   eORCA025:
     description: "Extended ORCA 0.25-degree eddy-permitting grid (1442x1207, 75 vertical levels)"
@@ -270,7 +268,6 @@ grids:
       batch_weights: true
     disk_space_gb: 40.0
     vertical_levels: 75
-    native_forcings: false
 
   eORCA12:
     description: "Extended ORCA 1/12-degree eddy-resolving grid (4322x3606, 75 vertical levels)"
@@ -281,7 +278,6 @@ grids:
       batch_weights: true
     disk_space_gb: 120.0
     vertical_levels: 75
-    native_forcings: false
 ```
 
 ### Key Properties
@@ -290,8 +286,8 @@ grids:
   - `batch_weights: false`: For coarser grids (`ORCA2`, `eORCA1`), weights are computed inline in minutes.
 - **`disk_space_gb`**: Verified by `pisces-inidata check` to ensure target filesystem has enough headroom before running heavy jobs.
 - **`vertical_levels`**: Target vertical resolution (e.g. 31 or 75 levels).
-- **`native_forcings`**: Set to `true` for grids where surface forcings (rivers, dust, bathy) are provided natively without requiring interpolation.
 - **`fallback_coords_source`**: Fallback coordinates file when `domain_cfg.nc` is omitted (e.g. SETTE `bathy.orca.nc` for ORCA2).
+- **Automatic Grid Detection:** The remapping engine automatically inspects source and target grid dimensions. If a source file is already defined on the target mesh (e.g. SETTE boundary forcings on ORCA2), the pipeline copies the field directly to avoid numerical diffusion or distortion; if dimensions differ, it executes CDO horizontal remapping (`remap`, `remapnn`, or `remapdis`).
 
 ### Adding a New Grid
 Adding a new grid requires zero changes to shell scripts or Python code. Simply append your grid specification to `grids.yaml`, or point to a custom file using `PISCES_GRIDS_CONFIG=/path/to/custom_grids.yaml`.

@@ -23,7 +23,6 @@ def test_known_grids():
 def test_load_orca2():
     cfg = load_grid_config("ORCA2")
     assert cfg["vertical_levels"] == 31
-    assert cfg["native_forcings"] is True
     assert cfg["resources"]["batch_weights"] is False
     assert cfg["disk_space_gb"] == 2.0
     assert cfg["fallback_coords_source"] == "official_v5.0.0/bathy.orca.nc"
@@ -32,7 +31,6 @@ def test_load_orca2():
 def test_load_eorca025():
     cfg = load_grid_config("eORCA025")
     assert cfg["vertical_levels"] == 75
-    assert cfg["native_forcings"] is False
     assert cfg["resources"]["batch_weights"] is True
     assert cfg["resources"]["memory"] == "64G"
     assert cfg["disk_space_gb"] == 40.0
@@ -42,7 +40,6 @@ def test_load_custom_grid_fallback():
     cfg = load_grid_config("UNKNOWN_CUSTOM_GRID")
     assert cfg["resources"]["memory"] == "16G"
     assert cfg["resources"]["batch_weights"] is False
-    assert cfg["native_forcings"] is False
     assert cfg["vertical_levels"] == 75
 
 
@@ -51,7 +48,6 @@ def test_export_grid_env_commands():
     assert 'export GRID_NAME="eORCA025"' in cmds
     assert 'export GRID_SLURM_MEM="64G"' in cmds
     assert 'export GRID_BATCH_WEIGHTS="1"' in cmds
-    assert 'export GRID_NATIVE_FORCINGS="0"' in cmds
 
 
 def test_custom_grids_yaml():
@@ -66,7 +62,6 @@ grids:
       batch_weights: true
     disk_space_gb: 25.0
     vertical_levels: 90
-    native_forcings: false
 """
     with tempfile.NamedTemporaryFile("w", suffix=".yaml", delete=False) as f:
         f.write(custom_content)

@@ -16,7 +16,6 @@ grids:
       batch_weights: false
     disk_space_gb: 2.0
     vertical_levels: 31
-    native_forcings: true
     fallback_coords_source: "official_v5.0.0/bathy.orca.nc"
 
   eORCA1:
@@ -28,7 +27,6 @@ grids:
       batch_weights: false
     disk_space_gb: 10.0
     vertical_levels: 75
-    native_forcings: false
 
   eORCA025:
     description: "Extended ORCA 0.25-degree eddy-permitting grid (1442x1207, 75 vertical levels)"
@@ -39,7 +37,6 @@ grids:
       batch_weights: true
     disk_space_gb: 40.0
     vertical_levels: 75
-    native_forcings: false
 
   eORCA12:
     description: "Extended ORCA 1/12-degree eddy-resolving grid (4322x3606, 75 vertical levels)"
@@ -50,4 +47,3 @@ grids:
       batch_weights: true
     disk_space_gb: 120.0
     vertical_levels: 75
-    native_forcings: false

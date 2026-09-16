@@ -133,7 +133,6 @@ grids:
       batch_weights: true
     disk_space_gb: 20.0
     vertical_levels: 75
-    native_forcings: false
 ```
 
 ---

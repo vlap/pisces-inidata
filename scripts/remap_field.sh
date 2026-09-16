@@ -80,6 +80,16 @@ echo " Standard Source: ${STD_FILE}"
 echo " Target Grid:     ${GRID_NAME}"
 echo "========================================================================"
 
+# Helper: Check whether source NetCDF horizontal grid matches target grid
+is_same_grid() {
+    local src="$1"
+    local tgt="$2"
+    local src_dims tgt_dims
+    src_dims=$(cdo -s griddes "${src}" 2>/dev/null | awk '/xsize/ {x=$3} /ysize/ {y=$3} END {if (x && y) print x "x" y}')
+    tgt_dims=$(cdo -s griddes "${tgt}" 2>/dev/null | awk '/xsize/ {x=$3} /ysize/ {y=$3} END {if (x && y) print x "x" y}')
+    [ -n "${src_dims}" ] && [ "${src_dims}" = "${tgt_dims}" ]
+}
+
 # ------------------------------------------------------------------------------
 # 1. 3D Tracers Remapping
 # ------------------------------------------------------------------------------
@@ -161,8 +171,8 @@ remap_2d_forcing() {
             ;;
     esac
 
-    if [ "${GRID_NATIVE_FORCINGS:-0}" = "1" ]; then
-        echo "Direct copy for native ${GRID_NAME} ${VAR} forcing..."
+    if is_same_grid "${STD_FILE}" "${TARGET_GRID_NC}"; then
+        echo "Source ${VAR} grid matches target ${GRID_NAME}; copying directly without re-interpolation..."
         cp "${STD_FILE}" "${out_file}"
     else
         local weights_file="${WEIGHTS_DIR}/weights_${VAR}_to_${GRID_NAME}.nc"
@@ -184,7 +194,8 @@ remap_2d_forcing() {
 # ------------------------------------------------------------------------------
 remap_bathy() {
     local out_file="${OUTPUT_DIR}/bathy.orca.nc"
-    if [ "${GRID_NATIVE_FORCINGS:-0}" = "1" ]; then
+    if is_same_grid "${STD_FILE}" "${TARGET_GRID_NC}"; then
+        echo "Source bathy grid matches target ${GRID_NAME}; copying directly without re-interpolation..."
         cp "${STD_FILE}" "${out_file}"
     else
         echo "Remapping bathy shelf fraction to ${GRID_NAME} using nearest-neighbor..."
@@ -200,7 +211,8 @@ remap_bathy() {
 # ------------------------------------------------------------------------------
 remap_hydrofe() {
     local out_file="${OUTPUT_DIR}/hydrofe.orca.nc"
-    if [ "${GRID_NATIVE_FORCINGS:-0}" = "1" ]; then
+    if is_same_grid "${STD_FILE}" "${TARGET_GRID_NC}"; then
+        echo "Source hydrofe grid matches target ${GRID_NAME}; copying directly without re-interpolation..."
         cp "${STD_FILE}" "${out_file}"
     else
         echo "Remapping hydrothermal vent Fe to ${GRID_NAME}..."
@@ -216,7 +228,8 @@ remap_hydrofe() {
 # ------------------------------------------------------------------------------
 remap_river() {
     local out_file="${OUTPUT_DIR}/river.orca.nc"
-    if [ "${GRID_NATIVE_FORCINGS:-0}" = "1" ]; then
+    if is_same_grid "${STD_FILE}" "${TARGET_GRID_NC}"; then
+        echo "Source river grid matches target ${GRID_NAME}; copying directly without re-interpolation..."
         cp "${STD_FILE}" "${out_file}"
     else
         echo "Remapping river nutrient discharge to ${GRID_NAME}..."
