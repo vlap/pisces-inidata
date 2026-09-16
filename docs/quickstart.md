@@ -110,12 +110,17 @@ Inspect target grid resource requirements and vertical levels:
 pisces-inidata grid-config
 ```
 
-| Grid | Description | Dimensions | Levels | Memory | Slurm Time | Batch Weights |
+| Grid | Description | Dimensions ($N_x \times N_y$) | Levels | Memory | Slurm Time | Batch Weights |
 | :--- | :--- | :---: | :---: | :---: | :---: | :---: |
-| **`ORCA2`** | NEMO standard 2-degree tripolar grid | $148 \times 180$ | 31 | 8 GB | 00:30:00 | No (Inline) |
-| **`eORCA1`** | Extended ORCA 1-degree global grid | $362 \times 292$ | 75 | 16 GB | 01:00:00 | No (Inline) |
-| **`eORCA025`** | Extended ORCA 0.25-degree eddy-permitting grid | $1442 \times 1207$ | 75 | 64 GB | 02:00:00 | Yes (Batch Slurm) |
-| **`eORCA12`** | Extended ORCA 1/12-degree eddy-resolving grid | $4322 \times 3606$ | 75 | 128 GB | 04:00:00 | Yes (Batch Slurm) |
+| **`ORCA2`** | NEMO standard 2-degree tripolar grid | $182 \times 149$ (SETTE) | 31 | 8 GB | 00:30:00 | No (Inline) |
+| **`eORCA1`** | Extended ORCA 1-degree global grid | Nominal $1^\circ$ (e.g. $360 \times 290$ / $362 \times 292$) | 75 | 16 GB | 01:00:00 | No (Inline) |
+| **`eORCA025`** | Extended ORCA 0.25-degree eddy-permitting grid | $1440 \times 1206$ (NEMO 4/5) / $1442 \times 1207$ (legacy) | 75 | 64 GB | 02:00:00 | Yes (Batch Slurm) |
+| **`eORCA12`** | Extended ORCA 1/12-degree eddy-resolving grid | Nominal $1/12^\circ$ (e.g. $4320 \times 3604$) | 75 | 128 GB | 04:00:00 | Yes (Batch Slurm) |
+
+> [!NOTE]
+> **NEMO Version Grid Dimensions & `domain_cfg.nc`:**
+> Documented grid dimensions often differ between NEMO versions. Legacy NEMO 3.6 setups included 2 cyclic halo columns (e.g. $1442 \times 1207$ for `eORCA025`), whereas modern NEMO (NEMO 4 / NEMO 5 / EC-Earth4) uses the true global computational grid without duplicate halos (e.g. **$1440 \times 1206$** in `eORCA025/domain_cfg.nc`).
+> `pisces-inidata` is completely version-agnostic: spatial dimensions and curvilinear coordinates (`glamt`, `gphit`) are dynamically parsed directly from the target grid's `domain_cfg.nc` via CDO, never hardcoded in scripts.
 
 ---
 

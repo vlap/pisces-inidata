@@ -253,7 +253,7 @@ Rather than hardcoding allowed grids or embedding resolution-specific conditiona
 ```yaml
 grids:
   ORCA2:
-    description: "NEMO standard 2-degree tripolar grid (148x180, 31 vertical levels)"
+    description: "NEMO standard 2-degree tripolar grid (31 vertical levels)"
     resources:
       time: "00:30:00"
       memory: "8G"
@@ -264,7 +264,7 @@ grids:
     fallback_coords_source: "official_v5.0.0/bathy.orca.nc"
 
   eORCA1:
-    description: "Extended ORCA 1-degree global grid (362x292, 75 vertical levels)"
+    description: "Extended ORCA 1-degree global grid (75 vertical levels)"
     resources:
       time: "01:00:00"
       memory: "16G"
@@ -274,7 +274,7 @@ grids:
     vertical_levels: 75
 
   eORCA025:
-    description: "Extended ORCA 0.25-degree eddy-permitting grid (1442x1207, 75 vertical levels)"
+    description: "Extended ORCA 0.25-degree eddy-permitting grid (1440x1206 in modern NEMO, 75 vertical levels)"
     resources:
       time: "02:00:00"
       memory: "64G"
@@ -284,7 +284,7 @@ grids:
     vertical_levels: 75
 
   eORCA12:
-    description: "Extended ORCA 1/12-degree eddy-resolving grid (4322x3606, 75 vertical levels)"
+    description: "Extended ORCA 1/12-degree eddy-resolving grid (75 vertical levels)"
     resources:
       time: "04:00:00"
       memory: "128G"
@@ -301,6 +301,14 @@ grids:
 - **`disk_space_gb`**: Verified by `pisces-inidata check` to ensure target filesystem has enough headroom before running heavy jobs.
 - **`vertical_levels`**: Target vertical resolution (e.g. 31 or 75 levels).
 - **`fallback_coords_source`**: Fallback coordinates file when `domain_cfg.nc` is omitted (e.g. SETTE `bathy.orca.nc` for ORCA2).
+
+### Dynamic Dimension Handling & NEMO Versions
+Exact horizontal grid dimensions $(N_x \times N_y)$ vary across NEMO versions depending on how cyclic halos and north boundary foldings are packaged in the domain files:
+- **`eORCA025`**: Modern NEMO (NEMO 4 / NEMO 5 / EC-Earth4) uses **$1440 \times 1206$** in `eORCA025/domain_cfg.nc`. Legacy NEMO 3.6 domain files included 2 cyclic halo columns and extra boundary points resulting in $1442 \times 1207$.
+- **`eORCA1`**: Nominal $1^\circ$ global mesh, typically $360 \times 290$ (modern NEMO) or $362 \times 292$ (legacy NEMO 3.6 / EC-Earth3).
+- **`ORCA2`**: Nominal $2^\circ$ tripolar mesh (e.g. $182 \times 149$ in NEMO SETTE benchmark).
+
+`pisces-inidata` **never hardcodes spatial dimensions** for remapping or validation. The pipeline dynamically extracts the exact coordinate matrices (`glamt`, `gphit`) directly from your target grid's `domain_cfg.nc` (or `coordinates.nc`) using CDO (`cdo griddes`), ensuring seamless compatibility with whichever domain configuration is provided.
 
 ### Adding a New Grid
 Adding a new grid requires zero changes to shell scripts or Python code. Simply append your grid specification to `grids.yaml`, or point to a custom file using `PISCES_GRIDS_CONFIG=/path/to/custom_grids.yaml`.

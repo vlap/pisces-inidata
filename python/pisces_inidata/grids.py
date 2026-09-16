@@ -13,7 +13,7 @@ except ImportError:
 
 DEFAULT_GRID_PROFILES: Dict[str, Dict[str, Any]] = {
     "ORCA2": {
-        "description": "NEMO standard 2-degree tripolar grid (148x180, 31 vertical levels)",
+        "description": "NEMO standard 2-degree tripolar grid (31 vertical levels)",
         "resources": {
             "time": "00:30:00",
             "memory": "8G",
@@ -25,7 +25,7 @@ DEFAULT_GRID_PROFILES: Dict[str, Dict[str, Any]] = {
         "fallback_coords_source": "official_v5.0.0/bathy.orca.nc",
     },
     "eORCA1": {
-        "description": "Extended ORCA 1-degree global grid (362x292, 75 vertical levels)",
+        "description": "Extended ORCA 1-degree global grid (75 vertical levels)",
         "resources": {
             "time": "01:00:00",
             "memory": "16G",
@@ -37,7 +37,7 @@ DEFAULT_GRID_PROFILES: Dict[str, Dict[str, Any]] = {
         "fallback_coords_source": None,
     },
     "eORCA025": {
-        "description": "Extended ORCA 0.25-degree eddy-permitting grid (1442x1207, 75 vertical levels)",
+        "description": "Extended ORCA 0.25-degree eddy-permitting grid (1440x1206 in modern NEMO, 75 vertical levels)",
         "resources": {
             "time": "02:00:00",
             "memory": "64G",
@@ -49,7 +49,7 @@ DEFAULT_GRID_PROFILES: Dict[str, Dict[str, Any]] = {
         "fallback_coords_source": None,
     },
     "eORCA12": {
-        "description": "Extended ORCA 1/12-degree eddy-resolving grid (4322x3606, 75 vertical levels)",
+        "description": "Extended ORCA 1/12-degree eddy-resolving grid (75 vertical levels)",
         "resources": {
             "time": "04:00:00",
             "memory": "128G",
