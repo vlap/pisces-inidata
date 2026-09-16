@@ -108,23 +108,45 @@ def cmd_run(args):
 def cmd_validate(args):
     repo_root = get_repo_root()
     preset = getattr(args, 'preset', 'official_sette')
+    workspace = os.environ.get("PISCES_WORKSPACE")
     test_dir = args.test_dir
     if not test_dir:
-        candidates = [
+        candidates = []
+        if workspace:
+            candidates.append(os.path.join(workspace, "grids", "ORCA2", "inidata"))
+        candidates.extend([
+            os.path.join(repo_root, "grids", "ORCA2", "inidata"),
             os.path.join(repo_root, "output_ORCA2"),
             os.path.join(repo_root, "work_ORCA2", "output_ORCA2"),
             os.path.join(repo_root, "work_ORCA2"),
             os.path.join(repo_root, "work_orca2"),
             repo_root
-        ]
+        ])
         for c in candidates:
             if os.path.exists(c):
                 test_dir = c
                 break
         if not test_dir:
-            test_dir = os.path.join(repo_root, "output_ORCA2")
+            test_dir = candidates[0]
 
-    ref_dir = args.ref_dir or os.environ.get("SETTE_REF_DIR", os.path.join(repo_root, "sette_reference_ORCA2"))
+    ref_dir = args.ref_dir
+    if not ref_dir:
+        ref_candidates = []
+        if os.environ.get("SETTE_REF_DIR"):
+            ref_candidates.append(os.environ["SETTE_REF_DIR"])
+        if workspace:
+            ref_candidates.append(os.path.join(workspace, "grids", "ORCA2", "sette_reference"))
+        ref_candidates.extend([
+            os.path.join(repo_root, "sette_reference_ORCA2"),
+            os.path.join(repo_root, "work_ORCA2", "sette_reference_ORCA2"),
+        ])
+        for rc in ref_candidates:
+            if os.path.exists(rc):
+                ref_dir = rc
+                break
+        if not ref_dir:
+            ref_dir = ref_candidates[0]
+
     output_md = args.output_md or os.path.join(repo_root, "VALIDATION_SCOREBOARD_ORCA2.md")
 
     code = run_validation_suite(
@@ -140,21 +162,26 @@ def cmd_validate(args):
 def cmd_test_reproduction(args):
     repo_root = get_repo_root()
     preset = getattr(args, 'preset', 'official_sette')
+    workspace = os.environ.get("PISCES_WORKSPACE")
     test_dir = args.test_dir
     if not test_dir:
-        candidates = [
+        candidates = []
+        if workspace:
+            candidates.append(os.path.join(workspace, "grids", "eORCA1", "inidata"))
+        candidates.extend([
+            os.path.join(repo_root, "grids", "eORCA1", "inidata"),
             os.path.join(repo_root, "output_eORCA1"),
             os.path.join(repo_root, "work_eORCA1", "output_eORCA1"),
             os.path.join(repo_root, "work_eORCA1", "reproduction_test"),
             os.path.join(repo_root, "work_eORCA1"),
             repo_root
-        ]
+        ])
         for c in candidates:
             if os.path.exists(c):
                 test_dir = c
                 break
         if not test_dir:
-            test_dir = os.path.join(repo_root, "output_eORCA1")
+            test_dir = candidates[0]
 
     ref_dir = args.ref_dir or os.environ.get(
         "ECE4_PISCES_REF",
@@ -191,19 +218,31 @@ def cmd_verify(args):
     from pisces_inidata.verify import verify_output_directory
     repo_root = get_repo_root()
     grid_name = args.orca or "eORCA025"
+    workspace = os.environ.get("PISCES_WORKSPACE")
     out_dir = args.out_dir
     if not out_dir:
-        candidates = [
+        candidates = []
+        if workspace:
+            candidates.append(os.path.join(workspace, "grids", grid_name, "inidata"))
+        account = os.environ.get("SLURM_ACCOUNT", "bsc32")
+        user = os.environ.get("USER", "user")
+        for base in [
+            f"/gpfs/scratch/{account}/{user}/pisces_inidata",
+            f"/esarchive/scratch/{user}/pisces_inidata",
+            os.path.join(os.path.expanduser("~"), "scratch", "pisces_inidata"),
+        ]:
+            candidates.append(os.path.join(base, "grids", grid_name, "inidata"))
+        candidates.extend([
+            os.path.join(repo_root, "grids", grid_name, "inidata"),
             os.path.join(repo_root, f"output_{grid_name}"),
-            f"/tmp/{os.environ.get('USER', 'volant')}/pisces/pisces_inidata_{grid_name}/output_{grid_name}",
             os.path.join(repo_root, f"work_{grid_name}", f"output_{grid_name}"),
-        ]
+        ])
         for c in candidates:
             if os.path.exists(c):
                 out_dir = c
                 break
         if not out_dir:
-            out_dir = os.path.join(repo_root, f"output_{grid_name}")
+            out_dir = candidates[0]
 
     print(f"Inspecting PISCES inidata outputs for {grid_name} in: {out_dir}")
     exit_code, _ = verify_output_directory(out_dir, grid_name=grid_name)
@@ -250,7 +289,17 @@ def cmd_download(args):
     from pisces_inidata.download import download_sources
     repo_root = get_repo_root()
     cfg_file = args.sources or os.path.join(repo_root, 'sources.yaml')
-    raw_dir = args.raw_dir or os.path.join(repo_root, 'pisces_raw_sources')
+    raw_dir = args.raw_dir
+    if not raw_dir:
+        workspace = os.environ.get("PISCES_WORKSPACE")
+        if workspace:
+            raw_dir = os.path.join(workspace, "shared", "raw")
+        elif os.environ.get("RAW_DIR"):
+            raw_dir = os.environ["RAW_DIR"]
+        elif os.path.isdir(os.path.join(repo_root, "pisces_raw_sources")):
+            raw_dir = os.path.join(repo_root, "pisces_raw_sources")
+        else:
+            raw_dir = os.path.join(repo_root, "pisces_raw_sources")
     preset = getattr(args, 'preset', None)
     code = download_sources(config_file=cfg_file, raw_dir=raw_dir, dry_run=args.dry_run, preset=preset)
     if code != 0:

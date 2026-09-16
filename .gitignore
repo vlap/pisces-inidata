@@ -10,11 +10,15 @@ raw_data/
 pisces_raw_sources/
 work_*/
 output_*/
+shared/
+grids/
+pisces_inidata*/
 
 # Temporary and log files
 *.out
 *.err
 tmp_*
+fallback_tmp/
 logs/
 sbatch_scripts/
 scratch/

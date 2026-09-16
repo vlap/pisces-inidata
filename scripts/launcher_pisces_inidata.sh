@@ -14,7 +14,7 @@ source "${SCRIPT_DIR}/config.sh"
 SUBMIT="${1:-submit}" # 'submit' (default) or 'dry-run'
 STAGE="${2:-all}"      # 'all' (default), 'stage1' (prepare sources), or 'stage2' (remap)
 
-mkdir -p "${LOG_DIR}" "${WORK_DIR}/sbatch_scripts"
+mkdir -p "${LOG_DIR}" "${SBATCH_DIR}"
 
 echo "========================================================================"
 echo " PISCES Inidata Batch Job Launcher (Nord4 / Slurm)"
@@ -24,6 +24,7 @@ echo " Pipeline Stage: ${STAGE}"
 echo " Account / QOS:  ${SLURM_ACCOUNT} / ${SLURM_PARTITION}"
 echo " Submit mode:    ${SUBMIT}"
 echo " Logs directory: ${LOG_DIR}"
+echo " Jobs directory: ${SBATCH_DIR}"
 echo "========================================================================"
 
 # Template for individual sbatch worker jobs
@@ -46,6 +47,8 @@ export GRID_NAME="__GRID_NAME__"
 export DOMAIN_BASE_DIR="__DOMAIN_BASE_DIR__"
 export PRESET="__PRESET__"
 export INIDATA_PRESET="__PRESET__"
+export PISCES_WORKSPACE="__WORKSPACE__"
+export OUTPUT_DIR="__OUTPUT_DIR__"
 export SLURM_CPUS_PER_TASK="__CPUS__"
 eval "__MODULE_LOAD__"
 
@@ -58,7 +61,7 @@ submit_job() {
     local jobname="$1"
     local command="$2"
     local dependency="${3:-}"
-    local script_path="${WORK_DIR}/sbatch_scripts/sbatch_${jobname}.sh"
+    local script_path="${SBATCH_DIR}/sbatch_${jobname}.sh"
 
     local script_content="${SBATCH_TEMPLATE}"
     script_content="${script_content//__ACCOUNT__/${SLURM_ACCOUNT}}"
@@ -71,6 +74,8 @@ submit_job() {
     script_content="${script_content//__GRID_NAME__/${GRID_NAME}}"
     script_content="${script_content//__DOMAIN_BASE_DIR__/${DOMAIN_BASE_DIR}}"
     script_content="${script_content//__PRESET__/${PRESET}}"
+    script_content="${script_content//__WORKSPACE__/${WORKSPACE}}"
+    script_content="${script_content//__OUTPUT_DIR__/${OUTPUT_DIR}}"
     script_content="${script_content//__MODULE_LOAD__/${MODULE_LOAD_CMD}}"
     script_content="${script_content//__COMMAND__/${command}}"
 

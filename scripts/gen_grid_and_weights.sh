@@ -24,7 +24,7 @@ echo "Target grid: ${GRID_NAME}"
 echo "Domain config: ${DOMAIN_CFG}"
 echo "Mask utility: ${MASKUTIL}"
 
-TMP_DIR=$(mktemp -d -p "${SCRATCH_ROOT}" tmp_grid_XXXXXX)
+TMP_DIR=$(mktemp -d -p "${TMP_BASE}" tmp_grid_XXXXXX)
 trap 'rm -rf "${TMP_DIR}"' EXIT
 
 if [ -f "${DOMAIN_CFG}" ] && [ -f "${MASKUTIL}" ]; then

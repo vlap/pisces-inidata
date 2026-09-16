@@ -14,7 +14,7 @@ source "${SCRIPT_DIR}/config.sh"
 
 eval "${MODULE_LOAD_CMD}"
 
-SETTE_REF_DIR="${WORK_DIR}/sette_reference_ORCA2"
+SETTE_REF_DIR="${SETTE_REF_DIR:-${GRID_DIR}/sette_reference}"
 TARGET_GRID_NC="${WEIGHTS_DIR}/target_grid_ORCA2.nc"
 WEIGHTS_BILIN="${WEIGHTS_DIR}/weights_r360x180_to_ORCA2_bilin.nc"
 

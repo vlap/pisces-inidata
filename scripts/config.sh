@@ -25,32 +25,65 @@ DOMAIN_CFG="${DOMAIN_CFG:-${DOMAIN_BASE_DIR}/${GRID_NAME}/domain_cfg.nc}"
 MASKUTIL="${MASKUTIL:-${DOMAIN_BASE_DIR}/${GRID_NAME}/maskutil.nc}"
 
 # ------------------------------------------------------------------------------
-# 2. Workspaces & Scratch Directories
+# 2. Workspaces & Storage Hierarchy (BSC Nord4 / MN5 / hub04 Policy)
 # ------------------------------------------------------------------------------
-# Scratch root: auto-detect user scratch on /esarchive, otherwise fallback to local scratch
-if [ -d "/esarchive/scratch/${USER}" ]; then
-    DEFAULT_SCRATCH="/esarchive/scratch/${USER}/tmp"
-elif [ -d "/esarchive/scratch" ]; then
-    DEFAULT_SCRATCH="/esarchive/scratch/${USER}/tmp"
+# Auto-detect BSC GPFS scratch
+if [ -d "/gpfs/scratch/${SLURM_ACCOUNT:-bsc32}/${USER}" ]; then
+    DEFAULT_SCRATCH="/gpfs/scratch/${SLURM_ACCOUNT:-bsc32}/${USER}"
+elif [ -d "/esarchive/scratch/${USER}" ]; then
+    DEFAULT_SCRATCH="/esarchive/scratch/${USER}"
+elif [ -d "/gpfs/scratch/${USER}" ]; then
+    DEFAULT_SCRATCH="/gpfs/scratch/${USER}"
 else
-    DEFAULT_SCRATCH="/tmp/${USER}/pisces"
+    DEFAULT_SCRATCH="${HOME}/scratch"
 fi
 SCRATCH_ROOT="${SCRATCH_ROOT:-${DEFAULT_SCRATCH}}"
-WORK_DIR="${WORK_DIR:-${SCRATCH_ROOT}/pisces_inidata_${GRID_NAME}}"
 
-# Subdirectories for raw data, weights, and final outputs
-# Default to shared team raw directory if present, else user scratch
-if [ -d "/esarchive/scratch/vlapin/tmp/pisces_raw_sources" ]; then
-    DEFAULT_RAW="/esarchive/scratch/vlapin/tmp/pisces_raw_sources"
-else
-    DEFAULT_RAW="${SCRATCH_ROOT}/pisces_raw_sources"
+# Unified root workspace (single top-level folder for the entire pipeline)
+WORKSPACE="${PISCES_WORKSPACE:-${SCRATCH_ROOT}/pisces_inidata}"
+export WORKSPACE
+export PISCES_WORKSPACE="${WORKSPACE}"
+
+# Shared assets (Grid-agnostic: Stage 0 raw catalog + Stage 1 regular 1x1 ETL)
+if [ -z "${RAW_DIR:-}" ]; then
+    if [ -d "${WORKSPACE}/shared/raw" ]; then
+        RAW_DIR="${WORKSPACE}/shared/raw"
+    elif [ -d "${PWD}/pisces_raw_sources" ]; then
+        RAW_DIR="${PWD}/pisces_raw_sources"
+    elif [ -d "${SCRATCH_ROOT}/pisces_raw_sources" ]; then
+        RAW_DIR="${SCRATCH_ROOT}/pisces_raw_sources"
+    elif [ -d "/esarchive/scratch/vlapin/tmp/pisces_raw_sources" ]; then
+        RAW_DIR="/esarchive/scratch/vlapin/tmp/pisces_raw_sources"
+    else
+        RAW_DIR="${WORKSPACE}/shared/raw"
+    fi
 fi
-RAW_DIR="${RAW_DIR:-${DEFAULT_RAW}}"
+
 PRESET="${PRESET:-${INIDATA_PRESET:-ece4}}"
-export STANDARDIZED_DIR="${STANDARDIZED_DIR:-${SCRATCH_ROOT}/pisces_standardized_${PRESET}}"
-WEIGHTS_DIR="${WORK_DIR}/weights"
-OUTPUT_DIR="${WORK_DIR}/output_${GRID_NAME}"
-LOG_DIR="${WORK_DIR}/logs"
+if [ -z "${STANDARDIZED_DIR:-}" ]; then
+    if [ -d "${WORKSPACE}/shared/standardized/${PRESET}" ]; then
+        STANDARDIZED_DIR="${WORKSPACE}/shared/standardized/${PRESET}"
+    elif [ -d "${SCRATCH_ROOT}/pisces_standardized_${PRESET}" ]; then
+        STANDARDIZED_DIR="${SCRATCH_ROOT}/pisces_standardized_${PRESET}"
+    else
+        STANDARDIZED_DIR="${WORKSPACE}/shared/standardized/${PRESET}"
+    fi
+fi
+export STANDARDIZED_DIR
+
+# Target grid workspace (Stage 2)
+GRID_DIR="${WORKSPACE}/grids/${GRID_NAME}"
+WORK_DIR="${WORK_DIR:-${GRID_DIR}}"
+WEIGHTS_DIR="${WEIGHTS_DIR:-${GRID_DIR}/weights}"
+OUTPUT_DIR="${OUTPUT_DIR:-${GRID_DIR}/inidata}"
+LOG_DIR="${LOG_DIR:-${GRID_DIR}/logs}"
+SBATCH_DIR="${SBATCH_DIR:-${GRID_DIR}/jobs}"
+
+# Temporary scratch handling:
+# 1. On compute nodes: $TMPDIR points to local NVMe (/scratch/tmp/$SLURM_JOB_ID)
+# 2. On login nodes: fallback to $WORKSPACE/fallback_tmp (NEVER /tmp per BSC policy)
+TMP_BASE="${TMPDIR:-${WORKSPACE}/fallback_tmp}"
+mkdir -p "${TMP_BASE}" "${WORKSPACE}" "${OUTPUT_DIR}" "${WEIGHTS_DIR}" "${LOG_DIR}" "${SBATCH_DIR}"
 
 # ------------------------------------------------------------------------------
 # 3. HPC Environment & Slurm Settings (Nord4 / hub02)
@@ -130,7 +163,7 @@ NDEP_VARS=("ndep" "ndep2")
 
 # Export all variables for sub-scripts
 export GRID_NAME DOMAIN_BASE_DIR DOMAIN_CFG MASKUTIL
-export SCRATCH_ROOT WORK_DIR RAW_DIR WEIGHTS_DIR OUTPUT_DIR LOG_DIR
+export SCRATCH_ROOT WORKSPACE PISCES_WORKSPACE GRID_DIR WORK_DIR RAW_DIR STANDARDIZED_DIR WEIGHTS_DIR OUTPUT_DIR LOG_DIR SBATCH_DIR TMP_BASE
 export SLURM_ACCOUNT SLURM_PARTITION SLURM_TIME SLURM_CPUS_PER_TASK
 export MODULE_LOAD_CMD CDO_THREADS CDO_OPTS CDO_COMPRESS
 export TRACERS_3D RIVER_VARS DUST_VARS NDEP_VARS INIDATA_PRESET

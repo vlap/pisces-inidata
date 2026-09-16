@@ -71,7 +71,7 @@ if [ ! -f "${STD_FILE}" ]; then
     bash "${SCRIPT_DIR}/prepare_standard_sources.sh" "${VAR}"
 fi
 
-TMP_DIR=$(mktemp -d -p "${SCRATCH_ROOT}" tmp_remap_${VAR}_XXXXXX)
+TMP_DIR=$(mktemp -d -p "${TMP_BASE}" tmp_remap_${VAR}_XXXXXX)
 trap 'rm -rf "${TMP_DIR}"' EXIT
 
 echo "========================================================================"

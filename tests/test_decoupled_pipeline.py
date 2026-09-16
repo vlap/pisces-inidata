@@ -74,3 +74,16 @@ def test_cli_run_dry_run_stage1(monkeypatch):
     with pytest.raises(SystemExit) as exc:
         main()
     assert exc.value.code == 0
+
+
+def test_workspace_structure_config():
+    repo_root = get_repo_root()
+    cmd = [
+        "bash", "-c",
+        "source scripts/config.sh && echo WORKSPACE=$WORKSPACE && echo RAW_DIR=$RAW_DIR && "
+        "echo STANDARDIZED_DIR=$STANDARDIZED_DIR && echo OUTPUT_DIR=$OUTPUT_DIR && echo TMP_BASE=$TMP_BASE"
+    ]
+    res = subprocess.run(cmd, cwd=repo_root, capture_output=True, text=True)
+    assert res.returncode == 0
+    assert "grids/eORCA1/inidata" in res.stdout
+    assert "shared/standardized" in res.stdout

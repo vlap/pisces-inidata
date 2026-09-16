@@ -132,7 +132,13 @@ def download_sources(
     Orchestrates dataset downloading according to user's sources.yaml configuration or preset.
     """
     config = load_config(config_file or "sources.yaml", preset=preset)
-    effective_raw = raw_dir or os.environ.get("RAW_DIR", os.path.join(os.getcwd(), "pisces_raw_sources"))
+    workspace = os.environ.get("PISCES_WORKSPACE")
+    default_raw = (
+        os.path.join(workspace, "shared", "raw")
+        if workspace
+        else os.environ.get("RAW_DIR", os.path.join(os.getcwd(), "pisces_raw_sources"))
+    )
+    effective_raw = raw_dir or default_raw
     active_preset = config.get("INIDATA_PRESET", "ece4")
 
     print("=" * 78)

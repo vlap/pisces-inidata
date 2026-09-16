@@ -27,7 +27,7 @@ FORCE="${FORCE:-0}"
 
 mkdir -p "${STANDARDIZED_DIR}" "${LOG_DIR}"
 
-TMP_DIR=$(mktemp -d -p "${SCRATCH_ROOT}" tmp_prep_std_XXXXXX)
+TMP_DIR=$(mktemp -d -p "${TMP_BASE}" tmp_prep_std_XXXXXX)
 trap 'rm -rf "${TMP_DIR}"' EXIT
 
 resolve_glodap_source() {

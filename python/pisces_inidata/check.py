@@ -211,7 +211,13 @@ def run_preflight_checks(
             all_critical_passed = False
 
     # 4. Raw Sources
-    effective_raw = raw_dir or os.environ.get("RAW_DIR", os.path.join(os.getcwd(), "pisces_raw_sources"))
+    workspace = os.environ.get("PISCES_WORKSPACE")
+    default_raw = (
+        os.path.join(workspace, "shared", "raw")
+        if workspace
+        else os.environ.get("RAW_DIR", os.path.join(os.getcwd(), "pisces_raw_sources"))
+    )
+    effective_raw = raw_dir or default_raw
     print(f"\n[4] Raw Input Data Catalog ({effective_raw}):")
     raw_results = check_raw_sources(effective_raw, cfg)
     for name, ok, desc in raw_results:
@@ -219,7 +225,12 @@ def run_preflight_checks(
         print(f"  {tag:7s} {name:22s} : {desc}")
 
     # 5. Disk Space
-    effective_out = out_dir or os.environ.get("OUTPUT_DIR", os.getcwd())
+    default_out = (
+        os.path.join(workspace, "grids", grid_name, "inidata")
+        if workspace
+        else os.environ.get("OUTPUT_DIR", os.getcwd())
+    )
+    effective_out = out_dir or default_out
     print(f"\n[5] Filesystem Storage Check ({effective_out}):")
     ok_space, free_gb, req_gb = check_disk_space(effective_out, grid_name)
     tag = "[PASS]" if ok_space else "[FAIL]"

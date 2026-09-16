@@ -181,6 +181,13 @@ On high-performance computing clusters where compute nodes lack direct internet 
    pisces-inidata verify --orca eORCA025
    ```
 
+3. **Storage Hierarchy & Nord4 Guidelines:**
+   - **Unified Workspace (`PISCES_WORKSPACE`):** Defaults to `/gpfs/scratch/bsc32/${USER}/pisces_inidata` or `/esarchive/scratch/${USER}/pisces_inidata`.
+     - `shared/raw/`: Downloaded observational archives.
+     - `shared/standardized/<preset>/`: Stage 1 regular $1^\circ \times 1^\circ$ standardized NetCDFs.
+     - `grids/<grid>/`: Target mesh products (`weights/`, `inidata/`, `jobs/`, `logs/`).
+   - **Node-Local Scratch (`$TMPDIR`):** On Nord4/MN5 compute nodes, `$TMPDIR` points to `/scratch/tmp/$SLURM_JOB_ID` (local NVMe SSD). All intermediate CDO pipeline operations execute on local NVMe and are automatically cleaned on job termination, keeping GPFS free of temporary files. System `/tmp` is strictly avoided per BSC acceptable use policy.
+
 ---
 
 ## Documentation
