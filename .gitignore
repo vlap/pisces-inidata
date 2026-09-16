@@ -12,7 +12,7 @@ work_*/
 output_*/
 shared/
 grids/
-pisces_inidata*/
+/pisces_inidata*/
 
 # Temporary and log files
 *.out

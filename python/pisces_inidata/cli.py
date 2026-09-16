@@ -7,6 +7,7 @@ import sys
 import os
 import argparse
 import subprocess
+from typing import Optional
 from pisces_inidata import __version__
 from pisces_inidata.config import load_config, validate_config, export_env_commands
 from pisces_inidata.padding import pad_abyssal_depth
@@ -105,10 +106,26 @@ def cmd_run(args):
     sys.exit(res.returncode)
 
 
+def get_default_workspace() -> Optional[str]:
+    """Resolves default PISCES workspace from environment or standard BSC/system scratch."""
+    if os.environ.get("PISCES_WORKSPACE"):
+        return os.environ["PISCES_WORKSPACE"]
+    account = os.environ.get("SLURM_ACCOUNT", "bsc32")
+    user = os.environ.get("USER", "user")
+    for base in [
+        f"/gpfs/scratch/{account}/{user}/pisces_inidata",
+        f"/esarchive/scratch/{user}/pisces_inidata",
+        os.path.join(os.path.expanduser("~"), "scratch", "pisces_inidata"),
+    ]:
+        if os.path.isdir(base):
+            return base
+    return None
+
+
 def cmd_validate(args):
     repo_root = get_repo_root()
     preset = getattr(args, 'preset', 'official_sette')
-    workspace = os.environ.get("PISCES_WORKSPACE")
+    workspace = get_default_workspace()
     test_dir = args.test_dir
     if not test_dir:
         candidates = []
@@ -120,10 +137,9 @@ def cmd_validate(args):
             os.path.join(repo_root, "work_ORCA2", "output_ORCA2"),
             os.path.join(repo_root, "work_ORCA2"),
             os.path.join(repo_root, "work_orca2"),
-            repo_root
         ])
         for c in candidates:
-            if os.path.exists(c):
+            if os.path.exists(c) and os.path.isdir(c):
                 test_dir = c
                 break
         if not test_dir:
@@ -141,7 +157,7 @@ def cmd_validate(args):
             os.path.join(repo_root, "work_ORCA2", "sette_reference_ORCA2"),
         ])
         for rc in ref_candidates:
-            if os.path.exists(rc):
+            if os.path.exists(rc) and os.path.isdir(rc):
                 ref_dir = rc
                 break
         if not ref_dir:
@@ -162,7 +178,7 @@ def cmd_validate(args):
 def cmd_test_reproduction(args):
     repo_root = get_repo_root()
     preset = getattr(args, 'preset', 'official_sette')
-    workspace = os.environ.get("PISCES_WORKSPACE")
+    workspace = get_default_workspace()
     test_dir = args.test_dir
     if not test_dir:
         candidates = []
@@ -174,10 +190,9 @@ def cmd_test_reproduction(args):
             os.path.join(repo_root, "work_eORCA1", "output_eORCA1"),
             os.path.join(repo_root, "work_eORCA1", "reproduction_test"),
             os.path.join(repo_root, "work_eORCA1"),
-            repo_root
         ])
         for c in candidates:
-            if os.path.exists(c):
+            if os.path.exists(c) and os.path.isdir(c):
                 test_dir = c
                 break
         if not test_dir:

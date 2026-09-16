@@ -48,9 +48,9 @@ export PISCES_WORKSPACE="${WORKSPACE}"
 if [ -z "${RAW_DIR:-}" ]; then
     if [ -d "${WORKSPACE}/shared/raw" ]; then
         RAW_DIR="${WORKSPACE}/shared/raw"
-    elif [ -d "${PWD}/pisces_raw_sources" ]; then
+    elif [ -d "${PWD}/pisces_raw_sources" ] && [ -n "$(ls -A "${PWD}/pisces_raw_sources" 2>/dev/null)" ]; then
         RAW_DIR="${PWD}/pisces_raw_sources"
-    elif [ -d "${SCRATCH_ROOT}/pisces_raw_sources" ]; then
+    elif [ -d "${SCRATCH_ROOT}/pisces_raw_sources" ] && [ -n "$(ls -A "${SCRATCH_ROOT}/pisces_raw_sources" 2>/dev/null)" ]; then
         RAW_DIR="${SCRATCH_ROOT}/pisces_raw_sources"
     elif [ -d "/esarchive/scratch/vlapin/tmp/pisces_raw_sources" ]; then
         RAW_DIR="/esarchive/scratch/vlapin/tmp/pisces_raw_sources"
@@ -123,8 +123,8 @@ GLODAP_VERSION="${GLODAP_VERSION:-v2.2016b}"
 SCRIPT_DIR_CONFIG="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_DIR="$(cd "${SCRIPT_DIR_CONFIG}/.." && pwd)"
 
-# Ensure pisces-inidata binary and Python module are discoverable everywhere
-export PATH="${REPO_DIR}/bin:${HOME}/.local/bin:${PATH}"
+# Ensure pisces-inidata binary, NCO env, and Python module are discoverable everywhere
+export PATH="${REPO_DIR}/bin:${HOME}/.local/nco-env/bin:${HOME}/.local/bin:${PATH}"
 export PYTHONPATH="${REPO_DIR}/python:${PYTHONPATH:-}"
 
 if [ -f "${REPO_DIR}/sources.yaml" ]; then

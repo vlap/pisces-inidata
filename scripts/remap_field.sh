@@ -95,7 +95,7 @@ remap_3d_tracer() {
         target_levels=$(cdo -s showlevel "${RAW_DIR}/official_v5.0.0/data_DOC_nomask.nc" 2>/dev/null | tr -s ' ' ',' | sed 's/^,//; s/,$//')
     fi
 
-    if [ -n "${target_levels:-}" ] && [ "${GRID_NAME}" != "ORCA2" ]; then
+    if [ -n "${target_levels:-}" ]; then
         echo "[Step 1/2] Vertical level interpolation to target levels on source grid..."
         cdo ${CDO_OPTS} -intlevel,"${target_levels}" "${STD_FILE}" "${TMP_DIR}/vint.nc"
         echo "[Step 2/2] Horizontal remapping to ${GRID_NAME}..."
