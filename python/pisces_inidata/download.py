@@ -87,19 +87,25 @@ def download_woa23_tracer(var_name: str, code: str, folder: str, raw_dir: str, d
 
 def download_official_nemo_inputs(raw_dir: str, dry_run: bool = False):
     """
-    Downloads and extracts the official NEMO/PISCES v5.0.0 input package from JASMIN.
+    Downloads and extracts the official NEMO/PISCES input package from JASMIN.
     Provides baseline forcings (dust, ndep, par, rivers, bathy, hydrofe) and unmasked fields.
     """
-    target_dir = os.path.join(raw_dir, "official_v5.0.0")
-    tar_path = os.path.join(raw_dir, "ORCA2_INPUTS_PISCES_v5.0.0.tar.gz")
-    key_file = os.path.join(target_dir, "data_FER_nomask.nc")
+    from pisces_inidata.catalog import load_catalog, resolve_package_dir
+    cat = load_catalog()
+    pkg = cat.get("packages", {}).get("official_nemo_inputs", {})
+    target_dir = resolve_package_dir("official_nemo_inputs", raw_dir=raw_dir)
+    tar_name = pkg.get("archive", "ORCA2_INPUTS_PISCES_v5.0.0.tar.gz")
+    tar_path = os.path.join(raw_dir, tar_name)
+    url = pkg.get("url", OFFICIAL_JASMIN_URL)
+    key_name = pkg.get("key_file", "data_FER_nomask.nc")
+    key_file = os.path.join(target_dir, key_name)
 
     print("\nChecking Official NEMO PISCES inputs package...")
     if os.path.exists(key_file):
         print(f"  [EXISTS] Official inputs already present in {target_dir}")
         return
 
-    download_file(OFFICIAL_JASMIN_URL, tar_path, dry_run=dry_run)
+    download_file(url, tar_path, dry_run=dry_run)
     if not dry_run and os.path.exists(tar_path):
         extract_tar(tar_path, target_dir, strip_components=1, dry_run=dry_run)
 

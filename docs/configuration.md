@@ -363,7 +363,34 @@ All platform defaults can be overridden at runtime via standard environment vari
 
 ---
 
-## 6. HPC Storage & Directory Structure
+## 6. Declarative Metadata Catalog & Conventions (`catalog.yaml`)
+
+Rather than hardcoding raw input package paths (e.g. `official_v5.0.0`), filenames (`data_DOC_nomask.nc`), or internal NetCDF variable names (`epsdb`, `fr_par`, `Alkalini`, `DIC`) across shell scripts, `pisces-inidata` decouples data provider conventions and target model expectations in `catalog.yaml`.
+
+### Decoupled Schema Architecture
+- **`packages`**: External data packages, default subdirectories, archive names, and URLs. Supports environment variable override `OFFICIAL_INPUTS_DIR`.
+- **`sources`**: Observational and benchmark source products (e.g. `woa23`, `glodap_v2_2016b`, `panaiotis2024`, `sette_nomask`, `sette_orca2`), specifying raw file names, internal variable names, abyssal padding depths, and fillmiss requirements.
+- **`conventions`**: Target model initial condition conventions (e.g. `nemo4_ece4`), defining target output file patterns, target NetCDF variable names, units, and namelist compatibility symlinks.
+
+### CLI Inspection & Resolution Commands
+```bash
+# Resolve source metadata for Stage 1 standardization:
+pisces-inidata resolve-source DOC --preset ece4 --export
+pisces-inidata resolve-source hydrofe --preset ece4 --export
+
+# Resolve target model convention for Stage 2 remapping:
+pisces-inidata resolve-target TALK --grid eORCA1 --export
+
+# Query target vertical levels from domain_cfg or catalog reference:
+pisces-inidata get-vertical-levels --grid ORCA2
+
+# Inspect resolved external package directory:
+pisces-inidata catalog package-dir official_nemo_inputs
+```
+
+---
+
+## 7. HPC Storage & Directory Structure
 
 To ensure optimal performance and respect storage policies on HPC clusters (e.g. BSC Nord4 and MareNostrum 5):
 

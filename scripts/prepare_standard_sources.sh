@@ -30,12 +30,6 @@ mkdir -p "${STANDARDIZED_DIR}" "${LOG_DIR}"
 TMP_DIR=$(mktemp -d -p "${TMP_BASE}" tmp_prep_std_XXXXXX)
 trap 'rm -rf "${TMP_DIR}"' EXIT
 
-resolve_glodap_source() {
-    local param="$1" # TAlk, TCO2, PI_TCO2
-    local ver="${PRODUCT_TALK:-v2.2016b}"
-    pisces-inidata resolve-glodap "${param}" --raw-dir "${RAW_DIR}" --version "${ver}"
-}
-
 
 sanitize_source_coords() {
     local in_file="$1"
@@ -72,106 +66,50 @@ prepare_tracer_3d() {
     echo " Target Output: ${std_file}"
     echo "========================================================================"
 
-    case "${var}" in
-        NO3|PO4|Si|O2)
-            local prod_var="PRODUCT_${var}"
-            local chosen="${!prod_var:-woa23}"
-            local file_var="${var}"
-            [ "${var}" = "Si" ] && file_var="SIL"
-            [ "${var}" = "O2" ] && file_var="OXY"
+    eval "$(pisces-inidata resolve-source "${var}" --preset "${PRESET}" --raw-dir "${RAW_DIR}" --export)"
 
-            if [ "${chosen}" = "woa23" ]; then
-                echo "Standardizing WOA23 for ${var}..."
-                local src_var="n_an"
-                [ "${var}" = "PO4" ] && src_var="p_an"
-                [ "${var}" = "Si" ] && src_var="i_an"
-                [ "${var}" = "O2" ] && src_var="o_an"
-
-                pisces-inidata prepare-woa "${src_var}" "${WOA23_DIR}" "${TMP_DIR}/woa_combined_${var}.nc"
-                cdo ${CDO_OPTS} fillmiss "${TMP_DIR}/woa_combined_${var}.nc" "${std_file}"
-            else
-                local src_file="${RAW_DIR}/official_v5.0.0/data_${file_var}_nomask.nc"
-                if [ ! -f "${src_file}" ]; then
-                    echo "ERROR: Source file ${src_file} not found. Run download first." >&2
-                    return 1
-                fi
-                echo "Extracting and padding ${var} from ${src_file}..."
-                cdo ${CDO_OPTS} -selname,"${var}" "${src_file}" "${TMP_DIR}/src_sel_${var}.nc"
-                pisces-inidata pad "${TMP_DIR}/src_sel_${var}.nc" "${std_file}" --depth 6000.0
+    case "${HANDLER}" in
+        woa23)
+            echo "Standardizing WOA23 for ${var}..."
+            pisces-inidata prepare-woa "${SRC_VAR}" "${WOA23_DIR}" "${TMP_DIR}/woa_combined_${var}.nc"
+            cdo ${CDO_OPTS} fillmiss "${TMP_DIR}/woa_combined_${var}.nc" "${std_file}"
+            ;;
+        glodap)
+            echo "Standardizing GLODAP for ${var} from ${SRC_FILE}..."
+            pisces-inidata prepare-glodap "${SRC_VAR}" "${SRC_FILE}" "${TMP_DIR}/clean_${var}.nc"
+            cdo ${CDO_OPTS} fillmiss "${TMP_DIR}/clean_${var}.nc" "${TMP_DIR}/filled_${var}.nc"
+            if [ "${SRC_VAR}" != "${STD_VAR}" ]; then
+                ncrename -O -v "${SRC_VAR},${STD_VAR}" "${TMP_DIR}/filled_${var}.nc" 2>/dev/null || true
             fi
+            mv "${TMP_DIR}/filled_${var}.nc" "${std_file}"
             ;;
-
-        TALK|TDIC|PiDIC)
-            local prod_var="PRODUCT_${var}"
-            local chosen="${!prod_var:-glodap_v2_2016b}"
-            local src_param src_var out_var_name nomask_var nomask_file
-            case "${var}" in
-                TALK)
-                    src_param="TAlk"; src_var="TAlk"; out_var_name="Alkalini"
-                    nomask_var="TALK"; nomask_file="data_ALK_nomask.nc"
-                    ;;
-                TDIC)
-                    src_param="TCO2"; src_var="TCO2"; out_var_name="DIC"
-                    nomask_var="TDIC"; nomask_file="data_DIC_nomask.nc"
-                    ;;
-                PiDIC)
-                    src_param="PI_TCO2"; src_var="PI_TCO2"; out_var_name="DIC"
-                    nomask_var="PiDIC"; nomask_file="data_DIC_nomask.nc"
-                    ;;
-            esac
-
-            if [ "${chosen}" = "sette_nomask" ]; then
-                local src_file="${RAW_DIR}/official_v5.0.0/${nomask_file}"
-                echo "Standardizing SETTE nomask for ${var} from ${src_file}..."
-                cdo ${CDO_OPTS} -selname,"${nomask_var}" "${src_file}" "${TMP_DIR}/src_sel_${var}.nc"
-                pisces-inidata pad "${TMP_DIR}/src_sel_${var}.nc" "${TMP_DIR}/padded_${var}.nc" --depth 6000.0
-                if [ "${nomask_var}" != "${out_var_name}" ]; then
-                    ncrename -O -v "${nomask_var},${out_var_name}" "${TMP_DIR}/padded_${var}.nc" 2>/dev/null || true
-                fi
-                mv "${TMP_DIR}/padded_${var}.nc" "${std_file}"
-            else
-                local src_file
-                src_file="$(resolve_glodap_source "${src_param}")"
-                echo "Standardizing GLODAP for ${var} from ${src_file}..."
-                pisces-inidata prepare-glodap "${src_var}" "${src_file}" "${TMP_DIR}/clean_${var}.nc"
-                cdo ${CDO_OPTS} fillmiss "${TMP_DIR}/clean_${var}.nc" "${TMP_DIR}/filled_${var}.nc"
-                if [ "${src_var}" != "${out_var_name}" ]; then
-                    ncrename -O -v "${src_var},${out_var_name}" "${TMP_DIR}/filled_${var}.nc" 2>/dev/null || true
-                fi
-                mv "${TMP_DIR}/filled_${var}.nc" "${std_file}"
+        doc)
+            if [ ! -f "${SRC_FILE}" ]; then
+                echo "Building Panaïotis et al. (2024) DOC NetCDF from CSVs..."
+                pisces-inidata prepare-doc "${PANAIOTIS_DOC_DIR}" "${TMP_DIR}/doc_prep.nc"
+                SRC_FILE="${TMP_DIR}/doc_prep.nc"
             fi
+            echo "Extending and filling Panaïotis DOC to ${PAD_DEPTH:-6000.0}m..."
+            cdo ${CDO_OPTS} fillmiss "${SRC_FILE}" "${TMP_DIR}/doc_filled.nc"
+            pisces-inidata pad "${TMP_DIR}/doc_filled.nc" "${std_file}" --depth "${PAD_DEPTH:-6000.0}"
             ;;
-
-        DOC)
-            local chosen="${PRODUCT_DOC:-panaiotis2024}"
-            if [ "${chosen}" = "panaiotis2024" ]; then
-                local src_file="${PANAIOTIS_DOC_DIR}/panaiotis2024_doc_1deg.nc"
-                if [ ! -f "${src_file}" ]; then
-                    echo "Building Panaïotis et al. (2024) DOC NetCDF from CSVs..."
-                    pisces-inidata prepare-doc "${PANAIOTIS_DOC_DIR}" "${TMP_DIR}/doc_prep.nc"
-                    src_file="${TMP_DIR}/doc_prep.nc"
-                fi
-                echo "Extending and filling Panaïotis DOC to 6000m..."
-                cdo ${CDO_OPTS} fillmiss "${src_file}" "${TMP_DIR}/doc_filled.nc"
-                pisces-inidata pad "${TMP_DIR}/doc_filled.nc" "${std_file}" --depth 6000.0
-            else
-                local src_file="${RAW_DIR}/official_v5.0.0/data_DOC_nomask.nc"
-                echo "Standardizing SETTE nomask DOC from ${src_file}..."
-                cdo ${CDO_OPTS} -selname,DOC "${src_file}" "${TMP_DIR}/src_sel_doc.nc"
-                pisces-inidata pad "${TMP_DIR}/src_sel_doc.nc" "${std_file}" --depth 6000.0
-            fi
-            ;;
-
-        Fer)
-            local src_file="${RAW_DIR}/official_v5.0.0/data_FER_nomask.nc"
-            echo "Standardizing Tagliabue Fe from ${src_file}..."
-            cdo ${CDO_OPTS} -selname,Fer "${src_file}" "${TMP_DIR}/src_sel_fer.nc"
-            pisces-inidata pad "${TMP_DIR}/src_sel_fer.nc" "${std_file}" --depth 6000.0
-            ;;
-
         *)
-            echo "ERROR: Unknown 3D tracer: ${var}" >&2
-            return 1
+            # Generic source (e.g. sette_nomask, woa2009, or custom)
+            if [ ! -f "${SRC_FILE}" ]; then
+                echo "ERROR: Source file ${SRC_FILE} not found. Run download first." >&2
+                return 1
+            fi
+            echo "Extracting and standardizing ${var} from ${SRC_FILE}..."
+            cdo ${CDO_OPTS} -selname,"${SRC_VAR}" "${SRC_FILE}" "${TMP_DIR}/src_sel_${var}.nc"
+            if [ -n "${PAD_DEPTH:-}" ]; then
+                pisces-inidata pad "${TMP_DIR}/src_sel_${var}.nc" "${TMP_DIR}/padded_${var}.nc" --depth "${PAD_DEPTH}"
+            else
+                cp "${TMP_DIR}/src_sel_${var}.nc" "${TMP_DIR}/padded_${var}.nc"
+            fi
+            if [ "${SRC_VAR}" != "${STD_VAR}" ]; then
+                ncrename -O -v "${SRC_VAR},${STD_VAR}" "${TMP_DIR}/padded_${var}.nc" 2>/dev/null || true
+            fi
+            mv "${TMP_DIR}/padded_${var}.nc" "${std_file}"
             ;;
     esac
 
@@ -184,9 +122,6 @@ prepare_tracer_3d() {
 prepare_boundary_forcing() {
     local comp="$1"
     local desc="$2"
-    local src_file="$3"
-    shift 3
-    local vars=("$@")
     local std_file="${STANDARDIZED_DIR}/std_${comp}.nc"
 
     if [ "${FORCE}" -ne 1 ] && [ -f "${std_file}" ] && [ -s "${std_file}" ]; then
@@ -194,56 +129,33 @@ prepare_boundary_forcing() {
         return 0
     fi
 
-    echo "=== Standardizing ${desc} ==="
-    if [ ! -f "${src_file}" ]; then
-        echo "ERROR: Source ${comp} file not found at ${src_file}." >&2
+    echo "=== Standardizing ${desc} (${comp}) ==="
+    eval "$(pisces-inidata resolve-source "${comp}" --preset "${PRESET}" --raw-dir "${RAW_DIR}" --export)"
+
+    if [ ! -f "${SRC_FILE}" ]; then
+        echo "ERROR: Source ${comp} file not found at ${SRC_FILE}." >&2
         return 1
     fi
-    sanitize_source_coords "${src_file}" "${std_file}" "${vars[@]}"
+
+    local tmp_work="${TMP_DIR}/${comp}_prep.nc"
+    cp "${SRC_FILE}" "${tmp_work}"
+
+    # If coordinates need to be copied from a donor file (e.g. bathy for river)
+    if [ -n "${COORDS_SOURCE_FILE:-}" ] && [ -f "${COORDS_SOURCE_FILE}" ]; then
+        ncks -A -v nav_lon,nav_lat "${COORDS_SOURCE_FILE}" "${tmp_work}" 2>/dev/null || true
+    fi
+
+    read -r -a vars_array <<< "${VARS_LIST}"
+    sanitize_source_coords "${tmp_work}" "${std_file}" "${vars_array[@]}"
     echo "Successfully standardized: ${std_file}"
 }
 
-prepare_dust() {
-    local src_file="${RAW_DIR}/official_v5.0.0/dust.orca.new.nc"
-    [ -f "${src_file}" ] || src_file="${RAW_DIR}/official_v5.0.0/dust.orca.nc"
-    prepare_boundary_forcing "dust" "Atmospheric Dust Deposition" "${src_file}" "${DUST_VARS[@]}"
-}
-
-prepare_ndep() {
-    prepare_boundary_forcing "ndep" "Atmospheric Nitrogen Deposition" "${RAW_DIR}/official_v5.0.0/ndeposition.orca.nc" "${NDEP_VARS[@]}"
-}
-
-prepare_par() {
-    prepare_boundary_forcing "par" "PAR Daily Fraction" "${RAW_DIR}/official_v5.0.0/par.orca.nc" "fr_par"
-}
-
-prepare_bathy() {
-    prepare_boundary_forcing "bathy" "Bathymetric Shelf Fraction" "${RAW_DIR}/official_v5.0.0/bathy.orca.nc" "bathy"
-}
-
-prepare_hydrofe() {
-    prepare_boundary_forcing "hydrofe" "Hydrothermal Vent Fe" "${RAW_DIR}/official_v5.0.0/hydrofe.orca.nc" "epsdb"
-}
-
-prepare_river() {
-    local std_file="${STANDARDIZED_DIR}/std_river.nc"
-    if [ "${FORCE}" -ne 1 ] && [ -f "${std_file}" ] && [ -s "${std_file}" ]; then
-        echo "[Stage 1 Cache] Standardized source for river already exists: ${std_file}"
-        return 0
-    fi
-    echo "=== Standardizing River Nutrient Forcings ==="
-    local src_file="${RAW_DIR}/official_v5.0.0/river.orca.nc"
-    if [ ! -f "${src_file}" ]; then
-        echo "ERROR: Source river file not found at ${src_file}." >&2
-        return 1
-    fi
-    cp "${src_file}" "${TMP_DIR}/river_clean.nc"
-    if [ -f "${RAW_DIR}/official_v5.0.0/bathy.orca.nc" ]; then
-        ncks -A -v nav_lon,nav_lat "${RAW_DIR}/official_v5.0.0/bathy.orca.nc" "${TMP_DIR}/river_clean.nc" 2>/dev/null || true
-    fi
-    sanitize_source_coords "${TMP_DIR}/river_clean.nc" "${std_file}" "${RIVER_VARS[@]}"
-    echo "Successfully standardized: ${std_file}"
-}
+prepare_dust()    { prepare_boundary_forcing "dust" "Atmospheric Dust Deposition"; }
+prepare_ndep()    { prepare_boundary_forcing "ndep" "Atmospheric Nitrogen Deposition"; }
+prepare_par()     { prepare_boundary_forcing "par" "PAR Daily Fraction"; }
+prepare_bathy()   { prepare_boundary_forcing "bathy" "Bathymetric Shelf Fraction"; }
+prepare_hydrofe() { prepare_boundary_forcing "hydrofe" "Hydrothermal Vent Fe"; }
+prepare_river()   { prepare_boundary_forcing "river" "River Nutrient Forcings"; }
 
 # ------------------------------------------------------------------------------
 # Dispatcher

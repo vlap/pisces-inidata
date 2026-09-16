@@ -10,23 +10,42 @@ import netCDF4 as nc
 import numpy as np
 
 
-EXPECTED_PRODUCTS = [
-    ('data_NO3_{grid}.nc', 'NO3'),
-    ('data_PO4_{grid}.nc', 'PO4'),
-    ('data_Si_{grid}.nc', 'Si'),
-    ('data_O2_{grid}.nc', 'O2'),
-    ('data_TALK_{grid}.nc', 'Alkalini'),
-    ('data_TDIC_{grid}.nc', 'DIC'),
-    ('data_PiDIC_{grid}.nc', 'DIC'),
-    ('data_DOC_{grid}.nc', 'DOC'),
-    ('data_Fer_{grid}.nc', 'Fer'),
-    ('dust.orca.nc', 'dust'),
-    ('ndeposition.orca.nc', 'ndep'),
-    ('par.orca.nc', 'fr_par'),
-    ('bathy.orca.nc', 'bathy'),
-    ('hydrofe.orca.nc', 'epsdb'),
-    ('river.orca.nc', 'riverdin'),
-]
+def _load_expected_products() -> List[Tuple[str, str]]:
+    try:
+        from pisces_inidata.catalog import load_catalog
+        cat = load_catalog()
+        fields = cat.get("conventions", {}).get("nemo4_ece4", {}).get("fields", {})
+        prods = []
+        seen = set()
+        for var, meta in fields.items():
+            pattern = meta.get("output_file", f"data_{var}_{{grid}}.nc")
+            if pattern not in seen:
+                seen.add(pattern)
+                prods.append((pattern, meta.get("target_var", var)))
+        if prods:
+            return prods
+    except Exception:
+        pass
+    return [
+        ('data_NO3_{grid}.nc', 'NO3'),
+        ('data_PO4_{grid}.nc', 'PO4'),
+        ('data_Si_{grid}.nc', 'Si'),
+        ('data_O2_{grid}.nc', 'O2'),
+        ('data_TALK_{grid}.nc', 'Alkalini'),
+        ('data_TDIC_{grid}.nc', 'DIC'),
+        ('data_PiDIC_{grid}.nc', 'DIC'),
+        ('data_DOC_{grid}.nc', 'DOC'),
+        ('data_Fer_{grid}.nc', 'Fer'),
+        ('dust.orca.nc', 'dust'),
+        ('ndeposition.orca.nc', 'ndep'),
+        ('par.orca.nc', 'fr_par'),
+        ('bathy.orca.nc', 'bathy'),
+        ('hydrofe.orca.nc', 'epsdb'),
+        ('river.orca.nc', 'riverdin'),
+    ]
+
+
+EXPECTED_PRODUCTS = _load_expected_products()
 
 VAR_ALIASES = {
     'NO3': ['NO3', 'no3', 'nitrate', 'n_an'],

@@ -401,6 +401,55 @@ def cmd_check(args):
     sys.exit(code)
 
 
+def cmd_resolve_source(args):
+    from pisces_inidata.catalog import resolve_source_field, export_source_env
+    preset = getattr(args, 'preset', None)
+    raw_dir = getattr(args, 'raw_dir', None)
+    if getattr(args, 'export', False):
+        print(export_source_env(args.variable, preset=preset, raw_dir=raw_dir))
+    else:
+        import json
+        meta = resolve_source_field(args.variable, preset=preset, raw_dir=raw_dir)
+        print(json.dumps(meta, indent=2))
+    sys.exit(0)
+
+
+def cmd_resolve_target(args):
+    from pisces_inidata.catalog import resolve_target_field, export_target_env
+    grid_name = getattr(args, 'grid', None) or getattr(args, 'orca', 'eORCA1')
+    convention = getattr(args, 'convention', 'nemo4_ece4')
+    if getattr(args, 'export', False):
+        print(export_target_env(args.variable, grid_name, convention=convention))
+    else:
+        import json
+        meta = resolve_target_field(args.variable, grid_name, convention=convention)
+        print(json.dumps(meta, indent=2))
+    sys.exit(0)
+
+
+def cmd_get_vertical_levels(args):
+    from pisces_inidata.catalog import get_target_vertical_levels
+    grid_name = getattr(args, 'grid', None) or getattr(args, 'orca', 'ORCA2')
+    domain_dir = getattr(args, 'domain_dir', None)
+    raw_dir = getattr(args, 'raw_dir', None)
+    levels = get_target_vertical_levels(grid_name, domain_dir=domain_dir, raw_dir=raw_dir)
+    print(levels)
+    sys.exit(0)
+
+
+def cmd_catalog(args):
+    from pisces_inidata.catalog import load_catalog, resolve_package_dir
+    subcmd = getattr(args, 'subcommand', None)
+    if subcmd == "package-dir":
+        pkg_dir = resolve_package_dir(args.package_name, raw_dir=getattr(args, 'raw_dir', None))
+        print(pkg_dir)
+        sys.exit(0)
+    import json
+    cat = load_catalog()
+    print(json.dumps(cat, indent=2))
+    sys.exit(0)
+
+
 def make_config_parent():
     p = argparse.ArgumentParser(add_help=False)
     p.add_argument("--config", "--file", dest="config", help="Path to custom sources.yaml")
@@ -659,6 +708,50 @@ def main():
     add_grid_argument(verify_parser, default="eORCA025")
     verify_parser.add_argument("--out-dir", help="Path to output directory to inspect (default: output_${GRID_NAME})")
     verify_parser.set_defaults(func=cmd_verify)
+
+    # Command: resolve-source
+    res_src_parser = subparsers.add_parser(
+        "resolve-source", parents=[make_config_parent()],
+        help="Resolve source dataset metadata, file paths, and variable mappings from catalog.yaml"
+    )
+    res_src_parser.add_argument("variable", help="Variable or forcing component (e.g. NO3, TALK, DOC, dust, river)")
+    res_src_parser.add_argument("--raw-dir", help="Directory containing raw datasets")
+    res_src_parser.add_argument("--export", action="store_true", help="Print bash export statements")
+    res_src_parser.set_defaults(func=cmd_resolve_source)
+
+    # Command: resolve-target
+    res_tgt_parser = subparsers.add_parser(
+        "resolve-target",
+        help="Resolve target model output filenames, variables, and symlinks from catalog.yaml conventions"
+    )
+    res_tgt_parser.add_argument("variable", help="Variable or forcing component (e.g. NO3, TALK, DOC, dust, river)")
+    add_grid_argument(res_tgt_parser, default="eORCA1")
+    res_tgt_parser.add_argument(
+        "--convention", default="nemo4_ece4",
+        help="Target model convention (default: nemo4_ece4)"
+    )
+    res_tgt_parser.add_argument("--export", action="store_true", help="Print bash export statements")
+    res_tgt_parser.set_defaults(func=cmd_resolve_target)
+
+    # Command: get-vertical-levels
+    levels_parser = subparsers.add_parser(
+        "get-vertical-levels", parents=[make_domain_parent()],
+        help="Extract vertical coordinate levels for target grid from domain_cfg.nc or catalog reference"
+    )
+    add_grid_argument(levels_parser, default="ORCA2")
+    levels_parser.add_argument("--raw-dir", help="Directory containing raw datasets")
+    levels_parser.set_defaults(func=cmd_get_vertical_levels)
+
+    # Command: catalog
+    cat_parser = subparsers.add_parser(
+        "catalog",
+        help="Inspect declarative dataset catalog and resolve package directories"
+    )
+    cat_sub = cat_parser.add_subparsers(dest="subcommand")
+    cat_pkg = cat_sub.add_parser("package-dir", help="Resolve external package directory path")
+    cat_pkg.add_argument("package_name", help="Package name (e.g. official_nemo_inputs)")
+    cat_pkg.add_argument("--raw-dir", help="Directory containing raw datasets")
+    cat_parser.set_defaults(func=cmd_catalog)
 
     args = parser.parse_args()
     if hasattr(args, "func"):

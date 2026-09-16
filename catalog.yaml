@@ -1,0 +1,222 @@
+# ==============================================================================
+# PISCES Dataset Catalog & Model Conventions Schema (catalog.yaml)
+#
+# Declarative single source of truth for:
+#   1. packages   : External data packages, archives, URLs, and folder structures.
+#   2. sources    : Observational products, file naming patterns, internal variable
+#                   names, vertical levels, and preprocessing rules.
+#   3. conventions: Target model naming conventions (output filenames, target
+#                   NetCDF variable names, units, and namelist symlinks).
+#
+# Upstream changes in provider filenames, package folders, or target model
+# conventions can be configured here without modifying any pipeline scripts.
+# ==============================================================================
+
+packages:
+  official_nemo_inputs:
+    description: "Official regular unmasked NEMO/PISCES reference inputs package"
+    default_dir: "official_v5.0.0"
+    env_override: "OFFICIAL_INPUTS_DIR"
+    url: "https://gws-access.jasmin.ac.uk/public/nemo/SETTE/ORCA2_INPUTS_PISCES_v5.0.0.tar.gz"
+    archive: "ORCA2_INPUTS_PISCES_v5.0.0.tar.gz"
+    key_file: "data_FER_nomask.nc"
+
+sources:
+  # --------------------------------------------------------------------------
+  # 3D Tracer Source Products
+  # --------------------------------------------------------------------------
+  sette_nomask:
+    description: "Official NEMO/PISCES unmasked regular climatologies (Hansell 2009, Tagliabue 2012, etc.)"
+    package: official_nemo_inputs
+    tracers:
+      NO3:   { file: "data_NO3_nomask.nc", var: "NO3",   pad_depth: 6000.0, fillmiss: false }
+      PO4:   { file: "data_PO4_nomask.nc", var: "PO4",   pad_depth: 6000.0, fillmiss: false }
+      Si:    { file: "data_SIL_nomask.nc", var: "Si",    pad_depth: 6000.0, fillmiss: false }
+      O2:    { file: "data_OXY_nomask.nc", var: "O2",    pad_depth: 6000.0, fillmiss: false }
+      TALK:  { file: "data_ALK_nomask.nc", var: "TALK",  pad_depth: 6000.0, fillmiss: false }
+      TDIC:  { file: "data_DIC_nomask.nc", var: "TDIC",  pad_depth: 6000.0, fillmiss: false }
+      PiDIC: { file: "data_DIC_nomask.nc", var: "PiDIC", pad_depth: 6000.0, fillmiss: false }
+      DOC:   { file: "data_DOC_nomask.nc", var: "DOC",   pad_depth: 6000.0, fillmiss: false }
+      Fer:   { file: "data_FER_nomask.nc", var: "Fer",   pad_depth: 6000.0, fillmiss: false }
+
+  woa23:
+    description: "World Ocean Atlas 2023 (102 vertical levels)"
+    handler: "woa23"
+    dir: "woa23"
+    tracers:
+      NO3: { folder: "nitrate",   code: "n", var: "n_an", pad_depth: 6000.0, fillmiss: true }
+      PO4: { folder: "phosphate", code: "p", var: "p_an", pad_depth: 6000.0, fillmiss: true }
+      Si:  { folder: "silicate",  code: "i", var: "i_an", pad_depth: 6000.0, fillmiss: true }
+      O2:  { folder: "oxygen",    code: "o", var: "o_an", pad_depth: 6000.0, fillmiss: true }
+
+  woa2009:
+    description: "World Ocean Atlas 2009 (33 vertical levels; EC-Earth3 baseline)"
+    package: official_nemo_inputs
+    tracers:
+      NO3: { file: "data_NO3_nomask.nc", var: "NO3", pad_depth: 6000.0, fillmiss: false }
+      PO4: { file: "data_PO4_nomask.nc", var: "PO4", pad_depth: 6000.0, fillmiss: false }
+      Si:  { file: "data_SIL_nomask.nc", var: "Si",  pad_depth: 6000.0, fillmiss: false }
+      O2:  { file: "data_OXY_nomask.nc", var: "O2",  pad_depth: 6000.0, fillmiss: false }
+
+  glodap_v2_2016b:
+    description: "GLODAPv2.2016b 3D Mapped Climatology"
+    handler: "glodap"
+    version_hint: "v2.2016b"
+    dir: "glodap_v2"
+    tracers:
+      TALK:  { param: "TAlk",    raw_var: "TAlk",    pad_depth: 6000.0, fillmiss: true }
+      TDIC:  { param: "TCO2",    raw_var: "TCO2",    pad_depth: 6000.0, fillmiss: true }
+      PiDIC: { param: "PI_TCO2", raw_var: "PI_TCO2", pad_depth: 6000.0, fillmiss: true }
+
+  glodap_v2_2023:
+    description: "GLODAPv2.2023 3D Mapped Climatology"
+    handler: "glodap"
+    version_hint: "v2.2023"
+    dir: "glodap_v2_2023"
+    tracers:
+      TALK:  { param: "TAlk",    raw_var: "TAlk",    pad_depth: 6000.0, fillmiss: true }
+      TDIC:  { param: "TCO2",    raw_var: "TCO2",    pad_depth: 6000.0, fillmiss: true }
+      PiDIC: { param: "PI_TCO2", raw_var: "PI_TCO2", pad_depth: 6000.0, fillmiss: true }
+
+  glodap_v1:
+    description: "GLODAPv1.1 3D Mapped Climatology (EC-Earth3 baseline)"
+    handler: "glodap"
+    version_hint: "v1"
+    dir: "glodap_v1"
+    tracers:
+      TALK:  { param: "TAlk",    raw_var: "TAlk",    pad_depth: 6000.0, fillmiss: true }
+      TDIC:  { param: "TCO2",    raw_var: "TCO2",    pad_depth: 6000.0, fillmiss: true }
+      PiDIC: { param: "PI_TCO2", raw_var: "PI_TCO2", pad_depth: 6000.0, fillmiss: true }
+
+  panaiotis2024:
+    description: "Panaïotis et al. (2024) SEANOE Machine-Learning DOC"
+    handler: "doc"
+    dir: "panaiotis2024_doc"
+    tracers:
+      DOC: { file: "panaiotis2024_doc_1deg.nc", var: "DOC", pad_depth: 6000.0, fillmiss: true }
+
+  # --------------------------------------------------------------------------
+  # Surface & Boundary Forcings Source Products
+  # --------------------------------------------------------------------------
+  sette_orca2:
+    description: "Official SETTE ORCA2 Baseline Boundary Forcings"
+    package: official_nemo_inputs
+    forcings:
+      dust:
+        candidate_files: ["dust.orca.new.nc", "dust.orca.nc"]
+        variables: ["dust", "dustfer", "dustpo4", "dustsi", "solubility2"]
+        remapping: "bilinear"
+      ndep:
+        candidate_files: ["ndeposition.orca.nc"]
+        variables: ["ndep", "ndep2"]
+        remapping: "bilinear"
+      par:
+        candidate_files: ["par.orca.nc"]
+        variables: ["fr_par"]
+        remapping: "bilinear"
+      bathy:
+        candidate_files: ["bathy.orca.nc"]
+        variables: ["bathy"]
+        remapping: "nearest_neighbor"
+      hydrofe:
+        candidate_files: ["hydrofe.orca.nc"]
+        variables: ["epsdb"]
+        remapping: "bilinear"
+      rivers:
+        candidate_files: ["river.orca.nc"]
+        variables: ["riverdin", "riverdip", "riverdon", "riverdop", "riverdoc", "riverdsi", "riverdic"]
+        coords_source_file: "bathy.orca.nc"
+        remapping: "distance_conservative"
+      river:
+        candidate_files: ["river.orca.nc"]
+        variables: ["riverdin", "riverdip", "riverdon", "riverdop", "riverdoc", "riverdsi", "riverdic"]
+        coords_source_file: "bathy.orca.nc"
+        remapping: "distance_conservative"
+
+# ==============================================================================
+# Target Model Conventions
+# ==============================================================================
+conventions:
+  nemo4_ece4:
+    description: "Standard NEMO 4.2 / EC-Earth4 & SETTE inidata naming conventions"
+    fields:
+      NO3:
+        output_file: "data_NO3_{grid}.nc"
+        target_var: "NO3"
+        units: "umol N/L"
+        symlinks: ["NO3_WOA23_monthly_{grid}.nc"]
+      PO4:
+        output_file: "data_PO4_{grid}.nc"
+        target_var: "PO4"
+        units: "umol P/L"
+        symlinks: ["PO4_WOA23_monthly_{grid}.nc"]
+      Si:
+        output_file: "data_Si_{grid}.nc"
+        target_var: "Si"
+        units: "umol Si/L"
+        symlinks: ["Si_WOA23_monthly_{grid}.nc", "data_SIL_{grid}.nc"]
+      O2:
+        output_file: "data_O2_{grid}.nc"
+        target_var: "O2"
+        units: "umol O2/L"
+        symlinks: ["O2_WOA23_monthly_{grid}.nc", "data_OXY_{grid}.nc"]
+      TALK:
+        output_file: "data_TALK_{grid}.nc"
+        target_var: "Alkalini"
+        units: "umol eq/L"
+        symlinks: ["Alkalini_GLODAP_annual_{grid}.nc", "data_ALK_{grid}.nc"]
+      TDIC:
+        output_file: "data_TDIC_{grid}.nc"
+        target_var: "DIC"
+        units: "umol C/L"
+        symlinks: ["DIC_GLODAP_annual_{grid}.nc", "data_DIC_{grid}.nc"]
+      PiDIC:
+        output_file: "data_PiDIC_{grid}.nc"
+        target_var: "DIC"
+        units: "umol C/L"
+        symlinks: ["PiDIC_GLODAP_annual_{grid}.nc"]
+      DOC:
+        output_file: "data_DOC_{grid}.nc"
+        target_var: "DOC"
+        units: "umol C/L"
+        symlinks: ["DOC_PISCES_monthly_{grid}.nc"]
+      Fer:
+        output_file: "data_Fer_{grid}.nc"
+        target_var: "Fer"
+        units: "nmol Fe/L"
+        symlinks: ["data_FER_{grid}.nc"]
+      dust:
+        output_file: "dust.orca.nc"
+        target_var: "dust"
+        units: "g/m2/yr"
+        symlinks: ["dust_INCA_{grid}.nc", "dust_INCA_Mahowald_monthly_{grid}.nc"]
+      ndep:
+        output_file: "ndeposition.orca.nc"
+        target_var: "ndep"
+        units: "gN/m2/yr"
+        symlinks: ["ndeposition_Duce_{grid}.nc", "ndeposition_Duce_monthly_{grid}.nc"]
+      par:
+        output_file: "par.orca.nc"
+        target_var: "fr_par"
+        units: "fraction"
+        symlinks: ["par_GEWEX_{grid}.nc", "par_fraction_daily_{grid}.nc"]
+      bathy:
+        output_file: "bathy.orca.nc"
+        target_var: "bathy"
+        units: "fraction"
+        symlinks: ["pmarge_etopo_{grid}.nc"]
+      hydrofe:
+        output_file: "hydrofe.orca.nc"
+        target_var: "epsdb"
+        units: "mol Fe/m2/s"
+        symlinks: ["hydrothermal_fe_forcing_{grid}.nc"]
+      rivers:
+        output_file: "river.orca.nc"
+        target_var: "riverdin"
+        units: "MgN/m2/yr"
+        symlinks: ["river_global_news_{grid}.nc"]
+      river:
+        output_file: "river.orca.nc"
+        target_var: "riverdin"
+        units: "MgN/m2/yr"
+        symlinks: ["river_global_news_{grid}.nc"]

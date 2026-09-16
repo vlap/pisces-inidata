@@ -63,7 +63,7 @@ TRACER_MAP=(
 
 for entry in "${TRACER_MAP[@]}"; do
     IFS=':' read -r src_file out_file var_name symlink <<< "${entry}"
-    remap_tracer "${RAW_DIR}/official_v5.0.0/${src_file}" "${SETTE_REF_DIR}/${out_file}" "${var_name}"
+    remap_tracer "${OFFICIAL_DIR}/${src_file}" "${SETTE_REF_DIR}/${out_file}" "${var_name}"
     if [ -n "${symlink}" ]; then
         ln -sfn "${out_file}" "${SETTE_REF_DIR}/${symlink}"
     fi
@@ -81,7 +81,11 @@ NATIVE_FORCINGS=(
 )
 for entry in "${NATIVE_FORCINGS[@]}"; do
     IFS=':' read -r src dst <<< "${entry}"
-    cp -f "${RAW_DIR}/official_v5.0.0/${src}" "${SETTE_REF_DIR}/${dst}"
+    src_path="${OFFICIAL_DIR}/${src}"
+    [ -f "${src_path}" ] || src_path="${OFFICIAL_DIR}/${dst}"
+    if [ -f "${src_path}" ]; then
+        cp -f "${src_path}" "${SETTE_REF_DIR}/${dst}"
+    fi
 done
 
 echo "========================================================================"

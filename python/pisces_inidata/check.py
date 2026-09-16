@@ -153,6 +153,13 @@ def check_raw_sources(raw_dir: str, config: Dict[str, str]) -> List[Tuple[str, b
     }
 
     files = os.listdir(raw_dir) if os.path.exists(raw_dir) else []
+    try:
+        from pisces_inidata.catalog import resolve_package_dir
+        pkg_dir = resolve_package_dir("official_nemo_inputs", raw_dir=raw_dir)
+        if os.path.isdir(pkg_dir):
+            files.extend(os.listdir(pkg_dir))
+    except Exception:
+        pass
 
     for name, patterns in searches.items():
         found = any(any(pat.lower() in f.lower() for pat in patterns) for f in files)

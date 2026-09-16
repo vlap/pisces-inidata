@@ -42,9 +42,19 @@ if [ -f "${DOMAIN_CFG}" ] && [ -f "${MASKUTIL}" ]; then
         -a standard_name,lat,c,c,"latitude" \
         "${TMP_DIR}/grid_coords.nc"
     mv "${TMP_DIR}/grid_coords.nc" "${TARGET_GRID_NC}"
-elif [ -n "${GRID_FALLBACK_COORDS:-}" ] && [ -f "${RAW_DIR}/${GRID_FALLBACK_COORDS}" ]; then
-    echo "Domain config not found; constructing ${GRID_NAME} target grid from fallback ${RAW_DIR}/${GRID_FALLBACK_COORDS}..."
-    ncks -O -4 -v nav_lon,nav_lat,bathy "${RAW_DIR}/${GRID_FALLBACK_COORDS}" "${TMP_DIR}/grid_coords.nc"
+elif [ -n "${GRID_FALLBACK_COORDS:-}" ]; then
+    fallback_path=""
+    if [ -f "${RAW_DIR}/${GRID_FALLBACK_COORDS}" ]; then
+        fallback_path="${RAW_DIR}/${GRID_FALLBACK_COORDS}"
+    elif [ -f "${OFFICIAL_DIR:-${RAW_DIR}/official_v5.0.0}/$(basename "${GRID_FALLBACK_COORDS}")" ]; then
+        fallback_path="${OFFICIAL_DIR:-${RAW_DIR}/official_v5.0.0}/$(basename "${GRID_FALLBACK_COORDS}")"
+    fi
+    if [ -z "${fallback_path}" ]; then
+        echo "ERROR: Fallback coords file ${GRID_FALLBACK_COORDS} not found in RAW_DIR or OFFICIAL_DIR." >&2
+        exit 1
+    fi
+    echo "Domain config not found; constructing ${GRID_NAME} target grid from fallback ${fallback_path}..."
+    ncks -O -4 -v nav_lon,nav_lat,bathy "${fallback_path}" "${TMP_DIR}/grid_coords.nc"
     ncrename -v nav_lon,lon -v nav_lat,lat -v bathy,tmaskutil "${TMP_DIR}/grid_coords.nc"
     ncwa -O -a time_counter "${TMP_DIR}/grid_coords.nc" "${TMP_DIR}/grid_coords.nc" 2>/dev/null || true
     ncwa -O -a deptht "${TMP_DIR}/grid_coords.nc" "${TMP_DIR}/grid_coords.nc" 2>/dev/null || true

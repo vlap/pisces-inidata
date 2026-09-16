@@ -84,15 +84,16 @@ echo "========================================================================"
 # 1. 3D Tracers Remapping
 # ------------------------------------------------------------------------------
 remap_3d_tracer() {
-    local out_file="${OUTPUT_DIR}/data_${VAR}_${GRID_NAME}.nc"
+    eval "$(pisces-inidata resolve-target "${VAR}" --grid "${GRID_NAME}" --export)"
+    local out_file="${OUTPUT_DIR}/${OUT_FILE}"
 
-    # Extract target vertical levels from domain_cfg (e.g. L75) or official nomask (ORCA2 L31)
+    # Extract target vertical levels from domain_cfg (e.g. L75) or catalog fallback
     local target_levels=""
     if [ -f "${DOMAIN_CFG}" ]; then
         target_levels=$(ncks -s '%f,' -H -C -v nav_lev "${DOMAIN_CFG}" 2>/dev/null | sed 's/,$//')
     fi
-    if [ -z "${target_levels:-}" ] && [ -f "${RAW_DIR}/official_v5.0.0/data_DOC_nomask.nc" ]; then
-        target_levels=$(cdo -s showlevel "${RAW_DIR}/official_v5.0.0/data_DOC_nomask.nc" 2>/dev/null | tr -s ' ' ',' | sed 's/^,//; s/,$//')
+    if [ -z "${target_levels:-}" ]; then
+        target_levels=$(pisces-inidata get-vertical-levels --grid "${GRID_NAME}" --raw-dir "${RAW_DIR}" 2>/dev/null || true)
     fi
 
     if [ -n "${target_levels:-}" ]; then
@@ -105,28 +106,10 @@ remap_3d_tracer() {
         cdo ${CDO_OPTS} ${CDO_COMPRESS} remap,"${TARGET_GRID_NC}","${WEIGHTS_BILIN}" "${STD_FILE}" "${out_file}"
     fi
 
-    # Standard target symlinks
-    case "${VAR}" in
-        NO3|PO4|Si|O2)
-            ln -sfn "$(basename "${out_file}")" "${OUTPUT_DIR}/${VAR}_WOA23_monthly_${GRID_NAME}.nc"
-            ln -sfn "$(basename "${out_file}")" "${OUTPUT_DIR}/${VAR}_WOA2009_monthly_${GRID_NAME}.nc"
-            ;;
-        TALK)
-            ln -sfn "$(basename "${out_file}")" "${OUTPUT_DIR}/Alkalini_GLODAP_annual_${GRID_NAME}.nc"
-            ;;
-        TDIC)
-            ln -sfn "$(basename "${out_file}")" "${OUTPUT_DIR}/DIC_GLODAP_annual_${GRID_NAME}.nc"
-            ;;
-        PiDIC)
-            ln -sfn "$(basename "${out_file}")" "${OUTPUT_DIR}/PiDIC_GLODAP_annual_${GRID_NAME}.nc"
-            ;;
-        DOC)
-            ln -sfn "$(basename "${out_file}")" "${OUTPUT_DIR}/DOC_PISCES_monthly_${GRID_NAME}.nc"
-            ;;
-        Fer)
-            ln -sfn "$(basename "${out_file}")" "${OUTPUT_DIR}/data_FER_${GRID_NAME}.nc"
-            ;;
-    esac
+    # Standard target symlinks from catalog
+    for s in ${TARGET_SYMLINKS}; do
+        ln -sfn "$(basename "${out_file}")" "${OUTPUT_DIR}/${s}"
+    done
 
     stamp_provenance "${out_file}"
     echo "Created 3D tracer: ${out_file}"
@@ -136,30 +119,8 @@ remap_3d_tracer() {
 # 2. 2D Surface Forcings Remapping (Dust, N-dep, PAR)
 # ------------------------------------------------------------------------------
 remap_2d_forcing() {
-    local out_file=""
-    local link1=""
-    local link2=""
-
-    case "${VAR}" in
-        dust)
-            out_file="${OUTPUT_DIR}/dust.orca.nc"
-            link1="${OUTPUT_DIR}/dust_INCA_${GRID_NAME}.nc"
-            link2="${OUTPUT_DIR}/dust_INCA_Mahowald_monthly_${GRID_NAME}.nc"
-            ;;
-        ndep)
-            out_file="${OUTPUT_DIR}/ndeposition.orca.nc"
-            link1="${OUTPUT_DIR}/ndeposition_Duce_${GRID_NAME}.nc"
-            link2="${OUTPUT_DIR}/ndeposition_Duce_monthly_${GRID_NAME}.nc"
-            ;;
-        par)
-            out_file="${OUTPUT_DIR}/par.orca.nc"
-            link1="${OUTPUT_DIR}/par_GEWEX_${GRID_NAME}.nc"
-            link2="${OUTPUT_DIR}/par_fraction_daily_${GRID_NAME}.nc"
-            ;;
-        *)
-            out_file="${OUTPUT_DIR}/${VAR}.orca.nc"
-            ;;
-    esac
+    eval "$(pisces-inidata resolve-target "${VAR}" --grid "${GRID_NAME}" --export)"
+    local out_file="${OUTPUT_DIR}/${OUT_FILE}"
 
     local weights_file="${WEIGHTS_DIR}/weights_${VAR}_to_${GRID_NAME}.nc"
     if [ ! -f "${weights_file}" ]; then
@@ -168,8 +129,9 @@ remap_2d_forcing() {
     echo "Remapping ${VAR} to ${GRID_NAME}..."
     cdo ${CDO_OPTS} ${CDO_COMPRESS} remap,"${TARGET_GRID_NC}","${weights_file}" "${STD_FILE}" "${out_file}"
 
-    [ -n "${link1}" ] && ln -sfn "$(basename "${out_file}")" "${link1}"
-    [ -n "${link2}" ] && ln -sfn "$(basename "${out_file}")" "${link2}"
+    for s in ${TARGET_SYMLINKS}; do
+        ln -sfn "$(basename "${out_file}")" "${OUTPUT_DIR}/${s}"
+    done
     stamp_provenance "${out_file}"
     echo "Created 2D forcing: ${out_file}"
 }
@@ -178,10 +140,13 @@ remap_2d_forcing() {
 # 3. Bathymetric Shelf Fraction Remapping (Nearest-Neighbor)
 # ------------------------------------------------------------------------------
 remap_bathy() {
-    local out_file="${OUTPUT_DIR}/bathy.orca.nc"
+    eval "$(pisces-inidata resolve-target "bathy" --grid "${GRID_NAME}" --export)"
+    local out_file="${OUTPUT_DIR}/${OUT_FILE}"
     echo "Remapping bathy shelf fraction to ${GRID_NAME} using nearest-neighbor..."
     cdo ${CDO_OPTS} ${CDO_COMPRESS} remapnn,"${TARGET_GRID_NC}" "${STD_FILE}" "${out_file}"
-    ln -sfn "$(basename "${out_file}")" "${OUTPUT_DIR}/pmarge_etopo_${GRID_NAME}.nc"
+    for s in ${TARGET_SYMLINKS}; do
+        ln -sfn "$(basename "${out_file}")" "${OUTPUT_DIR}/${s}"
+    done
     stamp_provenance "${out_file}"
     echo "Created bathy: ${out_file}"
 }
@@ -190,10 +155,13 @@ remap_bathy() {
 # 4. Hydrothermal Iron Remapping
 # ------------------------------------------------------------------------------
 remap_hydrofe() {
-    local out_file="${OUTPUT_DIR}/hydrofe.orca.nc"
+    eval "$(pisces-inidata resolve-target "hydrofe" --grid "${GRID_NAME}" --export)"
+    local out_file="${OUTPUT_DIR}/${OUT_FILE}"
     echo "Remapping hydrothermal vent Fe to ${GRID_NAME}..."
     cdo ${CDO_OPTS} ${CDO_COMPRESS} remap,"${TARGET_GRID_NC}","${WEIGHTS_BILIN}" "${STD_FILE}" "${out_file}"
-    ln -sfn "$(basename "${out_file}")" "${OUTPUT_DIR}/hydrothermal_fe_forcing_${GRID_NAME}.nc"
+    for s in ${TARGET_SYMLINKS}; do
+        ln -sfn "$(basename "${out_file}")" "${OUTPUT_DIR}/${s}"
+    done
     stamp_provenance "${out_file}"
     echo "Created hydrofe: ${out_file}"
 }
@@ -202,10 +170,13 @@ remap_hydrofe() {
 # 5. River Nutrient Forcings Remapping (Conservative)
 # ------------------------------------------------------------------------------
 remap_river() {
-    local out_file="${OUTPUT_DIR}/river.orca.nc"
+    eval "$(pisces-inidata resolve-target "rivers" --grid "${GRID_NAME}" --export)"
+    local out_file="${OUTPUT_DIR}/${OUT_FILE}"
     echo "Remapping river nutrient discharge to ${GRID_NAME}..."
     cdo ${CDO_OPTS} ${CDO_COMPRESS} remapdis,"${TARGET_GRID_NC}" "${STD_FILE}" "${out_file}"
-    ln -sfn "$(basename "${out_file}")" "${OUTPUT_DIR}/river_global_news_${GRID_NAME}.nc"
+    for s in ${TARGET_SYMLINKS}; do
+        ln -sfn "$(basename "${out_file}")" "${OUTPUT_DIR}/${s}"
+    done
     stamp_provenance "${out_file}"
     echo "Created river: ${out_file}"
 }
