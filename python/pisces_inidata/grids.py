@@ -11,57 +11,6 @@ try:
 except ImportError:
     yaml = None
 
-DEFAULT_GRID_PROFILES: Dict[str, Dict[str, Any]] = {
-    "ORCA2": {
-        "description": "NEMO standard 2-degree tripolar grid (31 vertical levels)",
-        "resources": {
-            "time": "00:30:00",
-            "memory": "8G",
-            "cpus": 8,
-            "batch_weights": False,
-        },
-        "disk_space_gb": 2.0,
-        "vertical_levels": 31,
-        "fallback_coords_source": "official_v5.0.0/bathy.orca.nc",
-    },
-    "eORCA1": {
-        "description": "Extended ORCA 1-degree global grid (75 vertical levels)",
-        "resources": {
-            "time": "01:00:00",
-            "memory": "16G",
-            "cpus": 16,
-            "batch_weights": False,
-        },
-        "disk_space_gb": 10.0,
-        "vertical_levels": 75,
-        "fallback_coords_source": None,
-    },
-    "eORCA025": {
-        "description": "Extended ORCA 0.25-degree eddy-permitting grid (1440x1206 in modern NEMO, 75 vertical levels)",
-        "resources": {
-            "time": "02:00:00",
-            "memory": "64G",
-            "cpus": 16,
-            "batch_weights": True,
-        },
-        "disk_space_gb": 40.0,
-        "vertical_levels": 75,
-        "fallback_coords_source": None,
-    },
-    "eORCA12": {
-        "description": "Extended ORCA 1/12-degree eddy-resolving grid (75 vertical levels)",
-        "resources": {
-            "time": "04:00:00",
-            "memory": "128G",
-            "cpus": 32,
-            "batch_weights": True,
-        },
-        "disk_space_gb": 120.0,
-        "vertical_levels": 75,
-        "fallback_coords_source": None,
-    },
-}
-
 GENERIC_DEFAULT_PROFILE: Dict[str, Any] = {
     "description": "Generic NEMO target grid",
     "resources": {
@@ -92,11 +41,11 @@ def _find_grids_yaml(custom_path: Optional[str] = None) -> Optional[str]:
 
 
 def load_all_grids(config_path: Optional[str] = None) -> Dict[str, Dict[str, Any]]:
-    """Loads all grid definitions from grids.yaml merged over default profiles."""
-    profiles = {k: v.copy() for k, v in DEFAULT_GRID_PROFILES.items()}
+    """Loads all grid definitions directly from grids.yaml as the single source of truth."""
+    profiles: Dict[str, Dict[str, Any]] = {}
     resolved_path = _find_grids_yaml(config_path)
 
-    if resolved_path and yaml is not None:
+    if resolved_path and os.path.exists(resolved_path) and yaml is not None:
         try:
             with open(resolved_path, 'r', encoding='utf-8') as f:
                 data = yaml.safe_load(f) or {}
@@ -104,15 +53,7 @@ def load_all_grids(config_path: Optional[str] = None) -> Dict[str, Dict[str, Any
             if isinstance(grids_dict, dict):
                 for g_name, g_cfg in grids_dict.items():
                     if isinstance(g_cfg, dict):
-                        if g_name not in profiles:
-                            profiles[g_name] = GENERIC_DEFAULT_PROFILE.copy()
-                        # Deep merge resources
-                        if 'resources' in g_cfg and isinstance(g_cfg['resources'], dict):
-                            profiles[g_name]['resources'] = profiles[g_name].get('resources', {}).copy()
-                            profiles[g_name]['resources'].update(g_cfg['resources'])
-                        for k, v in g_cfg.items():
-                            if k != 'resources':
-                                profiles[g_name][k] = v
+                        profiles[g_name] = g_cfg
         except Exception as e:
             print(f"Warning: Failed to load grids configuration from {resolved_path}: {e}")
 

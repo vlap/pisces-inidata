@@ -12,37 +12,15 @@ try:
 except ImportError:
     yaml = None
 
-DEFAULT_PLATFORM_PROFILES: Dict[str, Dict[str, Any]] = {
-    "nord4": {
-        "description": "BSC Nord4 Cluster (Intel Xeon Platinum 8480+)",
-        "slurm": {
-            "account": "bsc32",
-            "partition": "bsc_es",
-        },
-        "module_load": "module load CDO NCO 2>/dev/null || true",
-        "scratch_root": "/gpfs/scratch/bsc32/${USER}",
-        "domain_dir": "/gpfs/projects/bsc32/models/ecearth/ece4-trunk/inidata/nemo/domain",
+GENERIC_PLATFORM_PROFILE: Dict[str, Any] = {
+    "description": "Generic Linux Workstation or Cluster",
+    "slurm": {
+        "account": "",
+        "partition": "",
     },
-    "mn5": {
-        "description": "BSC MareNostrum 5 (GPP)",
-        "slurm": {
-            "account": "bsc32",
-            "partition": "gpp",
-        },
-        "module_load": "module load cdo nco 2>/dev/null || true",
-        "scratch_root": "/gpfs/scratch/bsc32/${USER}",
-        "domain_dir": "/gpfs/projects/bsc32/models/ecearth/ece4-trunk/inidata/nemo/domain",
-    },
-    "generic": {
-        "description": "Generic Linux Workstation or Cluster",
-        "slurm": {
-            "account": "",
-            "partition": "",
-        },
-        "module_load": "",
-        "scratch_root": "${HOME}/scratch",
-        "domain_dir": "",
-    },
+    "module_load": "",
+    "scratch_root": "${HOME}/scratch",
+    "domain_dir": "",
 }
 
 
@@ -62,11 +40,14 @@ def _find_platforms_yaml(custom_path: Optional[str] = None) -> Optional[str]:
 
 
 def load_all_platforms(config_path: Optional[str] = None) -> Dict[str, Dict[str, Any]]:
-    """Loads all platform definitions from platforms.yaml merged over default profiles."""
-    profiles = {k: v.copy() for k, v in DEFAULT_PLATFORM_PROFILES.items()}
+    """
+    Loads platform definitions directly from platforms.yaml as the single source of truth.
+    Uses PyYAML to parse platforms.yaml.
+    """
     resolved_path = _find_platforms_yaml(config_path)
+    profiles: Dict[str, Dict[str, Any]] = {}
 
-    if resolved_path and yaml is not None:
+    if resolved_path and os.path.exists(resolved_path) and yaml is not None:
         try:
             with open(resolved_path, 'r', encoding='utf-8') as f:
                 data = yaml.safe_load(f) or {}
@@ -74,16 +55,13 @@ def load_all_platforms(config_path: Optional[str] = None) -> Dict[str, Dict[str,
             if isinstance(plat_dict, dict):
                 for p_name, p_cfg in plat_dict.items():
                     if isinstance(p_cfg, dict):
-                        if p_name not in profiles:
-                            profiles[p_name] = DEFAULT_PLATFORM_PROFILES["generic"].copy()
-                        if 'slurm' in p_cfg and isinstance(p_cfg['slurm'], dict):
-                            profiles[p_name]['slurm'] = profiles[p_name].get('slurm', {}).copy()
-                            profiles[p_name]['slurm'].update(p_cfg['slurm'])
-                        for k, v in p_cfg.items():
-                            if k != 'slurm':
-                                profiles[p_name][k] = v
+                        profiles[p_name] = p_cfg
         except Exception as e:
             print(f"Warning: Failed to load platforms configuration from {resolved_path}: {e}")
+
+    # Fallback to generic profile if platforms.yaml is unavailable or generic is missing
+    if "generic" not in profiles:
+        profiles["generic"] = GENERIC_PLATFORM_PROFILE.copy()
 
     return profiles
 
@@ -109,7 +87,7 @@ def load_platform_config(platform_name: Optional[str] = None, config_path: Optio
     all_plats = load_all_platforms(config_path)
     if target_name in all_plats:
         return all_plats[target_name]
-    custom = DEFAULT_PLATFORM_PROFILES["generic"].copy()
+    custom = GENERIC_PLATFORM_PROFILE.copy()
     custom["description"] = f"Custom platform ({target_name})"
     return custom
 
