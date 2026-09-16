@@ -156,6 +156,12 @@ def load_config(config_path: str = "sources.yaml", preset: Optional[str] = None)
     explicit_preset = preset or os.environ.get('PRESET') or os.environ.get('INIDATA_PRESET')
     norm_explicit = resolve_preset_name(explicit_preset) if explicit_preset else None
 
+    # Check environment variable for custom config file if default is passed
+    if os.path.basename(config_path) in ("sources.yaml", ""):
+        env_cfg = os.environ.get("PISCES_CONFIG") or os.environ.get("CONFIG_FILE")
+        if env_cfg and os.path.exists(env_cfg):
+            config_path = env_cfg
+
     # If preset is explicitly requested and default sources.yaml is used,
     # load presets/sources_<preset>.yaml if available
     if norm_explicit and os.path.basename(config_path) == "sources.yaml":
@@ -167,6 +173,11 @@ def load_config(config_path: str = "sources.yaml", preset: Optional[str] = None)
     candidates = [
         config_path,
         os.path.join(repo_root, config_path),
+        (
+            os.path.join(repo_root, "presets", f"sources_{config_path}.yaml")
+            if not config_path.endswith((".yaml", ".yml"))
+            else None
+        ),
         os.path.join(repo_root, "sources.yaml"),
     ]
     for c in candidates:
@@ -197,12 +208,19 @@ def load_config(config_path: str = "sources.yaml", preset: Optional[str] = None)
         active_preset = data.get('preset')
     norm_preset = resolve_preset_name(active_preset)
 
+    # Base preset for inheriting defaults (e.g. 'ece4', 'ece3', 'official_sette')
+    base_name = 'ece4'
+    if isinstance(data, dict) and data.get('base_preset'):
+        base_name = data.get('base_preset')
+    norm_base = resolve_preset_name(base_name)
+    if norm_base not in PRESETS:
+        norm_base = 'ece4'
+
     if norm_preset in PRESETS:
         config = PRESETS[norm_preset].copy()
     else:
-        print(f"Warning: Unknown preset '{norm_preset}'. Falling back to 'ece4'. Available: {list(PRESETS.keys())}")
-        norm_preset = 'ece4'
-        config = PRESETS['ece4'].copy()
+        # Custom user preset: inherit unspecified defaults from base_preset
+        config = PRESETS[norm_base].copy()
 
     config['INIDATA_PRESET'] = norm_preset
 

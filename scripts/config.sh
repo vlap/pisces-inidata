@@ -59,7 +59,36 @@ if [ -z "${RAW_DIR:-}" ]; then
     fi
 fi
 
+SCRIPT_DIR_CONFIG="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_DIR="$(cd "${SCRIPT_DIR_CONFIG}/.." && pwd)"
+
+# Ensure pisces-inidata binary, NCO env, and Python module are discoverable everywhere
+export PATH="${REPO_DIR}/bin:${HOME}/.local/nco-env/bin:${HOME}/.local/bin:${PATH}"
+export PYTHONPATH="${REPO_DIR}/python:${PYTHONPATH:-}"
+
+# Load per-variable source configuration (sources.yaml or custom PISCES_CONFIG)
+CONFIG_FILE="${PISCES_CONFIG:-${CONFIG_FILE:-}}"
+if [ -z "${CONFIG_FILE}" ]; then
+    if [ -f "${REPO_DIR}/sources.yaml" ]; then
+        CONFIG_FILE="${REPO_DIR}/sources.yaml"
+    elif [ -f "${SCRIPT_DIR_CONFIG}/sources.yaml" ]; then
+        CONFIG_FILE="${SCRIPT_DIR_CONFIG}/sources.yaml"
+    fi
+fi
+export CONFIG_FILE
+export PISCES_CONFIG="${CONFIG_FILE}"
+
+if [ -n "${CONFIG_FILE}" ] && [ -f "${CONFIG_FILE}" ]; then
+    if [ -n "${PRESET:-}" ]; then
+        eval "$(python3 -m pisces_inidata.cli config --export --file "${CONFIG_FILE}" --preset "${PRESET}")"
+    else
+        eval "$(python3 -m pisces_inidata.cli config --export --file "${CONFIG_FILE}")"
+    fi
+fi
+
 PRESET="${PRESET:-${INIDATA_PRESET:-ece4}}"
+export PRESET INIDATA_PRESET
+
 if [ -z "${STANDARDIZED_DIR:-}" ]; then
     if [ -d "${WORKSPACE}/shared/standardized/${PRESET}" ]; then
         STANDARDIZED_DIR="${WORKSPACE}/shared/standardized/${PRESET}"
@@ -113,25 +142,8 @@ CDO_COMPRESS="-f nc4 -z zip_4"
 # ------------------------------------------------------------------------------
 # 4. Source Data Catalog & References
 # ------------------------------------------------------------------------------
-# Active configuration preset (e.g. ece4, ece3, official_sette)
-PRESET="${PRESET:-${INIDATA_PRESET:-ece4}}"
-
 # GLODAP version configuration (supported: 'v2.2016b' [default 3D gridded], 'v2.2023', 'v1.1')
 GLODAP_VERSION="${GLODAP_VERSION:-v2.2016b}"
-
-# Load per-variable source configuration (sources.yaml) via Python exporter
-SCRIPT_DIR_CONFIG="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_DIR="$(cd "${SCRIPT_DIR_CONFIG}/.." && pwd)"
-
-# Ensure pisces-inidata binary, NCO env, and Python module are discoverable everywhere
-export PATH="${REPO_DIR}/bin:${HOME}/.local/nco-env/bin:${HOME}/.local/bin:${PATH}"
-export PYTHONPATH="${REPO_DIR}/python:${PYTHONPATH:-}"
-
-if [ -f "${REPO_DIR}/sources.yaml" ]; then
-    eval "$(python3 -m pisces_inidata.cli config --export --file "${REPO_DIR}/sources.yaml" --preset "${PRESET}")"
-elif [ -f "${SCRIPT_DIR_CONFIG}/sources.yaml" ]; then
-    eval "$(python3 -m pisces_inidata.cli config --export --file "${SCRIPT_DIR_CONFIG}/sources.yaml" --preset "${PRESET}")"
-fi
 
 WOA23_DIR="${RAW_DIR}/woa23"
 GLODAP_V2_2023_DIR="${RAW_DIR}/glodap_v2_2023"
@@ -166,7 +178,7 @@ export GRID_NAME DOMAIN_BASE_DIR DOMAIN_CFG MASKUTIL
 export SCRATCH_ROOT WORKSPACE PISCES_WORKSPACE GRID_DIR WORK_DIR RAW_DIR STANDARDIZED_DIR WEIGHTS_DIR OUTPUT_DIR LOG_DIR SBATCH_DIR TMP_BASE
 export SLURM_ACCOUNT SLURM_PARTITION SLURM_TIME SLURM_CPUS_PER_TASK
 export MODULE_LOAD_CMD CDO_THREADS CDO_OPTS CDO_COMPRESS
-export TRACERS_3D RIVER_VARS DUST_VARS NDEP_VARS INIDATA_PRESET
+export TRACERS_3D RIVER_VARS DUST_VARS NDEP_VARS INIDATA_PRESET CONFIG_FILE PISCES_CONFIG
 export WOA23_DIR GLODAP_VERSION GLODAP_V2_2023_DIR GLODAP_V2_DIR GLODAP_V1_DIR PANAIOTIS_DOC_DIR
 
 # ------------------------------------------------------------------------------

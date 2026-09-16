@@ -8,12 +8,16 @@
 #   - ece3           : Observational sources originally used in EC-Earth3
 #                      (WOA2009, GLODAPv1.1, Hansell 2009 DOC, Tagliabue Fe)
 #   - official_sette : Official regular unmasked NEMO/PISCES reference (all sette)
+#   - <custom>       : Any custom preset name (e.g. my_experiment).
+#                      Unspecified tracers inherit from base_preset (default: ece4).
+#                      Standardized files are cleanly isolated in shared/standardized/<preset>/
 #
-# Preset files can also be loaded directly from the presets/ directory.
+# Preset files can also be loaded directly from the presets/ directory (e.g. presets/sources_<preset>.yaml).
 # Any explicit variable below overrides the preset default.
 # ==============================================================================
 
 preset: ece4
+# base_preset: ece4  # Optional: base preset to inherit defaults from when defining a custom preset name
 
 tracers_3d:
   # Nitrate (NO3):

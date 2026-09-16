@@ -49,6 +49,8 @@ def cmd_prepare_sources(args):
         sys.exit(1)
 
     env = os.environ.copy()
+    if getattr(args, 'config', None):
+        env["PISCES_CONFIG"] = os.path.abspath(args.config)
     if getattr(args, 'preset', None):
         env["PRESET"] = args.preset
         env["INIDATA_PRESET"] = args.preset
@@ -72,6 +74,8 @@ def cmd_remap(args):
         env["GRID_NAME"] = args.orca
     if args.domain_dir:
         env["DOMAIN_BASE_DIR"] = os.path.abspath(args.domain_dir)
+    if getattr(args, 'config', None):
+        env["PISCES_CONFIG"] = os.path.abspath(args.config)
     if getattr(args, 'preset', None):
         env["PRESET"] = args.preset
         env["INIDATA_PRESET"] = args.preset
@@ -96,6 +100,8 @@ def cmd_run(args):
         env["GRID_NAME"] = args.orca
     if args.domain_dir:
         env["DOMAIN_BASE_DIR"] = os.path.abspath(args.domain_dir)
+    if getattr(args, 'config', None):
+        env["PISCES_CONFIG"] = os.path.abspath(args.config)
     if getattr(args, 'preset', None):
         env["PRESET"] = args.preset
         env["INIDATA_PRESET"] = args.preset
@@ -266,7 +272,7 @@ def cmd_verify(args):
 
 def cmd_info(args):
     repo_root = get_repo_root()
-    cfg_file = getattr(args, 'file', None) or os.path.join(repo_root, 'sources.yaml')
+    cfg_file = getattr(args, 'config', None) or getattr(args, 'file', None) or os.path.join(repo_root, 'sources.yaml')
     preset = getattr(args, 'preset', None)
     config = load_config(cfg_file, preset=preset)
     valid = validate_config(config)
@@ -287,7 +293,7 @@ def cmd_info(args):
 
 def cmd_config(args):
     repo_root = get_repo_root()
-    cfg_file = args.file or os.path.join(repo_root, 'sources.yaml')
+    cfg_file = getattr(args, 'config', None) or getattr(args, 'file', None) or os.path.join(repo_root, 'sources.yaml')
     preset = getattr(args, 'preset', None)
     config = load_config(cfg_file, preset=preset)
     if args.export:
@@ -303,7 +309,11 @@ def cmd_config(args):
 def cmd_download(args):
     from pisces_inidata.download import download_sources
     repo_root = get_repo_root()
-    cfg_file = args.sources or os.path.join(repo_root, 'sources.yaml')
+    cfg_file = (
+        getattr(args, 'config', None)
+        or getattr(args, 'sources', None)
+        or os.path.join(repo_root, 'sources.yaml')
+    )
     raw_dir = args.raw_dir
     if not raw_dir:
         workspace = os.environ.get("PISCES_WORKSPACE")
@@ -323,6 +333,7 @@ def cmd_download(args):
     if getattr(args, 'prepare', False) and not args.dry_run:
         print("\n=== Automatically running Stage 1 Source Standardization (hub04) ===")
         args.variable = "all"
+        args.config = cfg_file
         cmd_prepare_sources(args)
 
     sys.exit(0)
@@ -382,9 +393,7 @@ def main():
     )
     check_parser.add_argument(
         "--preset",
-        choices=["ece4", "ece3", "official_sette"],
-        help="Configuration preset (ece4: modern [default], ece3: WOA09+GLODAPv1, "
-             "official_sette: all from SETTE with pure interpolation)"
+        help="Configuration preset (default: ece4; e.g. ece4, ece3, official_sette, or custom)"
     )
     check_parser.set_defaults(func=cmd_check)
 
@@ -402,10 +411,12 @@ def main():
              "See https://ec-earth-4-docs.readthedocs.io/ for obtaining official EC-Earth4 inidata."
     )
     run_parser.add_argument(
+        "--config",
+        help="Path to custom sources.yaml"
+    )
+    run_parser.add_argument(
         "--preset",
-        choices=["ece4", "ece3", "official_sette"],
-        help="Configuration preset (ece4: modern [default], ece3: WOA09+GLODAPv1, "
-             "official_sette: all from SETTE with pure interpolation)"
+        help="Configuration preset (default: ece4; e.g. ece4, ece3, official_sette, or custom)"
     )
     run_parser.add_argument(
         "--stage",
@@ -435,7 +446,6 @@ def main():
     )
     val_parser.add_argument(
         "--preset",
-        choices=["ece4", "ece3", "official_sette"],
         default="official_sette",
         help="Configuration preset tested in validation (default: official_sette)"
     )
@@ -469,7 +479,6 @@ def main():
     )
     rep_parser.add_argument(
         "--preset",
-        choices=["ece4", "ece3", "official_sette"],
         default="official_sette",
         help="Configuration preset tested for reproduction (default: official_sette)"
     )
@@ -487,9 +496,9 @@ def main():
     # Command: info
     info_parser = subparsers.add_parser("info", help="Display current configuration and environment status")
     info_parser.add_argument("--file", help="Path to custom sources.yaml")
+    info_parser.add_argument("--config", help="Path to custom sources.yaml")
     info_parser.add_argument(
         "--preset",
-        choices=["ece4", "ece3", "official_sette"],
         help="Configuration preset to preview"
     )
     info_parser.set_defaults(func=cmd_info)
@@ -497,9 +506,9 @@ def main():
     # Command: config
     cfg_parser = subparsers.add_parser("config", help="Inspect sources.yaml or export shell environment variables")
     cfg_parser.add_argument("--file", help="Path to custom sources.yaml")
+    cfg_parser.add_argument("--config", help="Path to custom sources.yaml")
     cfg_parser.add_argument(
         "--preset",
-        choices=["ece4", "ece3", "official_sette"],
         help="Configuration preset to export"
     )
     cfg_parser.add_argument("--export", action="store_true", help="Print bash export statements")
@@ -510,10 +519,10 @@ def main():
         "download", help="Fetch and stage raw observational datasets based on sources.yaml"
     )
     dl_parser.add_argument("--sources", help="Path to custom sources.yaml")
+    dl_parser.add_argument("--config", help="Path to custom sources.yaml")
     dl_parser.add_argument("--raw-dir", help="Target directory to store raw sources")
     dl_parser.add_argument(
         "--preset",
-        choices=["ece4", "ece3", "official_sette"],
         help="Configuration preset to download"
     )
     dl_parser.add_argument(
@@ -575,9 +584,12 @@ def main():
         help="Variable or component to standardize (default: all)"
     )
     prep_src_parser.add_argument(
+        "--config",
+        help="Path to custom sources.yaml"
+    )
+    prep_src_parser.add_argument(
         "--preset",
-        choices=["ece4", "ece3", "official_sette"],
-        help="Configuration preset"
+        help="Configuration preset (default: ece4; e.g. ece4, ece3, official_sette, or custom)"
     )
     prep_src_parser.add_argument(
         "--force",
@@ -612,9 +624,12 @@ def main():
         help="Path to directory containing target NEMO domain files (${GRID_NAME}/domain_cfg.nc)"
     )
     remap_parser.add_argument(
+        "--config",
+        help="Path to custom sources.yaml"
+    )
+    remap_parser.add_argument(
         "--preset",
-        choices=["ece4", "ece3", "official_sette"],
-        help="Configuration preset"
+        help="Configuration preset (default: ece4; e.g. ece4, ece3, official_sette, or custom)"
     )
     remap_parser.set_defaults(func=cmd_remap)
 

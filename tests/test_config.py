@@ -109,3 +109,34 @@ def test_presets():
     assert cfg_sette['PRODUCT_DOC'] == 'sette_nomask'
     assert cfg_sette['PRODUCT_DUST'] == 'sette_orca2'
     assert cfg_sette['PRODUCT_RIVER'] == 'sette_orca2'
+
+
+def test_custom_preset():
+    content = """
+preset: my_custom_exp
+base_preset: ece4
+tracers_3d:
+  DOC: sette_nomask
+  TALK: glodap_v2_2023
+"""
+    with tempfile.NamedTemporaryFile('w', suffix='.yaml', delete=False) as f:
+        f.write(content)
+        f_name = f.name
+
+    try:
+        cfg = load_config(f_name)
+        assert cfg['INIDATA_PRESET'] == 'my_custom_exp'
+        assert cfg['PRODUCT_DOC'] == 'sette_nomask'
+        assert cfg['PRODUCT_TALK'] == 'glodap_v2_2023'
+        assert cfg['PRODUCT_NO3'] == 'woa23'  # inherited from ece4
+        assert validate_config(cfg) is True
+    finally:
+        if os.path.exists(f_name):
+            os.remove(f_name)
+
+
+def test_custom_preset_cli_override():
+    cfg = load_config("sources.yaml", preset="exp_variant")
+    assert cfg['INIDATA_PRESET'] == 'exp_variant'
+    assert cfg['PRODUCT_NO3'] == 'woa23'  # inherited from default ece4 base
+    assert validate_config(cfg) is True

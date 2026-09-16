@@ -13,22 +13,47 @@ Instead of selecting sources variable-by-variable, users can choose curated conf
 | **`ece4`** *(Default)* | Modern observational datasets for **EC-Earth4** production runs | WOA23 (102 levels) | GLODAPv2.2016b | Panaïotis et al. 2024 (ML) | Tagliabue (2012) & SETTE |
 | **`ece3`** | Observational sources originally used in **EC-Earth3** (baseline reproduction) | WOA2009 | GLODAPv1.1 | Hansell (2009) | Tagliabue (2012) & SETTE |
 | **`official_sette`** | Official regular unmasked **NEMO/PISCES SETTE** reference (all vars from SETTE, pure interpolation) | `sette_nomask` | `sette_nomask` | `sette_nomask` | `sette_nomask` & `sette_orca2` |
+| **`<custom>`** | Any user-defined preset name (e.g. `my_experiment`) inheriting from `base_preset` | Configurable | Configurable | Configurable | Configurable |
 
-Presets can be selected in three ways:
+Presets can be configured in multiple ways:
 
-1. **In `sources.yaml`:**
+1. **In `sources.yaml` (Built-in or Custom):**
    ```yaml
-   preset: ece4  # Options: ece4 (default) | ece3 | official_sette
+   preset: my_experiment
+   base_preset: ece4  # Inherits unspecified defaults from ece4
+
+   tracers_3d:
+     DOC: sette_nomask     # Override Hansell 2009 baseline
+     TALK: glodap_v2_2023  # Test modern GLODAP release
    ```
+   Each preset isolates its Stage 1 standardized files into its own directory:
+   `${WORKSPACE}/shared/standardized/${PRESET}/`
+   preventing cache collisions with standard baselines.
+
 2. **Via dedicated preset files:**
-   Preset template files are available in the `presets/` directory:
+   Place custom preset templates directly in `presets/sources_<name>.yaml`:
    - `presets/sources_ece4.yaml`
    - `presets/sources_ece3.yaml`
    - `presets/sources_official_sette.yaml`
-3. **Via the `--preset` CLI flag or `PRESET` environment variable:**
+   - `presets/sources_my_experiment.yaml`
+
+   And invoke by name:
+   ```bash
+   pisces-inidata prepare-sources --preset my_experiment
+   pisces-inidata remap all --preset my_experiment --orca eORCA1
+   ```
+
+3. **Via explicit `--config` flag:**
+   Point any command directly to a standalone YAML configuration:
+   ```bash
+   pisces-inidata prepare-sources --config path/to/my_sources.yaml
+   pisces-inidata remap all --config path/to/my_sources.yaml --orca eORCA1
+   ```
+
+4. **Via CLI `--preset` or `PRESET` environment variable:**
    ```bash
    pisces-inidata info --preset ece3
-   pisces-inidata run --orca eORCA1 --preset ece3
+   pisces-inidata run --orca eORCA1 --preset my_experiment
    pisces-inidata config --preset official_sette --export
    ```
 
