@@ -5,7 +5,6 @@ Inspects sources.yaml to selectively fetch only the required raw climatologies
 """
 
 import os
-import sys
 import tarfile
 import urllib.request
 from typing import Optional
@@ -79,7 +78,7 @@ def download_woa23_tracer(var_name: str, code: str, folder: str, raw_dir: str, d
     """
     target_dir = os.path.join(raw_dir, "woa23", folder)
     print(f"\nChecking WOA23 {var_name} ({folder})...")
-    for m in ["00"] + [f"{i:02d}" for i in range(1, 13)]:
+    for m in [f"{i:02d}" for i in range(13)]:
         fname = f"woa23_all_{code}{m}_01.nc"
         dest = os.path.join(target_dir, fname)
         url = f"{WOA23_BASE}/{folder}/netcdf/all/1.00/{fname}"
@@ -105,7 +104,7 @@ def download_official_nemo_inputs(raw_dir: str, dry_run: bool = False):
         extract_tar(tar_path, target_dir, strip_components=1, dry_run=dry_run)
 
 
-def download_glodap(raw_dir: str, version: str = "v2.2016b", dry_run: bool = False):
+def download_glodap(raw_dir: str, dry_run: bool = False):
     """
     Downloads 3D gridded GLODAP mapped climatologies.
     """
@@ -113,7 +112,7 @@ def download_glodap(raw_dir: str, version: str = "v2.2016b", dry_run: bool = Fal
     key_file = os.path.join(target_dir, "GLODAPv2.2016b.TAlk.nc")
     tar_path = os.path.join(target_dir, "GLODAPv2.2016b_MappedClimatologies.tar.gz")
 
-    print(f"\nChecking GLODAP ({version})...")
+    print("\nChecking GLODAP (v2.2016b)...")
     if os.path.exists(key_file):
         print(f"  [EXISTS] GLODAPv2 already extracted in {target_dir}")
         return
@@ -160,7 +159,7 @@ def download_sources(
         config.get("PRODUCT_PiDIC", "glodap_v2_2016b"),
     ]
     if any("glodap" in p.lower() for p in carbon_products):
-        download_glodap(effective_raw, version="v2.2016b", dry_run=dry_run)
+        download_glodap(effective_raw, dry_run=dry_run)
 
     # 4. Panaïotis et al. (2024) DOC Climatology
     if config.get("PRODUCT_DOC", "panaiotis2024") == "panaiotis2024":
@@ -181,9 +180,3 @@ def download_sources(
     print(" SOURCE DATASET ACQUISITION COMPLETE")
     print("=" * 78)
     return 0
-
-
-if __name__ == "__main__":
-    cfg_arg = sys.argv[1] if len(sys.argv) > 1 and not sys.argv[1].startswith("-") else None
-    dry = "--dry-run" in sys.argv
-    sys.exit(download_sources(config_file=cfg_arg, dry_run=dry))
