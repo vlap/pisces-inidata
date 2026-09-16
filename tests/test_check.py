@@ -30,7 +30,6 @@ def test_check_python_packages():
     names = [r[0] for r in results]
     assert "netCDF4" in names
     assert "numpy" in names
-    assert "scipy" in names
     for name, ok, ver in results:
         assert ok is True
 

@@ -35,20 +35,23 @@ pisces-inidata/
 │   ├── products.md              # Supported observational products catalog
 │   ├── configuration.md         # Per-variable configuration (sources.yaml) reference
 │   └── validation.md            # Statistical scoreboards and validation suites
+├── presets/                     # Curated source configuration presets
+│   ├── sources_ece4.yaml        # Modern observational climatologies for EC-Earth4 [Default]
+│   ├── sources_ece3.yaml        # Baseline observational sources originally used in EC-Earth3
+│   └── sources_sette.yaml       # Official regular unmasked NEMO/PISCES SETTE reference
 ├── python/                      # Python library and CLI package
 │   └── pisces_inidata/
 │       ├── __init__.py
 │       ├── cli.py               # CLI: pisces-inidata (check, download, run, validate, ...)
 │       ├── check.py             # Pre-flight system & data integrity verifier
-│       ├── config.py            # Configuration parser & validator (sources.yaml)
+│       ├── config.py            # Configuration parser & validator (sources.yaml, presets)
 │       ├── download.py          # Selective raw dataset downloader & staging
 │       ├── glodap.py            # GLODAP vertical coordinate standardizer & padder
 │       ├── padding.py           # Abyssal depth padding algorithm (up to 6000m)
 │       ├── woa23.py             # WOA23 12-month depth profile builder
 │       ├── doc.py               # Panaïotis et al. (2024) DOC NetCDF generator
 │       ├── scoreboard.py        # Validation scoreboard generator
-│       ├── reproduction.py      # EC-Earth3 baseline precision benchmark
-│       └── utils.py             # NetCDF inspection & FAIR metadata stamping
+│       └── reproduction.py      # EC-Earth3 baseline precision benchmark
 ├── scripts/                     # Modular Bash execution pipeline
 │   ├── config.sh                # Environment, paths, and module configuration
 │   ├── download_sources.sh      # Thin wrapper calling pisces-inidata download
@@ -61,7 +64,7 @@ pisces-inidata/
 │   ├── run_validation_suite.sh  # Automated validation suite
 │   └── verify_outputs.py        # Output files integrity & statistical bounds checker
 ├── tests/                       # Unit tests (pytest)
-├── sources.yaml                 # Per-variable source dataset configuration
+├── sources.yaml                 # Active source dataset configuration (preset: ece4)
 ├── pyproject.toml               # Modern PEP 517/621 package metadata
 ├── LICENSE                      # Apache-2.0 License
 ├── CITATION.cff                 # Citation metadata
@@ -87,13 +90,21 @@ Verify your installation:
 pisces-inidata info
 ```
 
-### 2. Configure Sources (`sources.yaml`)
+### 2. Configure Sources & Presets (`sources.yaml`)
 
-Choose observational climatologies on a per-tracer basis in `sources.yaml`:
-- `NO3`, `PO4`, `Si`, `O2`: `woa23` (default) | `woa2009` | `sette_nomask`
-- `TALK`, `TDIC`, `PiDIC`: `glodap_v2_2016b` (default) | `glodap_v2_2023` | `glodap_v1` | `sette_nomask`
-- `DOC`: `panaiotis2024` (default) | `sette_nomask`
-- `Fer`: `sette_nomask` (default)
+Choose a curated configuration preset or customize per-tracer sources:
+- **`ece4`** *(Default)*: Modern observational climatologies for **EC-Earth4** (WOA23, GLODAPv2.2016b, Panaïotis DOC).
+- **`ece3`**: Baseline observational sources originally used in **EC-Earth3** (WOA2009, GLODAPv1.1, Hansell DOC).
+- **`sette`**: Official regular unmasked **NEMO/PISCES SETTE** reference fields (`sette_nomask`).
+
+Switch presets in `sources.yaml` (`preset: ece4`), load from `presets/`, or pass `--preset`:
+```bash
+# Preview configuration for a preset:
+pisces-inidata info --preset ece3
+
+# Or export bash environment variables:
+pisces-inidata config --preset ece3 --export
+```
 
 ### 3. Download Raw Datasets
 Fetch only the active datasets selected in `sources.yaml`:

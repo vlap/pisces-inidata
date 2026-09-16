@@ -28,18 +28,7 @@ mkdir -p "${OUTPUT_DIR}"
 TMP_DIR=$(mktemp -d -p "${SCRATCH_ROOT}" tmp_bathy_${COMPONENT}_XXXXXX)
 trap 'rm -rf "${TMP_DIR}"' EXIT
 
-sanitize_source_grid() {
-    local in_file="$1"
-    local out_file="$2"
-    cp "${in_file}" "${out_file}"
-    ncatted -O \
-        -a coordinates,,c,c,"nav_lon nav_lat" \
-        -a units,nav_lon,c,c,"degrees_east" \
-        -a units,nav_lat,c,c,"degrees_north" \
-        -a standard_name,nav_lon,c,c,"longitude" \
-        -a standard_name,nav_lat,c,c,"latitude" \
-        "${out_file}" 2>/dev/null || true
-}
+
 
 process_bathy() {
     echo "=== Processing Bathymetric Shelf Fraction (bathy.orca.nc) ==="

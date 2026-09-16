@@ -1,0 +1,31 @@
+# ==============================================================================
+# PISCES Initial Conditions Source Configuration: EC-Earth3 (Baseline Sources)
+# ==============================================================================
+# Observational climatologies originally used to construct EC-Earth3 PISCES
+# initial conditions on eORCA1 (used for model baseline reproduction & continuity):
+#   - Nutrients & Oxygen: World Ocean Atlas 2009 (WOA2009)
+#   - Carbon Chemistry:   GLODAPv1.1 3D mapped climatology
+#   - Dissolved Organic:  Hansell (2009) DOC
+#   - Iron & Boundary:    Tagliabue (2012) & NEMO/PISCES SETTE boundary forcings
+# ==============================================================================
+
+preset: ece3
+
+tracers_3d:
+  NO3: woa2009
+  PO4: woa2009
+  Si: woa2009
+  O2: woa2009
+  TALK: glodap_v1
+  TDIC: glodap_v1
+  PiDIC: glodap_v1
+  DOC: sette_nomask
+  Fer: sette_nomask
+
+boundary_forcings:
+  dust: sette_orca2
+  ndep: sette_orca2
+  par: sette_orca2
+  bathy: sette_orca2
+  hydrofe: sette_orca2
+  rivers: sette_orca2

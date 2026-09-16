@@ -37,7 +37,6 @@ def test_compute_diagnostics():
         assert np.isclose(diag['rmse'], 2.0)
         assert np.isclose(diag['mae'], 2.0)
         assert np.isclose(diag['r'], 1.0)
-        assert np.isclose(diag['spearman_rho'], 1.0)
         assert diag['status'] == 'PASS'
 
         # Generate markdown

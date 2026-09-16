@@ -13,9 +13,9 @@ Reference:
 
 import sys
 import os
+import csv
 import urllib.request
 import numpy as np
-import pandas as pd
 import netCDF4 as nc
 
 SEANOE_ANNUAL_URL = "https://www.seanoe.org/data/00900/101170/data/111994.csv"
@@ -54,11 +54,6 @@ def build_doc_climatology(raw_dir, output_nc):
     download_if_missing(SEANOE_ANNUAL_URL, ann_csv)
     download_if_missing(SEANOE_SEASONAL_URL, sea_csv)
 
-    print("Loading annual climatology...")
-    df_ann = pd.read_csv(ann_csv)
-    print("Loading seasonal climatology...")
-    df_sea = pd.read_csv(sea_csv)
-
     # Standard global 1x1 grid
     lons = np.arange(-179.5, 180.5, 1.0)  # 360 values: -179.5 to 179.5
     lats = np.arange(-89.5, 90.5, 1.0)    # 180 values: -89.5 to 89.5
@@ -75,37 +70,48 @@ def build_doc_climatology(raw_dir, output_nc):
     fill_val = 1.0e20
     ann_grid = np.full((ndepths, nlats, nlons), fill_val, dtype=np.float32)
 
-    print("Populating annual subsurface and abyssal fields...")
-    for _, row in df_ann.iterrows():
-        lon = round(row['lon'], 2)
-        lat = round(row['lat'], 2)
-        if lon in lon_idx and lat in lat_idx:
-            i = lon_idx[lon]
-            j = lat_idx[lat]
+    def parse_float(val: str) -> float:
+        if not val or val.strip() in ("", "NA", "NaN", "nan"):
+            return fill_val
+        try:
+            return float(val)
+        except ValueError:
+            return fill_val
 
-            surf = row['surf_doc_avg'] if pd.notna(row['surf_doc_avg']) else fill_val
-            epi = row['epi_doc_avg'] if pd.notna(row['epi_doc_avg']) else fill_val
-            meso = row['meso_doc_avg'] if pd.notna(row['meso_doc_avg']) else fill_val
-            bathy = row['bathy_doc_avg'] if pd.notna(row['bathy_doc_avg']) else fill_val
+    print("Loading annual climatology...")
+    with open(ann_csv, 'r', encoding='utf-8') as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            lon = round(float(row['lon']), 2)
+            lat = round(float(row['lat']), 2)
+            if lon in lon_idx and lat in lat_idx:
+                i = lon_idx[lon]
+                j = lat_idx[lat]
 
-            ann_grid[0, j, i] = surf
-            ann_grid[1, j, i] = epi
-            ann_grid[2, j, i] = meso
-            ann_grid[3, j, i] = bathy
-            ann_grid[4, j, i] = bathy  # Abyssal 6000m padding replicates bathypelagic layer
+                surf = parse_float(row.get('surf_doc_avg', ''))
+                epi = parse_float(row.get('epi_doc_avg', ''))
+                meso = parse_float(row.get('meso_doc_avg', ''))
+                bathy = parse_float(row.get('bathy_doc_avg', ''))
+
+                ann_grid[0, j, i] = surf
+                ann_grid[1, j, i] = epi
+                ann_grid[2, j, i] = meso
+                ann_grid[3, j, i] = bathy
+                ann_grid[4, j, i] = bathy  # Abyssal 6000m padding replicates bathypelagic layer
 
     # Pre-allocate 4 seasonal surface grids: (season, lat, lon)
     season_surf = np.full((5, nlats, nlons), fill_val, dtype=np.float32)
-    print("Populating seasonal surface fields...")
-    for _, row in df_sea.iterrows():
-        s = int(row['season'])
-        lon = round(row['lon'], 2)
-        lat = round(row['lat'], 2)
-        if 1 <= s <= 4 and lon in lon_idx and lat in lat_idx:
-            i = lon_idx[lon]
-            j = lat_idx[lat]
-            if pd.notna(row['surf_doc_avg']):
-                season_surf[s, j, i] = row['surf_doc_avg']
+    print("Loading seasonal climatology...")
+    with open(sea_csv, 'r', encoding='utf-8') as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            s = int(row['season'])
+            lon = round(float(row['lon']), 2)
+            lat = round(float(row['lat']), 2)
+            if 1 <= s <= 4 and lon in lon_idx and lat in lat_idx:
+                i = lon_idx[lon]
+                j = lat_idx[lat]
+                season_surf[s, j, i] = parse_float(row.get('surf_doc_avg', ''))
 
     # Assemble 4D monthly field: (time=12, depth=5, lat=180, lon=360)
     print("Assembling 12 monthly climatological timesteps...")

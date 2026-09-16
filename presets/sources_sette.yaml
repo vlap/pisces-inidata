@@ -1,0 +1,27 @@
+# ==============================================================================
+# PISCES Initial Conditions Source Configuration: SETTE (Official Reference)
+# ==============================================================================
+# Direct usage of official regular unmasked NEMO/PISCES SETTE reference fields:
+# All 3D tracers interpolated directly from the SETTE repository inputs.
+# ==============================================================================
+
+preset: sette
+
+tracers_3d:
+  NO3: sette_nomask
+  PO4: sette_nomask
+  Si: sette_nomask
+  O2: sette_nomask
+  TALK: sette_nomask
+  TDIC: sette_nomask
+  PiDIC: sette_nomask
+  DOC: sette_nomask
+  Fer: sette_nomask
+
+boundary_forcings:
+  dust: sette_orca2
+  ndep: sette_orca2
+  par: sette_orca2
+  bathy: sette_orca2
+  hydrofe: sette_orca2
+  rivers: sette_orca2

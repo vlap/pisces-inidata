@@ -16,30 +16,28 @@ source "${SCRIPT_DIR}/config.sh"
 eval "${MODULE_LOAD_CMD}"
 
 TARGET_GRID_NC="${WEIGHTS_DIR}/target_grid_${GRID_NAME}.nc"
-TARGET_AREA_NC="${WEIGHTS_DIR}/target_area_${GRID_NAME}.nc"
 OUT_FILE="${OUTPUT_DIR}/river.orca.nc"
 
-if [ ! -f "${TARGET_GRID_NC}" ] || [ ! -f "${TARGET_AREA_NC}" ]; then
-    echo "Target grid or area file not found. Generating grid and weights first..."
+if [ ! -f "${TARGET_GRID_NC}" ]; then
+    echo "Target grid file not found. Generating grid and weights first..."
     bash "${SCRIPT_DIR}/gen_grid_and_weights.sh"
 fi
 
 mkdir -p "${OUTPUT_DIR}"
 
 SRC_FILE="${RAW_DIR}/official_v5.0.0/river.orca.nc"
-if [ "${GRID_NAME}" = "ORCA2" ] && [ -f "${SRC_FILE}" ]; then
+if [ ! -f "${SRC_FILE}" ]; then
+    echo "ERROR: Source river file ${SRC_FILE} not found. Run download_sources.sh first." >&2
+    exit 1
+fi
+
+if [ "${GRID_NAME}" = "ORCA2" ]; then
     echo "Copying native ORCA2 SETTE river nutrient forcing..."
     cp "${SRC_FILE}" "${OUT_FILE}"
     ln -sfn "$(basename "${OUT_FILE}")" "${OUTPUT_DIR}/river_global_news_${GRID_NAME}.nc"
     stamp_provenance "${OUT_FILE}"
     echo "=== River forcings completed successfully: ${OUT_FILE} ==="
     exit 0
-fi
-
-SRC_FILE="${RAW_DIR}/official_v5.0.0/river.orca.nc"
-if [ ! -f "${SRC_FILE}" ]; then
-    echo "ERROR: Source river file ${SRC_FILE} not found. Run download_sources.sh first." >&2
-    exit 1
 fi
 
 TMP_DIR=$(mktemp -d -p "${SCRATCH_ROOT}" tmp_river_XXXXXX)

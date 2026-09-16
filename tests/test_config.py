@@ -85,3 +85,29 @@ boundary_forcings:
     finally:
         if os.path.exists(f_name):
             os.remove(f_name)
+
+
+def test_presets():
+    # ECE4 preset (modern)
+    cfg_ece4 = load_config("sources.yaml", preset="ece4")
+    assert cfg_ece4['INIDATA_PRESET'] == 'ece4'
+    assert cfg_ece4['PRODUCT_NO3'] == 'woa23'
+    assert cfg_ece4['PRODUCT_DOC'] == 'panaiotis2024'
+
+    # ECE3 preset (observational sources used in EC-Earth3)
+    cfg_ece3 = load_config("sources.yaml", preset="ece3")
+    assert cfg_ece3['INIDATA_PRESET'] == 'ece3'
+    assert cfg_ece3['PRODUCT_NO3'] == 'woa2009'
+    assert cfg_ece3['PRODUCT_TALK'] == 'glodap_v1'
+    assert cfg_ece3['PRODUCT_DOC'] == 'sette_nomask'
+
+    # SETTE preset (official regular)
+    cfg_sette = load_config("sources.yaml", preset="sette")
+    assert cfg_sette['INIDATA_PRESET'] == 'sette'
+    assert cfg_sette['PRODUCT_NO3'] == 'sette_nomask'
+    assert cfg_sette['PRODUCT_TALK'] == 'sette_nomask'
+
+    # Aliases
+    assert load_config("sources.yaml", preset="modern")['INIDATA_PRESET'] == 'ece4'
+    assert load_config("sources.yaml", preset="ecearth3_baseline")['INIDATA_PRESET'] == 'ece3'
+    assert load_config("sources.yaml", preset="official_regular")['INIDATA_PRESET'] == 'sette'

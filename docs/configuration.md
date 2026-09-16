@@ -1,12 +1,42 @@
 # Configuration & CLI Reference
 
-`pisces-inidata` provides a transparent, declarative configuration system through `sources.yaml` and a unified command-line interface.
+`pisces-inidata` provides a transparent, declarative configuration system through presets (`ece4`, `ece3`, `sette`), `sources.yaml`, and a unified command-line interface.
 
 ---
 
-## 1. Observational Source Configuration (`sources.yaml`)
+## 1. Configuration Presets
 
-Individual observational source datasets can be configured per tracer in `sources.yaml` (located at the repository root). Seamless command-line overrides are supported via environment variables (`PRODUCT_*`):
+Instead of selecting sources variable-by-variable, users can choose curated configuration presets designed for specific modeling purposes:
+
+| Preset | Purpose | Nutrients & Oxygen | Carbon Chemistry | DOC | Iron & Boundary |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **`ece4`** *(Default)* | Modern observational datasets for **EC-Earth4** production runs | WOA23 (102 levels) | GLODAPv2.2016b | Panaïotis et al. 2024 (ML) | Tagliabue (2012) & SETTE |
+| **`ece3`** | Observational sources originally used in **EC-Earth3** (baseline reproduction) | WOA2009 | GLODAPv1.1 | Hansell (2009) | Tagliabue (2012) & SETTE |
+| **`sette`** | Official regular unmasked **NEMO/PISCES SETTE** reference fields | `sette_nomask` | `sette_nomask` | `sette_nomask` | Tagliabue (2012) & SETTE |
+
+Presets can be selected in three ways:
+
+1. **In `sources.yaml`:**
+   ```yaml
+   preset: ece4  # Options: ece4 (default) | ece3 | sette
+   ```
+2. **Via dedicated preset files:**
+   Preset template files are available in the `presets/` directory:
+   - `presets/sources_ece4.yaml`
+   - `presets/sources_ece3.yaml`
+   - `presets/sources_sette.yaml`
+3. **Via the `--preset` CLI flag or `PRESET` environment variable:**
+   ```bash
+   pisces-inidata info --preset ece3
+   pisces-inidata run --orca eORCA1 --preset ece3
+   pisces-inidata config --preset sette --export
+   ```
+
+---
+
+## 2. Observational Source Configuration (`sources.yaml`)
+
+Individual observational source datasets can be customized on top of any preset in `sources.yaml`. Explicit variable entries in the file or environment variables (`PRODUCT_*`) override the preset defaults:
 
 ```bash
 # Example overrides:
@@ -46,12 +76,14 @@ export PRODUCT_DOC="panaiotis2024"
 
 ---
 
-## 2. Command-Line Interface (`pisces-inidata`)
+## 3. Command-Line Interface (`pisces-inidata`)
 
 ### `pisces-inidata check`
 Runs pre-flight integrity verification before launching remapping jobs:
 ```bash
 pisces-inidata check --orca ORCA2
+# Check against specific preset:
+pisces-inidata check --orca eORCA1 --preset ece3
 ```
 - Verifies system binaries (`cdo`, `ncks`, `ncap2`, `ncatted`).
 - Confirms presence of target domain files (`domain_cfg.nc`, `maskutil.nc`).
@@ -62,6 +94,9 @@ Executes end-to-end interpolation and formatting:
 ```bash
 # Generate inidata on ORCA2 (or eORCA1, eORCA025)
 pisces-inidata run --orca ORCA2 --domain-dir /path/to/nemo/domain
+
+# Run with specific preset:
+pisces-inidata run --orca eORCA1 --preset ece3
 ```
 
 ### `pisces-inidata validate`
@@ -81,6 +116,14 @@ pisces-inidata test-reproduction \
     --mask domain/eORCA1/maskutil.nc
 ```
 
+### `pisces-inidata download`
+Fetches and stages raw observational datasets:
+```bash
+pisces-inidata download
+# Download raw datasets for a specific preset:
+pisces-inidata download --preset ece3
+```
+
 ### `pisces-inidata pad`
 Standalone vertical depth padding utility:
 ```bash
@@ -88,7 +131,9 @@ pisces-inidata pad input.nc output_padded.nc --bottom-depth 6000.0
 ```
 
 ### `pisces-inidata info`
-Displays current environment, resolved paths, and active product configurations:
+Displays current environment, active preset, resolved paths, and product configurations:
 ```bash
 pisces-inidata info
+# Preview configuration for a different preset:
+pisces-inidata info --preset ece3
 ```

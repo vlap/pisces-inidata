@@ -12,7 +12,7 @@ from pisces_inidata.config import load_config, validate_config
 
 REQUIRED_BINARIES = ["cdo", "ncks", "ncap2", "ncatted"]
 OPTIONAL_BINARIES = ["sbatch", "ncdump"]
-REQUIRED_PYTHON_PKGS = ["netCDF4", "numpy", "scipy"]
+REQUIRED_PYTHON_PKGS = ["netCDF4", "numpy"]
 
 MIN_DISK_SPACE_GB = {
     "ORCA2": 2.0,
@@ -163,17 +163,19 @@ def run_preflight_checks(
     config_file: Optional[str] = None,
     raw_dir: Optional[str] = None,
     domain_dir: Optional[str] = None,
-    out_dir: Optional[str] = None
+    out_dir: Optional[str] = None,
+    preset: Optional[str] = None
 ) -> int:
     """
     Runs full preflight check suite and outputs formatted results.
     Returns 0 on success, 1 on critical failure.
     """
-    cfg = load_config(config_file or "sources.yaml")
+    cfg = load_config(config_file or "sources.yaml", preset=preset)
     validate_config(cfg)
+    active_preset = cfg.get("INIDATA_PRESET", "ece4")
 
     print("=" * 78)
-    print(f" PISCES INIDATA PRE-FLIGHT SYSTEM & INTEGRITY CHECK ({grid_name})")
+    print(f" PISCES INIDATA PRE-FLIGHT CHECK (Grid: {grid_name}, Preset: {active_preset})")
     print("=" * 78)
 
     all_critical_passed = True

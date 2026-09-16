@@ -195,7 +195,6 @@ def compute_diagnostics(test_file: str, ref_file: str, var_key: str) -> Dict[str
                 'mbe': np.nan,
                 'rel_bias_pct': np.nan,
                 'r': np.nan,
-                'spearman_rho': np.nan,
                 'max_diff': np.nan,
                 'mean_ref': np.nan,
                 'mean_test': np.nan,
@@ -230,18 +229,8 @@ def compute_diagnostics(test_file: str, ref_file: str, var_key: str) -> Dict[str
         std_ref = np.std(valid_ref)
         if std_test > 1e-12 and std_ref > 1e-12:
             r = float(np.corrcoef(valid_test, valid_ref)[0, 1])
-            try:
-                from scipy.stats import spearmanr
-                if n_valid > 200000:
-                    idx = np.random.choice(n_valid, 100000, replace=False)
-                    rho = float(spearmanr(valid_test[idx], valid_ref[idx]).statistic)
-                else:
-                    rho = float(spearmanr(valid_test, valid_ref).statistic)
-            except Exception:
-                rho = np.nan
         else:
             r = 1.0 if rmse < 1e-6 else np.nan
-            rho = 1.0 if rmse < 1e-6 else np.nan
 
         # Sanity Checks: Units, Coordinates, Sign
         scale_ratio = (mean_test / mean_ref) if abs(mean_ref) > 1e-12 else 1.0
@@ -278,7 +267,6 @@ def compute_diagnostics(test_file: str, ref_file: str, var_key: str) -> Dict[str
             'mbe': mbe,
             'rel_bias_pct': rel_bias_pct,
             'r': r,
-            'spearman_rho': rho,
             'max_diff': max_diff,
             'mean_ref': mean_ref,
             'mean_test': mean_test,

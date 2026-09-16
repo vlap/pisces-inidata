@@ -55,6 +55,9 @@ def cmd_run(args):
         env["GRID_NAME"] = args.orca
     if args.domain_dir:
         env["DOMAIN_BASE_DIR"] = os.path.abspath(args.domain_dir)
+    if getattr(args, 'preset', None):
+        env["PRESET"] = args.preset
+        env["INIDATA_PRESET"] = args.preset
 
     res = subprocess.run(["bash", script], cwd=repo_root, env=env)
     sys.exit(res.returncode)
@@ -107,26 +110,30 @@ def cmd_test_reproduction(args):
 
 def cmd_info(args):
     repo_root = get_repo_root()
-    cfg_file = os.path.join(repo_root, 'sources.yaml')
-    config = load_config(cfg_file)
+    cfg_file = getattr(args, 'file', None) or os.path.join(repo_root, 'sources.yaml')
+    preset = getattr(args, 'preset', None)
+    config = load_config(cfg_file, preset=preset)
     valid = validate_config(config)
 
     print("=================================================================")
     print(f"  pisces-inidata v{__version__} - System & Configuration Status")
     print("=================================================================")
-    print(f"Repository Root: {repo_root}")
-    print(f"Sources File: {cfg_file}")
+    print(f"Repository Root:     {repo_root}")
+    print(f"Sources File:        {cfg_file}")
+    print(f"Active Preset:       {config.get('INIDATA_PRESET', 'ece4')}")
     print(f"Configuration Valid: {'YES' if valid else 'WARNINGS DETECTED'}")
     print("\nConfigured Sources:")
     for k, v in sorted(config.items()):
-        print(f"  {k:18s} = {v}")
+        if k != 'INIDATA_PRESET':
+            print(f"  {k:18s} = {v}")
     print("=================================================================")
 
 
 def cmd_config(args):
     repo_root = get_repo_root()
     cfg_file = args.file or os.path.join(repo_root, 'sources.yaml')
-    config = load_config(cfg_file)
+    preset = getattr(args, 'preset', None)
+    config = load_config(cfg_file, preset=preset)
     if args.export:
         print(export_env_commands(config))
     else:
@@ -142,7 +149,8 @@ def cmd_download(args):
     repo_root = get_repo_root()
     cfg_file = args.sources or os.path.join(repo_root, 'sources.yaml')
     raw_dir = args.raw_dir or os.path.join(repo_root, 'pisces_raw_sources')
-    code = download_sources(config_file=cfg_file, raw_dir=raw_dir, dry_run=args.dry_run)
+    preset = getattr(args, 'preset', None)
+    code = download_sources(config_file=cfg_file, raw_dir=raw_dir, dry_run=args.dry_run, preset=preset)
     sys.exit(code)
 
 
@@ -153,12 +161,14 @@ def cmd_pad(args):
 def cmd_check(args):
     repo_root = get_repo_root()
     cfg_file = args.config or os.path.join(repo_root, 'sources.yaml')
+    preset = getattr(args, 'preset', None)
     code = run_preflight_checks(
         grid_name=args.orca,
         config_file=cfg_file,
         raw_dir=args.raw_dir,
         domain_dir=args.domain_dir,
-        out_dir=args.out_dir
+        out_dir=args.out_dir,
+        preset=preset
     )
     sys.exit(code)
 
@@ -196,6 +206,11 @@ def main():
         "--config",
         help="Path to custom sources.yaml"
     )
+    check_parser.add_argument(
+        "--preset",
+        choices=["ece4", "ece3", "sette", "modern", "ecearth3_baseline", "official_regular"],
+        help="Configuration preset (ece4: modern [default], ece3: WOA09+GLODAPv1, sette: official regular)"
+    )
     check_parser.set_defaults(func=cmd_check)
 
     # Command: run
@@ -210,6 +225,11 @@ def main():
         "--domain-dir",
         help="Path to directory containing target NEMO domain files (${GRID_NAME}/domain_cfg.nc). "
              "See https://ec-earth-4-docs.readthedocs.io/ for obtaining official EC-Earth4 inidata."
+    )
+    run_parser.add_argument(
+        "--preset",
+        choices=["ece4", "ece3", "sette", "modern", "ecearth3_baseline", "official_regular"],
+        help="Configuration preset (ece4: modern [default], ece3: WOA09+GLODAPv1, sette: official regular)"
     )
     run_parser.set_defaults(func=cmd_run)
 
@@ -269,11 +289,22 @@ def main():
 
     # Command: info
     info_parser = subparsers.add_parser("info", help="Display current configuration and environment status")
+    info_parser.add_argument("--file", help="Path to custom sources.yaml")
+    info_parser.add_argument(
+        "--preset",
+        choices=["ece4", "ece3", "sette", "modern", "ecearth3_baseline", "official_regular"],
+        help="Configuration preset to preview"
+    )
     info_parser.set_defaults(func=cmd_info)
 
     # Command: config
     cfg_parser = subparsers.add_parser("config", help="Inspect sources.yaml or export shell environment variables")
     cfg_parser.add_argument("--file", help="Path to custom sources.yaml")
+    cfg_parser.add_argument(
+        "--preset",
+        choices=["ece4", "ece3", "sette", "modern", "ecearth3_baseline", "official_regular"],
+        help="Configuration preset to export"
+    )
     cfg_parser.add_argument("--export", action="store_true", help="Print bash export statements")
     cfg_parser.set_defaults(func=cmd_config)
 
@@ -283,6 +314,11 @@ def main():
     )
     dl_parser.add_argument("--sources", help="Path to custom sources.yaml")
     dl_parser.add_argument("--raw-dir", help="Target directory to store raw sources")
+    dl_parser.add_argument(
+        "--preset",
+        choices=["ece4", "ece3", "sette", "modern", "ecearth3_baseline", "official_regular"],
+        help="Configuration preset to download"
+    )
     dl_parser.add_argument(
         "--dry-run", action="store_true", help="Inspect what would be downloaded without downloading"
     )

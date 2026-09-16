@@ -72,14 +72,10 @@ CDO_COMPRESS="-f nc4 -z zip_4"
 # ------------------------------------------------------------------------------
 # 4. Source Data Catalog & References
 # ------------------------------------------------------------------------------
-# Source mode:
-#   'modern'           : Uses latest observational products: WOA23 (NO3, PO4, Si, O2) & GLODAP (TALK, TDIC, PiDIC)
-#   'official_regular' : Uses official regular 1x1 unmasked fields (WOA/GLODAP nomask) with 3D interpolation
-# NOTE: EC-Earth3 inidata is strictly a verification benchmark (test_pipeline_reproduction.sh), not an input source.
-SOURCE_MODE="${SOURCE_MODE:-modern}"
+# Active configuration preset (e.g. ece4, ece3, sette)
+PRESET="${PRESET:-${INIDATA_PRESET:-ece4}}"
 
 # GLODAP version configuration (supported: 'v2.2016b' [default 3D gridded], 'v2.2023', 'v1.1')
-# Only 3D gridded products are supported; discrete bottle master files (e.g. GLODAPv3 Master File) are not supported.
 GLODAP_VERSION="${GLODAP_VERSION:-v2.2016b}"
 
 # Load per-variable source configuration (sources.yaml) via Python exporter
@@ -91,13 +87,12 @@ export PATH="${REPO_DIR}/bin:${HOME}/.local/bin:${PATH}"
 export PYTHONPATH="${REPO_DIR}/python:${PYTHONPATH:-}"
 
 if [ -f "${REPO_DIR}/sources.yaml" ]; then
-    eval "$(python3 -m pisces_inidata.config export "${REPO_DIR}/sources.yaml" 2>/dev/null || pisces-inidata config --export --file "${REPO_DIR}/sources.yaml" 2>/dev/null || true)"
+    eval "$(python3 -m pisces_inidata.config export "${REPO_DIR}/sources.yaml" --preset "${PRESET}" 2>/dev/null || pisces-inidata config --export --file "${REPO_DIR}/sources.yaml" --preset "${PRESET}" 2>/dev/null || true)"
 elif [ -f "${SCRIPT_DIR_CONFIG}/sources.yaml" ]; then
-    eval "$(python3 -m pisces_inidata.config export "${SCRIPT_DIR_CONFIG}/sources.yaml" 2>/dev/null || pisces-inidata config --export --file "${SCRIPT_DIR_CONFIG}/sources.yaml" 2>/dev/null || true)"
+    eval "$(python3 -m pisces_inidata.config export "${SCRIPT_DIR_CONFIG}/sources.yaml" --preset "${PRESET}" 2>/dev/null || pisces-inidata config --export --file "${SCRIPT_DIR_CONFIG}/sources.yaml" --preset "${PRESET}" 2>/dev/null || true)"
 fi
 
 WOA23_DIR="${RAW_DIR}/woa23"
-GLODAP_V3_DIR="${RAW_DIR}/glodap_v3"
 GLODAP_V2_2023_DIR="${RAW_DIR}/glodap_v2_2023"
 GLODAP_V2_DIR="${RAW_DIR}/glodap_v2"
 GLODAP_V1_DIR="${RAW_DIR}/glodap_v1"
@@ -130,8 +125,8 @@ export GRID_NAME DOMAIN_BASE_DIR DOMAIN_CFG MASKUTIL
 export SCRATCH_ROOT WORK_DIR RAW_DIR WEIGHTS_DIR OUTPUT_DIR LOG_DIR
 export SLURM_ACCOUNT SLURM_PARTITION SLURM_TIME SLURM_CPUS_PER_TASK
 export MODULE_LOAD_CMD CDO_THREADS CDO_OPTS CDO_COMPRESS
-export TRACERS_3D RIVER_VARS DUST_VARS NDEP_VARS
-export WOA23_DIR GLODAP_VERSION GLODAP_V3_DIR GLODAP_V2_2023_DIR GLODAP_V2_DIR GLODAP_V1_DIR PANAIOTIS_DOC_DIR
+export TRACERS_3D RIVER_VARS DUST_VARS NDEP_VARS INIDATA_PRESET
+export WOA23_DIR GLODAP_VERSION GLODAP_V2_2023_DIR GLODAP_V2_DIR GLODAP_V1_DIR PANAIOTIS_DOC_DIR
 
 # ------------------------------------------------------------------------------
 # 5. Scientific Provenance & FAIR Metadata Stamping
@@ -149,6 +144,7 @@ stamp_provenance() {
             -a title,global,o,c,"PISCES Biogeochemical Initial Conditions for NEMO/EC-Earth4 (${GRID_NAME})" \
             -a institution,global,o,c,"Barcelona Supercomputing Center (BSC), EC-Earth Consortium" \
             -a source_pipeline,global,o,c,"pisces-inidata (https://github.com/vlap/pisces-inidata)" \
+            -a inidata_preset,global,o,c,"${INIDATA_PRESET:-custom}" \
             -a source_products,global,o,c,"${prod_summary}" \
             -a git_commit,global,o,c,"${git_rev}" \
             -a generation_timestamp,global,o,c,"${timestamp}" \

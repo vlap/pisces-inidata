@@ -2,9 +2,18 @@
 # PISCES Initial Conditions Source Configuration (sources.yaml)
 #
 # Configures the input observational datasets for 3D tracers and boundary forcings.
-# NOTE: EC-Earth3 inidata is NOT a valid input source; it is reserved exclusively
-# for pipeline reproduction verification on eORCA1.
+# Presets:
+#   - ece4  : Modern observational datasets for EC-Earth4 (Default)
+#             (WOA23, GLODAPv2.2016b, Panaïotis et al. 2024 DOC, Tagliabue Fe)
+#   - ece3  : Observational sources originally used in EC-Earth3
+#             (WOA2009, GLODAPv1.1, Hansell 2009 DOC, Tagliabue Fe)
+#   - sette : Official regular unmasked NEMO/PISCES reference (all sette_nomask)
+#
+# Preset files can also be loaded directly from the presets/ directory.
+# Any explicit variable below overrides the preset default.
 # ==============================================================================
+
+preset: ece4
 
 tracers_3d:
   # Nitrate (NO3):

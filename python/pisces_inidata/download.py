@@ -125,19 +125,22 @@ def download_glodap(raw_dir: str, dry_run: bool = False):
 def download_sources(
     config_file: Optional[str] = None,
     raw_dir: Optional[str] = None,
-    dry_run: bool = False
+    dry_run: bool = False,
+    preset: Optional[str] = None
 ) -> int:
     """
-    Orchestrates dataset downloading according to user's sources.yaml configuration.
+    Orchestrates dataset downloading according to user's sources.yaml configuration or preset.
     """
-    config = load_config(config_file or "sources.yaml")
+    config = load_config(config_file or "sources.yaml", preset=preset)
     effective_raw = raw_dir or os.environ.get("RAW_DIR", os.path.join(os.getcwd(), "pisces_raw_sources"))
+    active_preset = config.get("INIDATA_PRESET", "ece4")
 
     print("=" * 78)
     print(" PISCES INIDATA: OBSERVATIONAL SOURCE DATASET ACQUISITION")
     print("=" * 78)
     print(f"Target Directory : {effective_raw}")
     print(f"Configuration    : {config_file or 'sources.yaml'}")
+    print(f"Active Preset    : {active_preset}")
     print(f"Dry-run Mode     : {'ENABLED' if dry_run else 'DISABLED'}")
     print("=" * 78)
 
