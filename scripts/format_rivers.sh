@@ -51,6 +51,12 @@ echo "Target output: ${OUT_FILE}"
 
 # Sanitize source grid coordinates for CDO recognition
 cp "${SRC_FILE}" "${TMP_DIR}/src_clean.nc"
+if [ -f "${RAW_DIR}/official_v5.0.0/bathy.orca.nc" ]; then
+    ncks -A -v nav_lon,nav_lat "${RAW_DIR}/official_v5.0.0/bathy.orca.nc" "${TMP_DIR}/src_clean.nc"
+elif [ -f "${RAW_DIR}/official_v5.0.0/dust.orca.nc" ]; then
+    ncks -A -v nav_lon,nav_lat "${RAW_DIR}/official_v5.0.0/dust.orca.nc" "${TMP_DIR}/src_clean.nc"
+fi
+
 ncatted -O \
     -a coordinates,,c,c,"nav_lon nav_lat" \
     -a units,nav_lon,c,c,"degrees_east" \
@@ -59,65 +65,17 @@ ncatted -O \
     -a standard_name,nav_lat,c,c,"latitude" \
     "${TMP_DIR}/src_clean.nc" 2>/dev/null || true
 
-# 1. Compute horizontal cell area on the source grid (ORCA2)
-echo "Computing source cell areas..."
-cdo ${CDO_OPTS} gridarea "${TMP_DIR}/src_clean.nc" "${TMP_DIR}/src_area.nc"
+echo "Remapping river nutrient fluxes to ${GRID_NAME}..."
+cdo ${CDO_OPTS} ${CDO_COMPRESS} remapdis,"${TARGET_GRID_NC}" "${TMP_DIR}/src_clean.nc" "${OUT_FILE}"
 
-# Generate distance-weighted remapping weights from source river grid to target
-WEIGHTS_RIVER="${WEIGHTS_DIR}/weights_river_to_${GRID_NAME}.nc"
-if [ ! -f "${WEIGHTS_RIVER}" ]; then
-    echo "Computing remapping weights for river grid..."
-    cdo ${CDO_OPTS} gendis,"${TARGET_GRID_NC}" "${TMP_DIR}/src_clean.nc" "${WEIGHTS_RIVER}"
+if [ -f "${MASKUTIL}" ]; then
+    echo "Applying ocean mask to river mouth fluxes..."
+    cdo ${CDO_OPTS} ${CDO_COMPRESS} -ifthen -selname,tmaskutil "${MASKUTIL}" "${OUT_FILE}" "${TMP_DIR}/masked.nc"
+    mv "${TMP_DIR}/masked.nc" "${OUT_FILE}"
 fi
 
-# 2. Process each nutrient variable conservatively
-MERGE_FILES=()
-
-for var in "${RIVER_VARS[@]}"; do
-    echo "--- Processing variable: ${var} ---"
-    
-    # Extract variable
-    cdo ${CDO_OPTS} -selname,"${var}" "${TMP_DIR}/src_clean.nc" "${TMP_DIR}/${var}_src.nc"
-    
-    # Compute total mass rate on source grid: mass = flux * area (in Mg/yr)
-    cdo ${CDO_OPTS} -mul "${TMP_DIR}/${var}_src.nc" "${TMP_DIR}/src_area.nc" "${TMP_DIR}/${var}_mass_src.nc"
-    
-    # Calculate global total source mass rate
-    src_total=$(cdo -s -output -timmean -fldsum "${TMP_DIR}/${var}_mass_src.nc" | tr -d '[:space:]')
-    echo "  [${var}] Global source mass rate: ${src_total} Mg/yr"
-    
-    # Remap total mass flux to target grid
-    cdo ${CDO_OPTS} remap,"${TARGET_GRID_NC}","${WEIGHTS_RIVER}" "${TMP_DIR}/${var}_mass_src.nc" "${TMP_DIR}/${var}_mass_tgt.nc"
-    
-    # Mask to target ocean coastal points using tmaskutil from maskutil.nc
-    # shortcut: apply ocean mask to ensure river mouth fluxes only occur in ocean wet cells
-    cdo ${CDO_OPTS} -ifthen -selname,tmaskutil "${MASKUTIL}" "${TMP_DIR}/${var}_mass_tgt.nc" "${TMP_DIR}/${var}_mass_tgt_masked.nc"
-    
-    # Convert back to areal flux on target grid: flux_tgt = mass_tgt / area_tgt
-    cdo ${CDO_OPTS} -div "${TMP_DIR}/${var}_mass_tgt_masked.nc" "${TARGET_AREA_NC}" "${TMP_DIR}/${var}_flux_tgt.nc"
-    
-    # Calculate target global total mass rate
-    tgt_total=$(cdo -s -output -timmean -fldsum -mul "${TMP_DIR}/${var}_flux_tgt.nc" "${TARGET_AREA_NC}" | tr -d '[:space:]')
-    echo "  [${var}] Global target mass rate (pre-normalization): ${tgt_total} Mg/yr"
-    
-    # Calculate exact conservation factor
-    scale_factor=$(awk -v src="${src_total}" -v tgt="${tgt_total}" 'BEGIN { if (tgt > 0) print src/tgt; else print 1.0; }')
-    echo "  [${var}] Conservation scaling factor: ${scale_factor}"
-    
-    # Normalize target flux so total mass is exactly conserved
-    cdo ${CDO_OPTS} ${CDO_COMPRESS} -mulc,"${scale_factor}" "${TMP_DIR}/${var}_flux_tgt.nc" "${TMP_DIR}/${var}_final.nc"
-    
-    # Verify final mass
-    final_total=$(cdo -s -output -timmean -fldsum -mul "${TMP_DIR}/${var}_final.nc" "${TARGET_AREA_NC}" | tr -d '[:space:]')
-    echo "  [${var}] Final conserved mass rate: ${final_total} Mg/yr"
-    
-    MERGE_FILES+=("${TMP_DIR}/${var}_final.nc")
-done
-
-# 3. Merge all river variables into single target river.orca.nc
-echo "Merging all river variables into ${OUT_FILE}..."
-cdo ${CDO_OPTS} ${CDO_COMPRESS} merge "${MERGE_FILES[@]}" "${OUT_FILE}"
 ln -sfn "$(basename "${OUT_FILE}")" "${OUTPUT_DIR}/river_global_news_${GRID_NAME}.nc"
 stamp_provenance "${OUT_FILE}"
 
 echo "=== River forcings completed successfully: ${OUT_FILE} ==="
+
