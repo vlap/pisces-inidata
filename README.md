@@ -42,6 +42,7 @@ pisces-inidata/
 │       ├── check.py             # Pre-flight system & data integrity verifier
 │       ├── config.py            # Configuration parser & validator (sources.yaml)
 │       ├── download.py          # Selective raw dataset downloader & staging
+│       ├── glodap.py            # GLODAP vertical coordinate standardizer & padder
 │       ├── padding.py           # Abyssal depth padding algorithm (up to 6000m)
 │       ├── woa23.py             # WOA23 12-month depth profile builder
 │       ├── doc.py               # Panaïotis et al. (2024) DOC NetCDF generator
@@ -57,7 +58,8 @@ pisces-inidata/
 │   ├── format_bathy_hydrofe.sh  # Bathymetric shelf factor & hydrothermal iron
 │   ├── format_rivers.sh         # Mass-conserving river nutrient discharge
 │   ├── launcher_pisces_inidata.sh # End-to-end Slurm master pipeline driver
-│   └── run_validation_suite.sh  # Automated validation suite
+│   ├── run_validation_suite.sh  # Automated validation suite
+│   └── verify_outputs.py        # Output files integrity & statistical bounds checker
 ├── tests/                       # Unit tests (pytest)
 ├── sources.yaml                 # Per-variable source dataset configuration
 ├── pyproject.toml               # Modern PEP 517/621 package metadata
