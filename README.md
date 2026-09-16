@@ -151,26 +151,36 @@ pisces-inidata test-reproduction --preset official_sette
 
 ## HPC Execution Workflow (BSC Hub04 & Nord4)
 
-On high-performance computing clusters where compute nodes lack direct internet access (such as BSC Nord4 / MareNostrum 5):
+On high-performance computing clusters where compute nodes lack direct internet access (such as BSC Nord4 / MareNostrum 5), data preparation and remapping are decoupled across machines:
 
-1. **Dataset Ingestion (Interactive / Internet Node: `hub04`):**
+1. **Ingestion & Source Standardization (Interactive Node: `hub04`):**
+   Formatting raw sources into regular NetCDF climatologies takes only 1–2 minutes and is executed directly on `hub04` alongside the download:
    ```bash
    ssh hub04
    cd /esarchive/scratch/${USER}/scripts/pisces_inidata
+
+   # Option A: Download raw sources and automatically standardize in one shot:
+   pisces-inidata download --prepare
+
+   # Option B: Run step-by-step:
    pisces-inidata download
+   pisces-inidata prepare-sources
    ```
-2. **Parallel Generation via Slurm (Batch Node: `nord4`):**
+   *Standardized regular source files (`std_*.nc`) are cached in `${STANDARDIZED_DIR}` on the shared scratch filesystem and reused across all target grids.*
+
+2. **Parallel Remapping via Slurm (Batch Node: `nord4`):**
+   Batch compute nodes perform only pure interpolation to target curvilinear grids without data formatting overhead:
    ```bash
    ssh nord4
    cd /esarchive/scratch/${USER}/scripts/pisces_inidata
 
-   # Submit batch generation for eORCA1:
-   ./scripts/launcher_pisces_inidata.sh submit
+   # Submit batch remapping for eORCA1:
+   GRID_NAME=eORCA1 ./scripts/launcher_pisces_inidata.sh submit stage2
 
-   # Submit batch generation for eORCA025 (auto-allocates 64G memory and chains weights dependency):
-   GRID_NAME=eORCA025 ./scripts/launcher_pisces_inidata.sh submit
+   # Submit batch remapping for eORCA025 (auto-allocates 64G memory and chains weights dependency):
+   GRID_NAME=eORCA025 ./scripts/launcher_pisces_inidata.sh submit stage2
 
-   # Verify all 15 output products:
+   # Inspect and verify all 15 output products:
    pisces-inidata verify --orca eORCA025
    ```
 

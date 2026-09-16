@@ -253,7 +253,15 @@ def cmd_download(args):
     raw_dir = args.raw_dir or os.path.join(repo_root, 'pisces_raw_sources')
     preset = getattr(args, 'preset', None)
     code = download_sources(config_file=cfg_file, raw_dir=raw_dir, dry_run=args.dry_run, preset=preset)
-    sys.exit(code)
+    if code != 0:
+        sys.exit(code)
+
+    if getattr(args, 'prepare', False) and not args.dry_run:
+        print("\n=== Automatically running Stage 1 Source Standardization (hub04) ===")
+        args.variable = "all"
+        cmd_prepare_sources(args)
+
+    sys.exit(0)
 
 
 def cmd_pad(args):
@@ -446,6 +454,11 @@ def main():
     )
     dl_parser.add_argument(
         "--dry-run", action="store_true", help="Inspect what would be downloaded without downloading"
+    )
+    dl_parser.add_argument(
+        "--prepare",
+        action="store_true",
+        help="Automatically run Stage 1 source standardization (prepare-sources) immediately after download"
     )
     dl_parser.set_defaults(func=cmd_download)
 

@@ -131,3 +131,13 @@ def test_download_sources_dry_run():
     with tempfile.TemporaryDirectory() as tmpdir:
         code = download_sources(config_file="sources.yaml", raw_dir=tmpdir, dry_run=True)
         assert code == 0
+
+
+def test_cli_download_prepare_flag(monkeypatch):
+    from pisces_inidata.cli import main
+    import sys
+
+    monkeypatch.setattr(sys, 'argv', ['pisces-inidata', 'download', '--help'])
+    with pytest.raises(SystemExit) as exc:
+        main()
+    assert exc.value.code == 0

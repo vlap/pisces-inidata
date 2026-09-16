@@ -162,9 +162,14 @@ pisces-inidata test-reproduction \
 ```
 
 ### `pisces-inidata download`
-Fetches and stages raw observational datasets:
+Fetches and stages raw observational datasets, with optional automatic Stage 1 source standardization:
 ```bash
+# Download raw datasets:
 pisces-inidata download
+
+# Download and immediately run Stage 1 source standardization (ideal for hub04):
+pisces-inidata download --prepare
+
 # Download raw datasets for a specific preset:
 pisces-inidata download --preset ece3
 ```
