@@ -61,3 +61,27 @@ def test_export_env_commands():
     export_str = export_env_commands(cfg)
     assert 'export PRODUCT_NO3="woa23"' in export_str
     assert 'export PRODUCT_DOC="panaiotis2024"' in export_str
+
+
+def test_fallback_yaml_parsing_without_pyyaml(monkeypatch):
+    import pisces_inidata.config as config_mod
+    monkeypatch.setattr(config_mod, "yaml", None)
+    content = """
+tracers_3d:
+  NO3: woa2009 # test inline comment
+  TALK: glodap_v1
+boundary_forcings:
+  dust: sette_orca2
+"""
+    with tempfile.NamedTemporaryFile('w', suffix='.yaml', delete=False) as f:
+        f.write(content)
+        f_name = f.name
+
+    try:
+        cfg = config_mod.load_config(f_name)
+        assert cfg['PRODUCT_NO3'] == 'woa2009'
+        assert cfg['PRODUCT_TALK'] == 'glodap_v1'
+        assert cfg['PRODUCT_DUST'] == 'sette_orca2'
+    finally:
+        if os.path.exists(f_name):
+            os.remove(f_name)

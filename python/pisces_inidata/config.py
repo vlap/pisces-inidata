@@ -6,8 +6,41 @@ and exports environment variables for pipeline shell scripts.
 
 import os
 import sys
-import yaml
+try:
+    import yaml
+except ImportError:
+    yaml = None
 from typing import Dict
+
+
+def _parse_simple_yaml(text: str) -> dict:
+    """
+    Minimal fallback parser for simple two-level key-value YAML files (such as sources.yaml)
+    when PyYAML is not installed in the cluster environment.
+    """
+    result = {}
+    current_section = None
+    for raw_line in text.splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith('#'):
+            continue
+        if '#' in line:
+            line = line.split('#', 1)[0].strip()
+        if not line:
+            continue
+        if line.endswith(':'):
+            current_section = line[:-1].strip()
+            result[current_section] = {}
+        elif ':' in line:
+            k, v = line.split(':', 1)
+            k = k.strip()
+            v = v.strip().strip("'\"")
+            if current_section is not None:
+                result[current_section][k] = v
+            else:
+                result[k] = v
+    return result
+
 
 VALID_SOURCES = {
     'PRODUCT_NO3': ['woa23', 'woa2009', 'sette_nomask'],
@@ -91,10 +124,18 @@ def load_config(config_path: str = "sources.yaml") -> Dict[str, str]:
 
     if resolved_path:
         with open(resolved_path, 'r') as f:
+            content = f.read()
+        if yaml is not None:
             try:
-                data = yaml.safe_load(f) or {}
+                data = yaml.safe_load(content) or {}
             except Exception as e:
                 print(f"Warning: Failed to parse YAML from {resolved_path}: {e}")
+                data = {}
+        else:
+            try:
+                data = _parse_simple_yaml(content)
+            except Exception as e:
+                print(f"Warning: Failed to parse configuration from {resolved_path}: {e}")
                 data = {}
 
         if isinstance(data, dict):
