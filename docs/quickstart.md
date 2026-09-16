@@ -1,10 +1,25 @@
-# Quickstart & TL;DR: Inidata Production Guide
+# Quickstart Guide
 
-This guide enables researchers and modelers with machine access (BSC Nord4, MareNostrum 5, local workstations, or generic HPC clusters) to generate ready-to-use PISCES initial condition files in minutes.
+## TL;DR
+
+```bash
+# 1. Ingest & standardize source data (interactive node with internet access):
+git clone https://github.com/vlap/pisces-inidata.git && cd pisces-inidata
+pip install -e .
+pisces-inidata download --preset ece4 --prepare
+
+# 2. Remap to eORCA1 in parallel via Slurm (batch cluster):
+GRID_NAME=eORCA1 ./scripts/launcher_pisces_inidata.sh submit stage2
+
+# 3. Verify all 15 NetCDF output files:
+pisces-inidata verify --grid eORCA1
+```
+
+All 15 target NetCDF files will be generated in `${PISCES_WORKSPACE}/grids/eORCA1/inidata/`.
 
 ---
 
-## TL;DR: Production Run (HPC / BSC Clusters)
+## HPC Decoupled Architecture
 
 On HPC systems where compute nodes lack direct internet access, data preparation and remapping are decoupled:
 
@@ -16,47 +31,11 @@ Download raw data & standardize             Parallel CDO interpolation
               ▼                                          ▼
   ${PISCES_WORKSPACE}/shared/                ${PISCES_WORKSPACE}/grids/eORCA1/inidata/
     ├── raw/                                   ├── data_NO3_eORCA1.nc
-    └── standardized/${PRESET}/                ├── data_DIC_eORCA1.nc
+    └── standardized/ece4/                     ├── data_DIC_eORCA1.nc
                                                └── ... (15 NetCDF files)
 ```
 
-### 1. Ingest & Standardize (Interactive Node)
-Log in to an interactive node with internet access (e.g., `hub04` at BSC):
-
-```bash
-git clone https://github.com/vlap/pisces-inidata.git && cd pisces-inidata
-pip install -e .
-
-# Download active datasets and generate standardized 1°x1° sources in one shot:
-pisces-inidata download --prepare
-```
-
-> **Note on Environment Modules:**
-> Ensure `cdo`, `nco`, and `python` are available in your shell environment (e.g., via module load or conda). Cluster-specific Slurm parameters and module commands are declared in `platforms.yaml`.
-
----
-
-### 2. Submit Parallel Remapping (Batch Slurm Cluster)
-On batch compute nodes (e.g., `nord4` / `mn5`):
-
-```bash
-# Submit parallel remapping jobs for eORCA1 (standard 1-degree EC-Earth4 grid):
-GRID_NAME=eORCA1 ./scripts/launcher_pisces_inidata.sh submit stage2
-```
-
----
-
-### 3. Verify Generated Outputs
-Verify that all 15 NetCDF products were generated without blank or NaN fields:
-
-```bash
-pisces-inidata verify --grid eORCA1
-```
-
-All 15 target NetCDF files are ready in:
-```text
-${PISCES_WORKSPACE}/grids/eORCA1/inidata/
-```
+Ensure `cdo`, `nco`, and `python` are available in your shell environment (e.g., via module load or conda). Cluster-specific Slurm parameters and module commands are declared in `platforms.yaml`.
 
 ---
 
@@ -72,7 +51,7 @@ pip install -e .
 pisces-inidata check --grid eORCA1
 
 # 3. Download & prepare sources
-pisces-inidata download --prepare
+pisces-inidata download --preset ece4 --prepare
 
 # 4. Run end-to-end generation
 pisces-inidata run --grid eORCA1
