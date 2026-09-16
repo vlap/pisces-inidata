@@ -9,6 +9,7 @@ import shutil
 import subprocess
 from typing import Dict, List, Tuple, Optional
 from pisces_inidata.config import load_config, validate_config
+from pisces_inidata.grids import load_grid_config
 
 REQUIRED_BINARIES = ["cdo", "ncks", "ncap2", "ncatted"]
 OPTIONAL_BINARIES = ["sbatch", "ncdump"]
@@ -71,7 +72,8 @@ def check_disk_space(target_path: str, grid_name: str) -> Tuple[bool, float, flo
     Checks whether target filesystem has enough free space for interpolation of specified grid.
     Returns: (is_sufficient, free_gb, required_gb)
     """
-    req_gb = MIN_DISK_SPACE_GB.get(grid_name, 5.0)
+    grid_cfg = load_grid_config(grid_name)
+    req_gb = MIN_DISK_SPACE_GB.get(grid_name, grid_cfg.get("disk_space_gb", 10.0))
     check_dir = target_path
     while check_dir and not os.path.exists(check_dir):
         parent = os.path.dirname(check_dir)
@@ -94,20 +96,25 @@ def check_target_grid(grid_name: str, domain_dir: Optional[str] = None) -> List[
     """
     Verifies presence of target grid definition, domain_cfg, or maskutil files.
     """
+    grid_cfg = load_grid_config(grid_name)
     results = []
     base_dir = domain_dir or os.environ.get("DOMAIN_BASE_DIR")
     if not base_dir:
         standard_bsc = "/gpfs/projects/bsc32/models/ecearth/ece4-trunk/inidata/nemo/domain"
         base_dir = standard_bsc if os.path.isdir(standard_bsc) else os.path.join(os.getcwd(), "domain")
 
-    if grid_name == "ORCA2":
-        # Check local target_grid or domain_cfg
+    fallback_coords = grid_cfg.get("fallback_coords_source")
+    if fallback_coords:
         candidates = [
-            os.path.join(base_dir, "ORCA2", "domain_cfg.nc"),
-            os.path.join(base_dir, "ORCA2", "target_grid_ORCA2.nc"),
-            os.path.join(os.getcwd(), "target_grid_ORCA2.nc"),
-            os.path.join(os.getcwd(), "target_grid.nc")
+            os.path.join(base_dir, grid_name, "domain_cfg.nc"),
+            os.path.join(base_dir, grid_name, f"target_grid_{grid_name}.nc"),
         ]
+        if not domain_dir:
+            candidates.extend([
+                os.path.join(os.getcwd(), f"target_grid_{grid_name}.nc"),
+                os.path.join(os.getcwd(), "target_grid.nc"),
+                os.path.join(os.getcwd(), "pisces_raw_sources", fallback_coords),
+            ])
         found = any(os.path.exists(p) for p in candidates)
         path_str = next((p for p in candidates if os.path.exists(p)), candidates[0])
         results.append((
@@ -128,7 +135,6 @@ def check_target_grid(grid_name: str, domain_dir: Optional[str] = None) -> List[
         msg_mask = maskutil if found_mask else (
             f"Missing ({maskutil}). Obtain from EC-Earth4 inidata or generate with gen_grid_and_weights.sh."
         )
-
         results.append((f"{grid_name} domain_cfg", found_cfg, msg_cfg))
         results.append((f"{grid_name} maskutil", found_mask, msg_mask))
 
@@ -207,7 +213,7 @@ def run_preflight_checks(
     for name, ok, desc in grid_results:
         tag = "[PASS]" if ok else "[FAIL]"
         print(f"  {tag:7s} {name:22s} : {desc}")
-        if not ok and grid_name != "ORCA2":
+        if not ok and not load_grid_config(grid_name).get("fallback_coords_source"):
             all_critical_passed = False
 
     # 4. Raw Sources

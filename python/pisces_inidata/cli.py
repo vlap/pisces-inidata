@@ -70,8 +70,9 @@ def cmd_remap(args):
         sys.exit(1)
 
     env = os.environ.copy()
-    if args.orca:
-        env["GRID_NAME"] = args.orca
+    grid_name = getattr(args, 'grid', None) or getattr(args, 'orca', None)
+    if grid_name:
+        env["GRID_NAME"] = grid_name
     if args.domain_dir:
         env["DOMAIN_BASE_DIR"] = os.path.abspath(args.domain_dir)
     if getattr(args, 'config', None):
@@ -96,8 +97,9 @@ def cmd_run(args):
 
     print(f"Launching PISCES inidata pipeline: {script}")
     env = os.environ.copy()
-    if args.orca:
-        env["GRID_NAME"] = args.orca
+    grid_name = getattr(args, 'grid', None) or getattr(args, 'orca', None)
+    if grid_name:
+        env["GRID_NAME"] = grid_name
     if args.domain_dir:
         env["DOMAIN_BASE_DIR"] = os.path.abspath(args.domain_dir)
     if getattr(args, 'config', None):
@@ -238,7 +240,7 @@ def cmd_test_reproduction(args):
 def cmd_verify(args):
     from pisces_inidata.verify import verify_output_directory
     repo_root = get_repo_root()
-    grid_name = args.orca or "eORCA025"
+    grid_name = getattr(args, 'grid', None) or getattr(args, 'orca', None) or "eORCA025"
     workspace = os.environ.get("PISCES_WORKSPACE")
     out_dir = args.out_dir
     if not out_dir:
@@ -306,6 +308,31 @@ def cmd_config(args):
             sys.exit(1)
 
 
+def cmd_grid_config(args):
+    from pisces_inidata.grids import load_grid_config, export_grid_env_commands, load_all_grids
+    grid_name = getattr(args, 'grid', None) or getattr(args, 'orca', None)
+    config_file = getattr(args, 'config', None) or getattr(args, 'file', None)
+    if not grid_name:
+        all_grids = load_all_grids(config_file)
+        print("Configured NEMO Target Grids:")
+        for name, cfg in sorted(all_grids.items()):
+            res = cfg.get("resources", {})
+            print(f"  {name:10s}: {cfg.get('description', '')}")
+            print(
+                f"               Mem: {res.get('memory', '16G')}, Time: {res.get('time', '01:00:00')}, "
+                f"Batch weights: {res.get('batch_weights', False)}"
+            )
+        return
+
+    if getattr(args, 'export', False):
+        print(export_grid_env_commands(grid_name, config_file))
+    else:
+        cfg = load_grid_config(grid_name, config_file)
+        print(f"Target Grid Configuration ({grid_name}):")
+        for k, v in sorted(cfg.items()):
+            print(f"  {k}: {v}")
+
+
 def cmd_download(args):
     from pisces_inidata.download import download_sources
     repo_root = get_repo_root()
@@ -347,8 +374,9 @@ def cmd_check(args):
     repo_root = get_repo_root()
     cfg_file = args.config or os.path.join(repo_root, 'sources.yaml')
     preset = getattr(args, 'preset', None)
+    grid_name = getattr(args, 'grid', None) or getattr(args, 'orca', 'ORCA2')
     code = run_preflight_checks(
-        grid_name=args.orca,
+        grid_name=grid_name,
         config_file=cfg_file,
         raw_dir=args.raw_dir,
         domain_dir=args.domain_dir,
@@ -370,10 +398,9 @@ def main():
     # Command: check
     check_parser = subparsers.add_parser("check", help="Run pre-flight system and data integrity verification")
     check_parser.add_argument(
-        "--orca",
-        choices=["ORCA2", "eORCA1", "eORCA025"],
+        "--grid", "--orca",
         default="ORCA2",
-        help="Target NEMO grid resolution to verify"
+        help="Target NEMO grid resolution to verify (default: ORCA2)"
     )
     check_parser.add_argument(
         "--domain-dir",
@@ -400,10 +427,9 @@ def main():
     # Command: run
     run_parser = subparsers.add_parser("run", help="Run end-to-end PISCES initial conditions generation")
     run_parser.add_argument(
-        "--orca",
-        choices=["ORCA2", "eORCA1", "eORCA025"],
+        "--grid", "--orca",
         default="ORCA2",
-        help="Target NEMO grid resolution"
+        help="Target NEMO grid resolution (default: ORCA2)"
     )
     run_parser.add_argument(
         "--domain-dir",
@@ -514,6 +540,25 @@ def main():
     cfg_parser.add_argument("--export", action="store_true", help="Print bash export statements")
     cfg_parser.set_defaults(func=cmd_config)
 
+    # Command: grid-config
+    grid_cfg_parser = subparsers.add_parser(
+        "grid-config", help="Inspect or export declarative grid profile from grids.yaml"
+    )
+    grid_cfg_parser.add_argument(
+        "--grid", "--orca",
+        help="Target grid identifier (e.g. ORCA2, eORCA1, eORCA025, eORCA12)"
+    )
+    grid_cfg_parser.add_argument(
+        "--file", "--config",
+        help="Path to custom grids.yaml"
+    )
+    grid_cfg_parser.add_argument(
+        "--export",
+        action="store_true",
+        help="Print bash export statements for grid"
+    )
+    grid_cfg_parser.set_defaults(func=cmd_grid_config)
+
     # Command: download
     dl_parser = subparsers.add_parser(
         "download", help="Fetch and stage raw observational datasets based on sources.yaml"
@@ -614,8 +659,7 @@ def main():
         help="Variable or component to remap (default: all)"
     )
     remap_parser.add_argument(
-        "--orca",
-        choices=["ORCA2", "eORCA1", "eORCA025"],
+        "--grid", "--orca",
         default="ORCA2",
         help="Target NEMO grid resolution (default: ORCA2)"
     )
@@ -639,8 +683,7 @@ def main():
         help="Inspect output files, check shapes, physical min/mean/max, and ensure no blank files"
     )
     verify_parser.add_argument(
-        "--orca",
-        choices=["ORCA2", "eORCA1", "eORCA025"],
+        "--grid", "--orca",
         default="eORCA025",
         help="Target NEMO grid resolution (default: eORCA025)"
     )

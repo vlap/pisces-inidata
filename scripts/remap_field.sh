@@ -161,8 +161,8 @@ remap_2d_forcing() {
             ;;
     esac
 
-    if [ "${GRID_NAME}" = "ORCA2" ]; then
-        echo "Direct copy for native ORCA2 ${VAR} forcing..."
+    if [ "${GRID_NATIVE_FORCINGS:-0}" = "1" ]; then
+        echo "Direct copy for native ${GRID_NAME} ${VAR} forcing..."
         cp "${STD_FILE}" "${out_file}"
     else
         local weights_file="${WEIGHTS_DIR}/weights_${VAR}_to_${GRID_NAME}.nc"
@@ -184,7 +184,7 @@ remap_2d_forcing() {
 # ------------------------------------------------------------------------------
 remap_bathy() {
     local out_file="${OUTPUT_DIR}/bathy.orca.nc"
-    if [ "${GRID_NAME}" = "ORCA2" ]; then
+    if [ "${GRID_NATIVE_FORCINGS:-0}" = "1" ]; then
         cp "${STD_FILE}" "${out_file}"
     else
         echo "Remapping bathy shelf fraction to ${GRID_NAME} using nearest-neighbor..."
@@ -200,7 +200,7 @@ remap_bathy() {
 # ------------------------------------------------------------------------------
 remap_hydrofe() {
     local out_file="${OUTPUT_DIR}/hydrofe.orca.nc"
-    if [ "${GRID_NAME}" = "ORCA2" ]; then
+    if [ "${GRID_NATIVE_FORCINGS:-0}" = "1" ]; then
         cp "${STD_FILE}" "${out_file}"
     else
         echo "Remapping hydrothermal vent Fe to ${GRID_NAME}..."
@@ -216,7 +216,7 @@ remap_hydrofe() {
 # ------------------------------------------------------------------------------
 remap_river() {
     local out_file="${OUTPUT_DIR}/river.orca.nc"
-    if [ "${GRID_NAME}" = "ORCA2" ]; then
+    if [ "${GRID_NATIVE_FORCINGS:-0}" = "1" ]; then
         cp "${STD_FILE}" "${out_file}"
     else
         echo "Remapping river nutrient discharge to ${GRID_NAME}..."

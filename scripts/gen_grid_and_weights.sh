@@ -42,9 +42,9 @@ if [ -f "${DOMAIN_CFG}" ] && [ -f "${MASKUTIL}" ]; then
         -a standard_name,lat,c,c,"latitude" \
         "${TMP_DIR}/grid_coords.nc"
     mv "${TMP_DIR}/grid_coords.nc" "${TARGET_GRID_NC}"
-elif [ "${GRID_NAME}" = "ORCA2" ] && [ -f "${RAW_DIR}/official_v5.0.0/bathy.orca.nc" ]; then
-    echo "Domain config not found; constructing ORCA2 target grid from official SETTE bathy.orca.nc..."
-    ncks -O -4 -v nav_lon,nav_lat,bathy "${RAW_DIR}/official_v5.0.0/bathy.orca.nc" "${TMP_DIR}/grid_coords.nc"
+elif [ -n "${GRID_FALLBACK_COORDS:-}" ] && [ -f "${RAW_DIR}/${GRID_FALLBACK_COORDS}" ]; then
+    echo "Domain config not found; constructing ${GRID_NAME} target grid from fallback ${RAW_DIR}/${GRID_FALLBACK_COORDS}..."
+    ncks -O -4 -v nav_lon,nav_lat,bathy "${RAW_DIR}/${GRID_FALLBACK_COORDS}" "${TMP_DIR}/grid_coords.nc"
     ncrename -v nav_lon,lon -v nav_lat,lat -v bathy,tmaskutil "${TMP_DIR}/grid_coords.nc"
     ncwa -O -a time_counter "${TMP_DIR}/grid_coords.nc" "${TMP_DIR}/grid_coords.nc" 2>/dev/null || true
     ncwa -O -a deptht "${TMP_DIR}/grid_coords.nc" "${TMP_DIR}/grid_coords.nc" 2>/dev/null || true

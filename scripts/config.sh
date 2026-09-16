@@ -66,6 +66,9 @@ REPO_DIR="$(cd "${SCRIPT_DIR_CONFIG}/.." && pwd)"
 export PATH="${REPO_DIR}/bin:${HOME}/.local/nco-env/bin:${HOME}/.local/bin:${PATH}"
 export PYTHONPATH="${REPO_DIR}/python:${PYTHONPATH:-}"
 
+# Load declarative target grid profile (grids.yaml)
+eval "$(python3 -m pisces_inidata.cli grid-config --grid "${GRID_NAME}" --export)"
+
 # Load per-variable source configuration (sources.yaml or custom PISCES_CONFIG)
 CONFIG_FILE="${PISCES_CONFIG:-${CONFIG_FILE:-}}"
 if [ -z "${CONFIG_FILE}" ]; then
@@ -119,14 +122,9 @@ mkdir -p "${TMP_BASE}" "${WORKSPACE}" "${OUTPUT_DIR}" "${WEIGHTS_DIR}" "${LOG_DI
 # ------------------------------------------------------------------------------
 SLURM_ACCOUNT="${SLURM_ACCOUNT:-bsc32}"
 SLURM_PARTITION="${SLURM_PARTITION:-bsc_es}"
-if [ "${GRID_NAME}" = "eORCA025" ]; then
-    SLURM_TIME="${SLURM_TIME:-02:00:00}"
-    SLURM_MEM="${SLURM_MEM:-64G}"
-else
-    SLURM_TIME="${SLURM_TIME:-01:00:00}"
-    SLURM_MEM="${SLURM_MEM:-16G}"
-fi
-SLURM_CPUS_PER_TASK="${SLURM_CPUS_PER_TASK:-16}"
+SLURM_TIME="${SLURM_TIME:-${GRID_SLURM_TIME:-01:00:00}}"
+SLURM_MEM="${SLURM_MEM:-${GRID_SLURM_MEM:-16G}}"
+SLURM_CPUS_PER_TASK="${SLURM_CPUS_PER_TASK:-${GRID_SLURM_CPUS:-16}}"
 
 MODULE_LOAD_CMD="set +u; module load CDO/2.3.0-gompi-2020b NCO/5.1.0-foss-2020b netcdf4-python/1.5.7-foss-2020b-Python-3.8.6 2>/dev/null || module load CDO/2.3.0-gompi-2020b NCO/5.1.0-foss-2020b netcdf4-python/1.6.1-foss-2020b-Python-3.8.6 2>/dev/null || module load CDO NCO 2>/dev/null || true; set -u"
 
@@ -179,6 +177,7 @@ export SCRATCH_ROOT WORKSPACE PISCES_WORKSPACE GRID_DIR WORK_DIR RAW_DIR STANDAR
 export SLURM_ACCOUNT SLURM_PARTITION SLURM_TIME SLURM_CPUS_PER_TASK
 export MODULE_LOAD_CMD CDO_THREADS CDO_OPTS CDO_COMPRESS
 export TRACERS_3D RIVER_VARS DUST_VARS NDEP_VARS INIDATA_PRESET CONFIG_FILE PISCES_CONFIG
+export GRID_BATCH_WEIGHTS GRID_NATIVE_FORCINGS GRID_FALLBACK_COORDS GRID_VERTICAL_LEVELS
 export WOA23_DIR GLODAP_VERSION GLODAP_V2_2023_DIR GLODAP_V2_DIR GLODAP_V1_DIR PANAIOTIS_DOC_DIR
 
 # ------------------------------------------------------------------------------

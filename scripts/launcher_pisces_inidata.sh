@@ -49,6 +49,9 @@ export PRESET="__PRESET__"
 export INIDATA_PRESET="__PRESET__"
 export PISCES_WORKSPACE="__WORKSPACE__"
 export PISCES_CONFIG="__PISCES_CONFIG__"
+export GRID_BATCH_WEIGHTS="__GRID_BATCH_WEIGHTS__"
+export GRID_NATIVE_FORCINGS="__GRID_NATIVE_FORCINGS__"
+export GRID_FALLBACK_COORDS="__GRID_FALLBACK_COORDS__"
 export OUTPUT_DIR="__OUTPUT_DIR__"
 export SLURM_CPUS_PER_TASK="__CPUS__"
 eval "__MODULE_LOAD__"
@@ -78,6 +81,9 @@ submit_job() {
     script_content="${script_content//__PRESET__/${PRESET}}"
     script_content="${script_content//__WORKSPACE__/${WORKSPACE}}"
     script_content="${script_content//__PISCES_CONFIG__/${p_cfg}}"
+    script_content="${script_content//__GRID_BATCH_WEIGHTS__/${GRID_BATCH_WEIGHTS:-0}}"
+    script_content="${script_content//__GRID_NATIVE_FORCINGS__/${GRID_NATIVE_FORCINGS:-0}}"
+    script_content="${script_content//__GRID_FALLBACK_COORDS__/${GRID_FALLBACK_COORDS:-}}"
     script_content="${script_content//__OUTPUT_DIR__/${OUTPUT_DIR}}"
     script_content="${script_content//__MODULE_LOAD__/${MODULE_LOAD_CMD}}"
     script_content="${script_content//__COMMAND__/${command}}"
@@ -101,12 +107,11 @@ submit_job() {
         else
             echo "sbatch command not found (running locally or on non-Slurm node): ${script_path}"
             bash "${script_path}"
+            job_id="LOCAL_${jobname}"
         fi
     else
-        echo "[DRY-RUN] Created: ${script_path}"
-        if [ -n "${dependency}" ]; then
-            echo "[DRY-RUN] Would submit with dependency: afterok:${dependency}"
-        fi
+        echo "[DRY-RUN] Would submit sbatch job: ${script_path}"
+        job_id="DRY_RUN_${jobname}"
     fi
     echo "${job_id}"
 }
@@ -120,8 +125,8 @@ if [ "${STAGE}" = "all" ] || [ "${STAGE}" = "stage2" ] || [ "${STAGE}" = "remap"
     TARGET_WEIGHTS="${WEIGHTS_DIR}/weights_r360x180_to_${GRID_NAME}_bilin.nc"
     if [ -f "${TARGET_WEIGHTS}" ] && [ -s "${TARGET_WEIGHTS}" ]; then
         echo "Target weights already exist at ${TARGET_WEIGHTS}. Skipping generation."
-    elif [ "${GRID_NAME}" = "eORCA025" ] && command -v sbatch >/dev/null 2>&1 && [ "${SUBMIT}" = "submit" ]; then
-        echo "eORCA025 target detected: Submitting weights generation as batch job (--mem=64G)..."
+    elif [ "${GRID_BATCH_WEIGHTS:-0}" = "1" ] && command -v sbatch >/dev/null 2>&1 && [ "${SUBMIT}" = "submit" ]; then
+        echo "${GRID_NAME} batch weights profile: Submitting weights generation as batch job (--mem=${SLURM_MEM})..."
         WEIGHTS_JOB_ID=$(submit_job "gen_weights" "bash ${SCRIPT_DIR}/gen_grid_and_weights.sh")
         echo "Weights generation submitted with Job ID: ${WEIGHTS_JOB_ID}"
     else
@@ -129,7 +134,7 @@ if [ "${STAGE}" = "all" ] || [ "${STAGE}" = "stage2" ] || [ "${STAGE}" = "remap"
             bash "${SCRIPT_DIR}/gen_grid_and_weights.sh"
         else
             echo "[DRY-RUN] Would run: bash ${SCRIPT_DIR}/gen_grid_and_weights.sh"
-            if [ "${GRID_NAME}" = "eORCA025" ]; then
+            if [ "${GRID_BATCH_WEIGHTS:-0}" = "1" ]; then
                 WEIGHTS_JOB_ID="DRY_RUN_WEIGHTS_JOB_ID"
             fi
         fi
