@@ -76,6 +76,14 @@ def test_cli_run_dry_run_stage1(monkeypatch):
     assert exc.value.code == 0
 
 
+def test_cli_produce_dry_run(monkeypatch):
+    import sys
+    monkeypatch.setattr(sys, 'argv', ['pisces-inidata', 'produce', '--grid', 'eORCA1', '--dry-run'])
+    with pytest.raises(SystemExit) as exc:
+        main()
+    assert exc.value.code == 0
+
+
 def test_workspace_structure_config():
     repo_root = get_repo_root()
     cmd = [

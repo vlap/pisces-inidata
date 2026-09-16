@@ -79,10 +79,10 @@ pisces-inidata/
 pip install -e .
 
 # 2. Download and prepare standardized 1°x1° sources (~2 min)
-pisces-inidata download --prepare
+pisces-inidata download --preset ece4 --prepare
 
-# 3. Submit parallel remapping on Slurm cluster (or run locally: pisces-inidata run --grid eORCA1)
-GRID_NAME=eORCA1 ./scripts/launcher_pisces_inidata.sh submit stage2
+# 3. Produce inidata for eORCA1 (parallel Slurm batch jobs or local)
+pisces-inidata produce --grid eORCA1
 
 # 4. Verify outputs
 pisces-inidata verify --grid eORCA1
@@ -196,10 +196,10 @@ On high-performance computing clusters where compute nodes lack direct internet 
    cd /gpfs/scratch/bsc32/${USER}/pisces-inidata
 
    # Submit batch remapping for eORCA1:
-   GRID_NAME=eORCA1 ./scripts/launcher_pisces_inidata.sh submit stage2
+   pisces-inidata produce --grid eORCA1
 
-   # Submit batch remapping for eORCA025 (auto-allocates 64G memory and chains weights dependency):
-   GRID_NAME=eORCA025 ./scripts/launcher_pisces_inidata.sh submit stage2
+   # Submit batch remapping for eORCA025:
+   pisces-inidata produce --grid eORCA025
 
    # Inspect and verify all 15 output products:
    pisces-inidata verify --grid eORCA025

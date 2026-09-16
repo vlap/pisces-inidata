@@ -102,7 +102,7 @@ def cmd_remap(args):
     sys.exit(res.returncode)
 
 
-def cmd_run(args):
+def cmd_produce(args):
     repo_root = get_repo_root()
     script = os.path.join(repo_root, 'scripts', 'launcher_pisces_inidata.sh')
     if not os.path.exists(script):
@@ -111,12 +111,10 @@ def cmd_run(args):
         print(f"Error: launcher script not found at {script}")
         sys.exit(1)
 
-    print(f"Launching PISCES inidata pipeline: {script}")
+    grid_name = getattr(args, 'grid', None) or getattr(args, 'orca', None) or "eORCA1"
     env = os.environ.copy()
-    grid_name = getattr(args, 'grid', None) or getattr(args, 'orca', None)
-    if grid_name:
-        env["GRID_NAME"] = grid_name
-    if args.domain_dir:
+    env["GRID_NAME"] = grid_name
+    if getattr(args, 'domain_dir', None):
         env["DOMAIN_BASE_DIR"] = os.path.abspath(args.domain_dir)
     if getattr(args, 'config', None):
         env["PISCES_CONFIG"] = os.path.abspath(args.config)
@@ -125,9 +123,15 @@ def cmd_run(args):
         env["INIDATA_PRESET"] = args.preset
 
     submit_mode = "dry-run" if getattr(args, 'dry_run', False) else "submit"
-    stage = getattr(args, 'stage', 'all')
+    stage = getattr(args, 'stage', 'stage2')
+    preset = env.get("PRESET", "ece4")
+    print(f"Producing PISCES inidata for {grid_name} (preset: {preset}, stage: {stage})...")
     res = subprocess.run(["bash", script, submit_mode, stage], cwd=repo_root, env=env)
     sys.exit(res.returncode)
+
+
+def cmd_run(args):
+    cmd_produce(args)
 
 
 def get_default_workspace() -> str:
@@ -450,6 +454,42 @@ def main():
         help="Configuration preset (default: ece4; e.g. ece4, ece3, official_sette, or custom)"
     )
     check_parser.set_defaults(func=cmd_check)
+
+    # Command: produce
+    produce_parser = subparsers.add_parser(
+        "produce",
+        help="Produce PISCES initial conditions for target grid (defaults: eORCA1, stage2 parallel remapping)"
+    )
+    produce_parser.add_argument(
+        "--grid", "--orca",
+        default="eORCA1",
+        help="Target NEMO grid resolution (default: eORCA1)"
+    )
+    produce_parser.add_argument(
+        "--preset",
+        default="ece4",
+        help="Configuration preset (default: ece4; e.g. ece4, ece3, official_sette)"
+    )
+    produce_parser.add_argument(
+        "--stage",
+        choices=["stage2", "all", "stage1"],
+        default="stage2",
+        help="Pipeline execution stage (default: stage2 [parallel remapping])"
+    )
+    produce_parser.add_argument(
+        "--domain-dir",
+        help="Path to directory containing target NEMO domain files (${GRID_NAME}/domain_cfg.nc)"
+    )
+    produce_parser.add_argument(
+        "--config",
+        help="Path to custom sources.yaml"
+    )
+    produce_parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Inspect sbatch job scripts without submitting"
+    )
+    produce_parser.set_defaults(func=cmd_produce)
 
     # Command: run
     run_parser = subparsers.add_parser("run", help="Run end-to-end PISCES initial conditions generation")

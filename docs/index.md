@@ -29,13 +29,13 @@ For users with access to BSC machines (or any HPC cluster), producing inidata ta
 
 1. **On `hub04` (interactive node with internet access):**
    ```bash
-   pisces-inidata download --prepare
+   pisces-inidata download --preset ece4 --prepare
    ```
 2. **On `nord4` (batch Slurm cluster):**
    ```bash
-   GRID_NAME=eORCA1 ./scripts/launcher_pisces_inidata.sh submit stage2
+   pisces-inidata produce --grid eORCA1
    # Or for high-res eORCA025:
-   GRID_NAME=eORCA025 ./scripts/launcher_pisces_inidata.sh submit stage2
+   pisces-inidata produce --grid eORCA025
    ```
 
 All 15 target NetCDF files will be ready in `${PISCES_WORKSPACE}/grids/${GRID_NAME}/inidata/`.

@@ -8,8 +8,8 @@ git clone https://github.com/vlap/pisces-inidata.git && cd pisces-inidata
 pip install -e .
 pisces-inidata download --preset ece4 --prepare
 
-# 2. Remap to eORCA1 in parallel via Slurm (batch cluster):
-GRID_NAME=eORCA1 ./scripts/launcher_pisces_inidata.sh submit stage2
+# 2. Produce inidata for eORCA1 in parallel via Slurm (batch cluster):
+pisces-inidata produce --grid eORCA1
 
 # 3. Verify all 15 NetCDF output files:
 pisces-inidata verify --grid eORCA1
@@ -106,7 +106,7 @@ pisces-inidata grid-config
 To select a preset:
 ```bash
 pisces-inidata download --preset ece3 --prepare
-GRID_NAME=eORCA1 PRESET=ece3 ./scripts/launcher_pisces_inidata.sh submit stage2
+pisces-inidata produce --grid eORCA1 --preset ece3
 ```
 
 ---
