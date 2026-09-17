@@ -1,0 +1,82 @@
+# ==============================================================================
+# PISCES Initial Conditions Source Configuration (sources.yaml)
+#
+# Configures the input observational datasets for 3D tracers and boundary forcings.
+# Packs:
+#   - ece4           : Modern observational datasets for EC-Earth4 (Default)
+#                      (WOA23, GLODAPv2.2016b, Panaïotis et al. 2024 DOC, Tagliabue Fe)
+#   - ece3           : Observational sources originally used in EC-Earth3
+#                      (WOA2009, GLODAPv1.1, Hansell 2009 DOC, Tagliabue Fe)
+#   - official_sette : Official regular unmasked NEMO/PISCES reference (all sette)
+#   - <custom>       : Any custom pack name (e.g. my_experiment).
+#                      Unspecified tracers inherit from base_pack (default: ece4).
+#                      Standardized files are cleanly isolated in shared/standardized/<pack>/
+#
+# Pack files can also be loaded directly from the packs/ directory (e.g. packs/sources_<pack>.yaml).
+# Any explicit variable below overrides the pack default.
+# ==============================================================================
+
+pack: ece4
+# base_pack: ece4  # Optional: base pack to inherit defaults from when defining a custom pack name
+
+tracers_3d:
+  # Nitrate (NO3):
+  # Options: woa23 (default) | woa2009 | sette_nomask
+  NO3: woa23
+
+  # Phosphate (PO4):
+  # Options: woa23 (default) | woa2009 | sette_nomask
+  PO4: woa23
+
+  # Silicate (Si):
+  # Options: woa23 (default) | woa2009 | sette_nomask
+  Si: woa23
+
+  # Dissolved Oxygen (O2):
+  # Options: woa23 (default) | woa2009 | sette_nomask
+  O2: woa23
+
+  # Total Alkalinity (TALK):
+  # Options: glodap_v2_2016b (default) | glodap_v2_2023 | glodap_v1 | sette_nomask
+  TALK: glodap_v2_2016b
+
+  # Total Dissolved Inorganic Carbon (TDIC):
+  # Options: glodap_v2_2016b (default) | glodap_v2_2023 | glodap_v1 | sette_nomask
+  TDIC: glodap_v2_2016b
+
+  # Pre-Industrial Dissolved Inorganic Carbon (PiDIC):
+  # Options: glodap_v2_2016b (default) | glodap_v2_2023 | glodap_v1 | sette_nomask
+  PiDIC: glodap_v2_2016b
+
+  # Dissolved Organic Carbon (DOC):
+  # Options: panaiotis2024 (Panaïotis et al. 2024 ML climatology, default) | sette_nomask (Hansell 2009)
+  DOC: panaiotis2024
+
+  # Dissolved Iron (Fer):
+  # Options: sette_nomask (Tagliabue et al. 2012 unmasked, default)
+  Fer: sette_nomask
+
+boundary_forcings:
+  # Atmospheric Dust Deposition (INCA/Mahowald):
+  dust: sette_orca2
+
+  # Atmospheric Nitrogen Deposition (Duce et al. 2008):
+  ndep: sette_orca2
+
+  # Photosynthetically Available Radiation Fraction (GEWEX climatology):
+  par: sette_orca2
+
+  # Bathymetric Shelf Slope Fraction (ETOPO/pmarge):
+  bathy: sette_orca2
+
+  # Hydrothermal Iron Injection (Resing et al. / Tagliabue):
+  hydrofe: sette_orca2
+
+  # River Nutrient Fluxes (Global NEWS 2):
+  rivers: sette_orca2
+
+# Sub-variables contained within multi-variable forcing datasets
+sub_variables:
+  river: ["riverdin", "riverdip", "riverdon", "riverdop", "riverdoc", "riverdsi", "riverdic"]
+  dust: ["dust", "dustfer", "dustpo4", "dustsi", "solubility2"]
+  ndep: ["ndep", "ndep2"]

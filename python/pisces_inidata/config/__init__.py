@@ -117,6 +117,11 @@ DEFAULT_DUST_VARS = ["dust", "dustfer", "dustpo4", "dustsi", "solubility2"]
 DEFAULT_NDEP_VARS = ["ndep", "ndep2"]
 
 
+def get_config_dir() -> str:
+    """Returns absolute path to bundled config directory."""
+    return os.path.dirname(os.path.abspath(__file__))
+
+
 def resolve_pack_name(pack: Optional[str]) -> str:
     """Normalizes inidata pack name; defaults to ece4."""
     if not pack:
@@ -135,7 +140,8 @@ def load_config(
     """
     Loads product configuration from inidata pack and sources.yaml or environment variables.
     """
-    repo_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    pkg_config_dir = get_config_dir()
+    repo_root = os.path.dirname(os.path.dirname(pkg_config_dir))
     explicit_pack = (
         pack
         or preset
@@ -156,34 +162,39 @@ def load_config(
     # If pack is explicitly requested and default sources.yaml is used,
     # load packs/sources_<pack>.yaml or packs/<pack>.yaml if available
     if norm_explicit and os.path.basename(config_path) == "sources.yaml":
-        for cand_dir in ["packs", "presets"]:
-            for pattern in [f"sources_{norm_explicit}.yaml", f"{norm_explicit}.yaml"]:
-                p_file = os.path.join(repo_root, cand_dir, pattern)
-                if os.path.exists(p_file):
-                    config_path = p_file
+        found_pack_cfg = False
+        for base_dir in [pkg_config_dir, repo_root, os.getcwd()]:
+            for cand_dir in ["packs", "presets"]:
+                for pattern in [f"sources_{norm_explicit}.yaml", f"{norm_explicit}.yaml"]:
+                    p_file = os.path.join(base_dir, cand_dir, pattern)
+                    if os.path.exists(p_file):
+                        config_path = p_file
+                        found_pack_cfg = True
+                        break
+                if found_pack_cfg:
                     break
+            if found_pack_cfg:
+                break
 
     resolved_path = None
     candidates = [
         config_path,
+        os.path.join(os.getcwd(), config_path),
         os.path.join(repo_root, config_path),
-        (
-            os.path.join(repo_root, "packs", f"sources_{config_path}.yaml")
-            if not config_path.endswith((".yaml", ".yml"))
-            else None
-        ),
-        (
-            os.path.join(repo_root, "packs", f"{config_path}.yaml")
-            if not config_path.endswith((".yaml", ".yml"))
-            else None
-        ),
-        (
-            os.path.join(repo_root, "presets", f"sources_{config_path}.yaml")
-            if not config_path.endswith((".yaml", ".yml"))
-            else None
-        ),
-        os.path.join(repo_root, "sources.yaml"),
+        os.path.join(pkg_config_dir, config_path),
     ]
+    if not config_path.endswith((".yaml", ".yml")):
+        candidates.extend([
+            os.path.join(pkg_config_dir, "packs", f"sources_{config_path}.yaml"),
+            os.path.join(pkg_config_dir, "packs", f"{config_path}.yaml"),
+            os.path.join(repo_root, "packs", f"sources_{config_path}.yaml"),
+            os.path.join(repo_root, "packs", f"{config_path}.yaml"),
+        ])
+    candidates.extend([
+        os.path.join(os.getcwd(), "sources.yaml"),
+        os.path.join(repo_root, "sources.yaml"),
+        os.path.join(pkg_config_dir, "sources.yaml"),
+    ])
     for c in candidates:
         if c and os.path.exists(c) and not os.path.isdir(c):
             resolved_path = c

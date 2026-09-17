@@ -19,7 +19,11 @@ def get_repo_root() -> str:
     """Finds repository root path by traversing parent directories."""
     cur = os.path.dirname(os.path.abspath(__file__))
     while cur and cur != os.path.dirname(cur):
-        if os.path.exists(os.path.join(cur, 'catalog.yaml')) or os.path.exists(os.path.join(cur, 'pyproject.toml')):
+        if (
+            os.path.exists(os.path.join(cur, 'pyproject.toml'))
+            or os.path.exists(os.path.join(cur, '.git'))
+            or os.path.exists(os.path.join(cur, 'sources.yaml'))
+        ):
             return cur
         cur = os.path.dirname(cur)
     return os.getcwd()

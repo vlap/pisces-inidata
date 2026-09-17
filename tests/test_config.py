@@ -167,3 +167,36 @@ def test_variable_lists_export():
     assert 'export RIVER_VARS_LIST=' in exported
     assert 'export DUST_VARS_LIST=' in exported
     assert 'export NDEP_VARS_LIST=' in exported
+
+
+def test_bundled_package_config_resolution(monkeypatch, tmp_path):
+    """Verify configs and packs can be loaded outside repo root using bundled package data."""
+    from pisces_inidata.catalog import load_catalog
+    from pisces_inidata.grids import load_all_grids
+    from pisces_inidata.platforms import load_all_platforms
+
+    # Switch working directory to an isolated empty directory
+    monkeypatch.chdir(tmp_path)
+
+    # 1. Catalog loads from bundled data
+    cat = load_catalog(force_reload=True)
+    assert "sources" in cat
+    assert "woa23" in cat["sources"]
+
+    # 2. Grids load from bundled data
+    grids = load_all_grids()
+    assert "eORCA1" in grids
+    assert grids["eORCA1"]["vertical_levels"] == 75
+
+    # 3. Platforms load from bundled data
+    plats = load_all_platforms()
+    assert "nord4" in plats
+
+    # 4. Inidata packs load from bundled data without any local sources.yaml
+    cfg = load_config(pack="ece4")
+    assert cfg["INIDATA_PACK"] == "ece4"
+    assert cfg["PRODUCT_NO3"] == "woa23"
+
+    cfg_sette = load_config(pack="official_sette")
+    assert cfg_sette["PRODUCT_NO3"] == "sette_nomask"
+    assert validate_config(cfg_sette) is True

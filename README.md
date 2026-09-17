@@ -35,10 +35,6 @@ pisces-inidata/
 │   ├── products.md              # Supported observational products catalog
 │   ├── configuration.md         # Per-variable configuration (sources.yaml) reference
 │   └── validation.md            # Statistical scoreboards and validation suites
-├── packs/                       # Curated source configuration packs
-│   ├── sources_ece4.yaml        # Modern observational climatologies for EC-Earth4 [Default]
-│   ├── sources_ece3.yaml        # Baseline observational sources originally used in EC-Earth3
-│   └── sources_official_sette.yaml # Official regular unmasked NEMO/PISCES SETTE reference
 ├── python/                      # Python library and CLI package
 │   └── pisces_inidata/
 │       ├── __init__.py
@@ -51,7 +47,15 @@ pisces-inidata/
 │       ├── reference.py         # Ground-truth SETTE benchmark assembly on ORCA2
 │       ├── nco_util.py          # python-cdo and pynco interface with netCDF4 fallback
 │       ├── check.py             # Pre-flight system & data integrity verifier
-│       ├── config.py            # Configuration parser & validator (sources.yaml, packs)
+│       ├── config/              # Bundled package configurations & templates
+│       │   ├── catalog.yaml     # Metadata catalog & data conventions
+│       │   ├── grids.yaml       # Declarative target grid specifications & HPC profiles
+│       │   ├── platforms.yaml   # Declarative HPC platform profiles (Slurm accounts, scratch)
+│       │   ├── sources.yaml     # Default template source configuration
+│       │   └── packs/           # Curated source configuration packs
+│       │       ├── sources_ece4.yaml
+│       │       ├── sources_ece3.yaml
+│       │       └── sources_official_sette.yaml
 │       ├── download.py          # Selective raw dataset downloader & staging
 │       ├── glodap.py            # GLODAP vertical coordinate standardizer & padder
 │       ├── padding.py           # Abyssal depth padding algorithm (up to 6000m)
@@ -62,9 +66,7 @@ pisces-inidata/
 │       └── verify.py            # Non-blank output inspection & bounds checker
 ├── tests/                       # Unit tests (pytest)
 ├── legacy/                      # Preserved legacy Bash pipeline scripts
-├── grids.yaml                   # Declarative target grid specifications & HPC resource profiles
-├── platforms.yaml               # Declarative HPC platform profiles (Slurm accounts, partitions, scratch)
-├── sources.yaml                 # Active source dataset configuration (pack: ece4)
+├── sources.yaml                 # Active/local source dataset configuration override
 ├── pyproject.toml               # Modern PEP 517/621 package metadata
 ├── LICENSE                      # Apache-2.0 License
 ├── CITATION.cff                 # Citation metadata
@@ -83,7 +85,7 @@ pip install -e .
 pisces-inidata download --pack ece4 --prepare
 
 # 3. Produce inidata for eORCA1 (parallel Slurm batch jobs or local)
-pisces-inidata produce --grid eORCA1
+pisces-inidata produce --grid eORCA1 --pack ece4
 
 # 4. Verify outputs
 pisces-inidata verify --grid eORCA1
@@ -92,7 +94,7 @@ pisces-inidata verify --grid eORCA1
 All 15 target NetCDF files will be ready in:
 `${PISCES_WORKSPACE}/grids/${GRID_NAME}/inidata/`
 
-> **Note on HPC Clusters:** Ensure `cdo`, `nco`, and `python` are available (`module load CDO NCO python` or via conda). Cluster accounts, partitions, and scratch paths are abstracted in [`platforms.yaml`](platforms.yaml).
+> **Note on HPC Clusters:** Ensure `cdo`, `nco`, and `python` are available (`module load CDO NCO python` or via conda). Cluster accounts, partitions, and scratch paths are abstracted in `platforms.yaml` (bundled in `pisces_inidata/config/platforms.yaml`).
 
 ---
 

@@ -17,13 +17,21 @@ _CATALOG_CACHE: Optional[Dict[str, Any]] = None
 
 def find_catalog_yaml(custom_path: Optional[str] = None) -> Optional[str]:
     """Resolves path to catalog.yaml."""
-    repo_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     candidates = [
         custom_path,
         os.environ.get("PISCES_CATALOG"),
-        os.path.join(repo_root, "catalog.yaml"),
         os.path.join(os.getcwd(), "catalog.yaml"),
     ]
+    try:
+        from importlib.resources import files
+        bundled = str(files("pisces_inidata.config").joinpath("catalog.yaml"))
+        candidates.append(bundled)
+    except Exception:
+        pass
+
+    repo_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    candidates.append(os.path.join(repo_root, "catalog.yaml"))
+
     for c in candidates:
         if c and os.path.exists(c) and not os.path.isdir(c):
             return c

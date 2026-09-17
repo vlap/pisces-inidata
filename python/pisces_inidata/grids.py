@@ -24,13 +24,21 @@ GENERIC_DEFAULT_PROFILE: Dict[str, Any] = {
 
 def _find_grids_yaml(custom_path: Optional[str] = None) -> Optional[str]:
     """Resolves path to grids.yaml."""
-    repo_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     candidates = [
         custom_path,
         os.environ.get("PISCES_GRIDS_CONFIG"),
-        os.path.join(repo_root, "grids.yaml"),
         os.path.join(os.getcwd(), "grids.yaml"),
     ]
+    try:
+        from importlib.resources import files
+        bundled = str(files("pisces_inidata.config").joinpath("grids.yaml"))
+        candidates.append(bundled)
+    except Exception:
+        pass
+
+    repo_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    candidates.append(os.path.join(repo_root, "grids.yaml"))
+
     for c in candidates:
         if c and os.path.exists(c) and not os.path.isdir(c):
             return c

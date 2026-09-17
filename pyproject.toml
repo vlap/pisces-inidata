@@ -55,3 +55,6 @@ Issues = "https://github.com/vlap/pisces-inidata/issues"
 [tool.setuptools.packages.find]
 where = ["python"]
 include = ["pisces_inidata*"]
+
+[tool.setuptools.package-data]
+"pisces_inidata.config" = ["*.yaml", "packs/*.yaml"]

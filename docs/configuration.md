@@ -31,11 +31,9 @@ Packs can be configured in multiple ways:
    preventing cache collisions with standard baselines.
 
 2. **Via dedicated pack files:**
-   Place custom pack templates directly in `packs/sources_<name>.yaml`:
-   - `packs/sources_ece4.yaml`
-   - `packs/sources_ece3.yaml`
-   - `packs/sources_official_sette.yaml`
+   Standard packs (`ece4`, `ece3`, `official_sette`) are bundled inside the Python package (`pisces_inidata/config/packs/`). You can also place custom pack templates directly in `packs/sources_<name>.yaml` or `./sources_<name>.yaml` in your project or working directory:
    - `packs/sources_my_experiment.yaml`
+   - `sources_my_experiment.yaml`
 
    And invoke by name:
    ```bash
@@ -248,7 +246,7 @@ pisces-inidata info --pack ece3
 
 ## 4. Declarative Target Grid Configuration (`grids.yaml`)
 
-Rather than hardcoding allowed grids or embedding resolution-specific conditionals (`if grid == ...`) in Python and Shell scripts, `pisces-inidata` defines target grids declaratively in `grids.yaml`.
+Rather than hardcoding allowed grids or embedding resolution-specific conditionals (`if grid == ...`) in Python and Shell scripts, `pisces-inidata` defines target grids declaratively in `grids.yaml`. Default definitions are bundled inside `pisces_inidata/config/grids.yaml` and loaded automatically; local `./grids.yaml` or `PISCES_GRIDS_CONFIG` can be used for custom overrides.
 
 ### Structure of `grids.yaml`
 ```yaml
@@ -318,7 +316,7 @@ Adding a new grid requires zero changes to shell scripts or Python code. Simply 
 
 ## 5. Declarative HPC Platform Configuration (`platforms.yaml`)
 
-Cluster-specific settings (Slurm accounts, queues/partitions, environment module loading, scratch storage roots, and central model domain directories) are maintained declaratively in `platforms.yaml`. The Python pipeline (`launcher.py`, `produce`) and CLI read these settings dynamically to generate Slurm Job Arrays or configure local execution, isolating platform quirks from core remapping logic.
+Cluster-specific settings (Slurm accounts, queues/partitions, environment module loading, scratch storage roots, and central model domain directories) are maintained declaratively in `platforms.yaml`. Default definitions are bundled inside `pisces_inidata/config/platforms.yaml` and loaded automatically; local `./platforms.yaml` or `PISCES_PLATFORMS_CONFIG` can be used for custom overrides. The Python pipeline (`launcher.py`, `produce`) and CLI read these settings dynamically to generate Slurm Job Arrays or configure local execution, isolating platform quirks from core remapping logic.
 
 ### Structure of `platforms.yaml`
 ```yaml
@@ -366,7 +364,7 @@ All platform defaults can be overridden at runtime via standard environment vari
 
 ## 6. Declarative Metadata Catalog & Conventions (`catalog.yaml`)
 
-Rather than hardcoding raw input package paths (e.g. `official_v5.0.0`), filenames (`data_DOC_nomask.nc`), or internal NetCDF variable names (`epsdb`, `fr_par`, `Alkalini`, `DIC`) across codebase modules, `pisces-inidata` decouples data provider conventions and target model expectations in `catalog.yaml`.
+Rather than hardcoding raw input package paths (e.g. `official_v5.0.0`), filenames (`data_DOC_nomask.nc`), or internal NetCDF variable names (`epsdb`, `fr_par`, `Alkalini`, `DIC`) across codebase modules, `pisces-inidata` decouples data provider conventions and target model expectations in `catalog.yaml`. The default catalog is bundled inside `pisces_inidata/config/catalog.yaml` and loaded automatically; local `./catalog.yaml` or `PISCES_CATALOG` can be used for custom overrides.
 
 ### Decoupled Schema Architecture
 - **`packages`**: External data packages, default subdirectories, archive names, and URLs. Supports environment variable override `OFFICIAL_INPUTS_DIR`.
