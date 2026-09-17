@@ -11,8 +11,17 @@ from typing import Dict, Optional
 
 
 def get_repo_root() -> str:
-    """Returns absolute path to repository root."""
-    return os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+    """Returns absolute path to repository root by traversing parent directories."""
+    cur = os.path.dirname(os.path.abspath(__file__))
+    while cur and cur != os.path.dirname(cur):
+        if (
+            os.path.exists(os.path.join(cur, "pyproject.toml"))
+            or os.path.exists(os.path.join(cur, ".git"))
+            or (os.path.isdir(os.path.join(cur, "config")) and os.path.isdir(os.path.join(cur, "python")))
+        ):
+            return cur
+        cur = os.path.dirname(cur)
+    return os.getcwd()
 
 
 YAML_MAP = {

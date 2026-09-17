@@ -95,6 +95,7 @@ set -euo pipefail
 echo "Starting PISCES remap task $SLURM_ARRAY_TASK_ID on $(hostname) at $(date)"
 {module_block}
 export PATH="{repo_bin}:$PATH"
+export PYTHONPATH="{os.path.join(repo_root, 'python')}:${{PYTHONPATH:-}}"
 
 FIELDS=({fields_str})
 VAR="${{FIELDS[$SLURM_ARRAY_TASK_ID]}}"
