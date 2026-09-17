@@ -16,7 +16,7 @@ GRID_NAME="${GRID_NAME:-eORCA1}"
 # ------------------------------------------------------------------------------
 # 1. Platform Configuration (platforms.yaml)
 # ------------------------------------------------------------------------------
-eval "$(python3 -m pisces_inidata.cli platform-config ${PLATFORM:+--platform "${PLATFORM}"} --export 2>/dev/null || true)"
+eval "$(python3 -m pisces_inidata.cli info ${PLATFORM:+--platform "${PLATFORM}"} --export 2>/dev/null || true)"
 
 SLURM_ACCOUNT="${SLURM_ACCOUNT:-}"
 SLURM_PARTITION="${SLURM_PARTITION:-}"
@@ -25,7 +25,7 @@ MODULE_LOAD_CMD="${MODULE_LOAD_CMD:-}"
 # ------------------------------------------------------------------------------
 # 2. Target Grid & Resource Profile (grids.yaml)
 # ------------------------------------------------------------------------------
-eval "$(python3 -m pisces_inidata.cli grid-config --grid "${GRID_NAME}" --export 2>/dev/null || true)"
+eval "$(python3 -m pisces_inidata.cli info --grid "${GRID_NAME}" --export 2>/dev/null || true)"
 
 SLURM_TIME="${SLURM_TIME:-${GRID_SLURM_TIME:-01:00:00}}"
 SLURM_MEM="${SLURM_MEM:-${GRID_SLURM_MEM:-16G}}"

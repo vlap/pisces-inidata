@@ -110,11 +110,9 @@ cd pisces-inidata
 pip install -e .
 ```
 
-Verify your installation and inspect target grids / platforms:
+Verify your installation, active configuration, target grids, and HPC platforms in one command:
 ```bash
 pisces-inidata info
-pisces-inidata grid-config
-pisces-inidata platform-config
 ```
 
 ### 2. Configure Sources & Packs (`sources.yaml`)

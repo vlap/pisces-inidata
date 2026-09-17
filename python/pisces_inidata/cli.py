@@ -324,24 +324,154 @@ def cmd_verify(args):
 
 def cmd_info(args):
     repo_root = get_repo_root()
-    cfg_file = getattr(args, 'config', None) or getattr(args, 'file', None) or os.path.join(repo_root, 'sources.yaml')
+    cfg_file = getattr(args, 'config', None) or getattr(args, 'file', None)
     pack = get_pack_from_args(args, default=None)
-    config = load_config(cfg_file, pack=pack)
+    grid_name = getattr(args, 'grid', None) or getattr(args, 'orca', None)
+    plat_name = getattr(args, 'platform', None)
+    do_export = getattr(args, 'export', False)
+    show_grids_only = getattr(args, 'grids', False)
+    show_plats_only = getattr(args, 'platforms', False)
+
+    from pisces_inidata.grids import load_grid_config, export_grid_env_commands, load_all_grids
+    from pisces_inidata.platforms import (
+        load_platform_config,
+        export_platform_env_commands,
+        load_all_platforms,
+        detect_current_platform,
+    )
+    from pisces_inidata.config import get_config_dir
+
+    # 1. Export mode:
+    if do_export:
+        if grid_name:
+            print(export_grid_env_commands(grid_name, cfg_file))
+            return
+        elif plat_name:
+            print(export_platform_env_commands(plat_name, cfg_file))
+            return
+        else:
+            resolved_cfg = cfg_file or os.path.join(repo_root, 'sources.yaml')
+            config = load_config(resolved_cfg, pack=pack)
+            print(export_env_commands(config))
+            return
+
+    # 2. Specific grid detailed inspection:
+    if grid_name:
+        cfg = load_grid_config(grid_name, cfg_file)
+        print(f"Target Grid Configuration ({grid_name}):")
+        for k, v in sorted(cfg.items()):
+            print(f"  {k}: {v}")
+        return
+
+    # 3. Specific platform detailed inspection:
+    if plat_name:
+        cfg = load_platform_config(plat_name, cfg_file)
+        print(f"Platform Configuration ({plat_name}):")
+        for k, v in sorted(cfg.items()):
+            print(f"  {k}: {v}")
+        return
+
+    # 4. Grids only list:
+    if show_grids_only:
+        all_grids = load_all_grids(cfg_file)
+        print("Configured NEMO Target Grids:")
+        for name, cfg in sorted(all_grids.items()):
+            res = cfg.get("resources", {})
+            print(f"  {name:10s}: {cfg.get('description', '')}")
+            print(
+                f"               Mem: {res.get('memory', '16G')}, Time: {res.get('time', '01:00:00')}, "
+                f"Batch weights: {res.get('batch_weights', False)}"
+            )
+        return
+
+    # 5. Platforms only list:
+    if show_plats_only:
+        all_plats = load_all_platforms(cfg_file)
+        detected = detect_current_platform(cfg_file)
+        print(f"Configured HPC Platforms (Active/Detected: {detected}):")
+        for name, cfg in sorted(all_plats.items()):
+            slurm = cfg.get("slurm", {})
+            tag = " [ACTIVE]" if name == detected else ""
+            print(f"  {name:10s}{tag}: {cfg.get('description', '')}")
+            if slurm.get("account"):
+                print(f"               Account: {slurm.get('account')}, Partition: {slurm.get('partition')}")
+            if cfg.get("scratch_root"):
+                print(f"               Scratch: {cfg.get('scratch_root')}")
+        return
+
+    # 6. Default: Unified Comprehensive Status
+    resolved_cfg = cfg_file or os.path.join(repo_root, 'sources.yaml')
+    config = load_config(resolved_cfg, pack=pack)
     valid = validate_config(config)
 
     print("=================================================================")
-    print(f"  pisces-inidata v{__version__} - System & Configuration Status")
+    print(f"  pisces-inidata v{__version__} - System, Configuration & Platform Status")
     print("=================================================================")
     print(f"Repository Root:     {repo_root}")
-    print(f"Sources File:        {cfg_file}")
+    try:
+        pkg_cfg_dir = get_config_dir()
+        print(f"Package Config Dir:  {pkg_cfg_dir}")
+    except Exception:
+        pass
+    print(f"Sources File:        {resolved_cfg}")
     active_pack = config.get('INIDATA_PACK', config.get('INIDATA_PRESET', 'ece4'))
     print(f"Active Pack:         {active_pack}")
     print(f"Configuration Valid: {'YES' if valid else 'WARNINGS DETECTED'}")
+
     print("\nConfigured Sources:")
     for k, v in sorted(config.items()):
         if k not in ('INIDATA_PACK', 'INIDATA_PRESET'):
             print(f"  {k:18s} = {v}")
+
+    try:
+        all_grids = load_all_grids(cfg_file)
+        print("\nConfigured NEMO Target Grids:")
+        for name, gcfg in sorted(all_grids.items()):
+            res = gcfg.get("resources", {})
+            print(f"  {name:10s}: {gcfg.get('description', '')}")
+            print(
+                f"               Mem: {res.get('memory', '16G')}, Time: {res.get('time', '01:00:00')}, "
+                f"Batch weights: {res.get('batch_weights', False)}"
+            )
+    except Exception as exc:
+        print(f"\nConfigured NEMO Target Grids: (Failed to load: {exc})")
+
+    try:
+        all_plats = load_all_platforms(cfg_file)
+        detected = detect_current_platform(cfg_file)
+        print(f"\nConfigured HPC Platforms (Active/Detected: {detected}):")
+        for name, pcfg in sorted(all_plats.items()):
+            slurm = pcfg.get("slurm", {})
+            tag = " [ACTIVE]" if name == detected else ""
+            print(f"  {name:10s}{tag}: {pcfg.get('description', '')}")
+            if slurm.get("account"):
+                print(f"               Account: {slurm.get('account')}, Partition: {slurm.get('partition')}")
+            if pcfg.get("scratch_root"):
+                print(f"               Scratch: {pcfg.get('scratch_root')}")
+    except Exception as exc:
+        print(f"\nConfigured HPC Platforms: (Failed to load: {exc})")
+
     print("=================================================================")
+
+
+def _dispatch_grid_config(args):
+    if not getattr(args, 'grid', None) and not getattr(args, 'orca', None) and not getattr(args, 'export', False):
+        setattr(args, 'grids', True)
+    return cmd_info(args)
+
+
+def _dispatch_platform_config(args):
+    if not getattr(args, 'platform', None) and not getattr(args, 'export', False):
+        setattr(args, 'platforms', True)
+    return cmd_info(args)
+
+
+def cmd_grid_config(args):
+    return _dispatch_grid_config(args)
+
+
+def cmd_platform_config(args):
+    return _dispatch_platform_config(args)
 
 
 def cmd_config(args):
@@ -357,63 +487,6 @@ def cmd_config(args):
             print(f"{k} = {v}")
         if not valid:
             sys.exit(1)
-
-
-def cmd_grid_config(args):
-    from pisces_inidata.grids import load_grid_config, export_grid_env_commands, load_all_grids
-    grid_name = getattr(args, 'grid', None) or getattr(args, 'orca', None)
-    config_file = getattr(args, 'config', None) or getattr(args, 'file', None)
-    if not grid_name:
-        all_grids = load_all_grids(config_file)
-        print("Configured NEMO Target Grids:")
-        for name, cfg in sorted(all_grids.items()):
-            res = cfg.get("resources", {})
-            print(f"  {name:10s}: {cfg.get('description', '')}")
-            print(
-                f"               Mem: {res.get('memory', '16G')}, Time: {res.get('time', '01:00:00')}, "
-                f"Batch weights: {res.get('batch_weights', False)}"
-            )
-        return
-
-    if getattr(args, 'export', False):
-        print(export_grid_env_commands(grid_name, config_file))
-    else:
-        cfg = load_grid_config(grid_name, config_file)
-        print(f"Target Grid Configuration ({grid_name}):")
-        for k, v in sorted(cfg.items()):
-            print(f"  {k}: {v}")
-
-
-def cmd_platform_config(args):
-    from pisces_inidata.platforms import (
-        load_platform_config,
-        export_platform_env_commands,
-        load_all_platforms,
-        detect_current_platform,
-    )
-    plat_name = getattr(args, 'platform', None)
-    config_file = getattr(args, 'config', None) or getattr(args, 'file', None)
-    if not plat_name and not getattr(args, 'export', False):
-        all_plats = load_all_platforms(config_file)
-        detected = detect_current_platform(config_file)
-        print(f"Configured HPC Platforms (Active/Detected: {detected}):")
-        for name, cfg in sorted(all_plats.items()):
-            slurm = cfg.get("slurm", {})
-            tag = " [ACTIVE]" if name == detected else ""
-            print(f"  {name:10s}{tag}: {cfg.get('description', '')}")
-            if slurm.get("account"):
-                print(f"               Account: {slurm.get('account')}, Partition: {slurm.get('partition')}")
-            if cfg.get("scratch_root"):
-                print(f"               Scratch: {cfg.get('scratch_root')}")
-        return
-
-    if getattr(args, 'export', False):
-        print(export_platform_env_commands(plat_name, config_file))
-    else:
-        cfg = load_platform_config(plat_name, config_file)
-        print(f"Platform Configuration ({plat_name or detect_current_platform(config_file)}):")
-        for k, v in sorted(cfg.items()):
-            print(f"  {k}: {v}")
 
 
 def cmd_download(args):
@@ -556,7 +629,7 @@ def add_grid_argument(parser, default="ORCA2", help_text=None):
     )
 
 
-def main():
+def main(argv=None):
     parser = argparse.ArgumentParser(
         prog="pisces-inidata",
         description="Global Biogeochemical Initial Conditions Generator for PISCES and EC-Earth4"
@@ -667,10 +740,21 @@ def main():
     )
     rep_parser.set_defaults(func=cmd_test_reproduction)
 
-    # Command: info
+    # Command: info (Unified system, configuration, target grids, and HPC platforms inspection)
     info_parser = subparsers.add_parser(
         "info", parents=[make_config_parent()],
-        help="Display current configuration and environment status"
+        help="Inspect system status, active source pack, target grids, and HPC platforms"
+    )
+    add_grid_argument(
+        info_parser, default=None,
+        help_text="Inspect specific target grid identifier (e.g. ORCA2, eORCA1, eORCA025, eORCA12)"
+    )
+    info_parser.add_argument("--grids", action="store_true", help="List all configured NEMO target grids")
+    info_parser.add_argument("--platform", help="Inspect specific HPC platform profile (e.g. nord4, mn5, generic)")
+    info_parser.add_argument("--platforms", action="store_true", help="List all configured HPC platform profiles")
+    info_parser.add_argument(
+        "--export", action="store_true",
+        help="Print bash export statements for selected grid/platform/sources"
     )
     info_parser.set_defaults(func=cmd_info)
 
@@ -681,27 +765,6 @@ def main():
     )
     cfg_parser.add_argument("--export", action="store_true", help="Print bash export statements")
     cfg_parser.set_defaults(func=cmd_config)
-
-    # Command: grid-config
-    grid_cfg_parser = subparsers.add_parser(
-        "grid-config", help="Inspect or export declarative grid profile from grids.yaml"
-    )
-    add_grid_argument(
-        grid_cfg_parser, default=None,
-        help_text="Target grid identifier (e.g. ORCA2, eORCA1, eORCA025, eORCA12)"
-    )
-    grid_cfg_parser.add_argument("--file", "--config", dest="config", help="Path to custom grids.yaml")
-    grid_cfg_parser.add_argument("--export", action="store_true", help="Print bash export statements for grid")
-    grid_cfg_parser.set_defaults(func=cmd_grid_config)
-
-    # Command: platform-config
-    plat_cfg_parser = subparsers.add_parser(
-        "platform-config", help="Inspect HPC platform profile (Slurm, modules, scratch) or emit shell exports"
-    )
-    plat_cfg_parser.add_argument("--platform", help="Platform identifier (e.g. nord4, mn5, generic)")
-    plat_cfg_parser.add_argument("--file", "--config", dest="config", help="Path to custom platforms.yaml")
-    plat_cfg_parser.add_argument("--export", action="store_true", help="Print bash export statements for platform")
-    plat_cfg_parser.set_defaults(func=cmd_platform_config)
 
     # Command: download
     dl_parser = subparsers.add_parser(
@@ -884,7 +947,22 @@ def main():
     cat_pkg.add_argument("--raw-dir", help="Directory containing raw datasets")
     cat_parser.set_defaults(func=cmd_catalog)
 
-    args = parser.parse_args()
+    if argv is None:
+        argv = sys.argv[1:]
+    else:
+        argv = list(argv)
+
+    # Transparent backward compatibility: grid-config and platform-config redirect to info
+    if argv and argv[0] == "grid-config":
+        argv[0] = "info"
+        if not any(arg in argv for arg in ("--grid", "-g", "--orca", "--export")):
+            argv.append("--grids")
+    elif argv and argv[0] == "platform-config":
+        argv[0] = "info"
+        if not any(arg in argv for arg in ("--platform", "-p", "--export")):
+            argv.append("--platforms")
+
+    args = parser.parse_args(argv)
     if hasattr(args, "func"):
         args.func(args)
     else:

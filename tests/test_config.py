@@ -200,3 +200,52 @@ def test_bundled_package_config_resolution(monkeypatch, tmp_path):
     cfg_sette = load_config(pack="official_sette")
     assert cfg_sette["PRODUCT_NO3"] == "sette_nomask"
     assert validate_config(cfg_sette) is True
+
+
+def test_cli_info_unified(capsys):
+    """Verify pisces-inidata info unifies system, sources, grids, and platforms."""
+    from pisces_inidata.cli import main
+
+    main(["info"])
+    out, err = capsys.readouterr()
+    assert "System, Configuration & Platform Status" in out
+    assert "Configured Sources:" in out
+    assert "Configured NEMO Target Grids:" in out
+    assert "eORCA1" in out
+    assert "Configured HPC Platforms" in out
+    assert "generic" in out
+
+
+def test_cli_info_targeted_and_exports(capsys):
+    """Verify pisces-inidata info handles --grid, --platform, and --export flags."""
+    from pisces_inidata.cli import main
+
+    # 1. Grid export
+    main(["info", "--grid", "eORCA1", "--export"])
+    out, _ = capsys.readouterr()
+    assert 'export GRID_NAME="eORCA1"' in out
+    assert 'export GRID_VERTICAL_LEVELS="75"' in out
+
+    # 2. Platform export
+    main(["info", "--platform", "nord4", "--export"])
+    out, _ = capsys.readouterr()
+    assert 'export PLATFORM="nord4"' in out
+    assert 'export SLURM_PARTITION=' in out
+
+    # 3. Sources export
+    main(["info", "--export"])
+    out, _ = capsys.readouterr()
+    assert 'export PRODUCT_NO3=' in out
+
+
+def test_cli_legacy_aliases(capsys):
+    """Verify legacy grid-config and platform-config redirect to info transparently."""
+    from pisces_inidata.cli import main
+
+    main(["grid-config", "--grid", "ORCA2", "--export"])
+    out, _ = capsys.readouterr()
+    assert 'export GRID_NAME="ORCA2"' in out
+
+    main(["platform-config", "--platform", "nord4"])
+    out, _ = capsys.readouterr()
+    assert "Platform Configuration (nord4):" in out

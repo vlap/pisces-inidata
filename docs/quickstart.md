@@ -67,11 +67,11 @@ pisces-inidata verify --grid eORCA1
 Cluster accounts, partitions, scratch paths, and CDO threading are abstracted in `platforms.yaml`:
 
 ```bash
-# View active and available platforms:
-pisces-inidata platform-config
+# View active and available platforms (or use unified pisces-inidata info):
+pisces-inidata info --platforms
 
 # Export shell variables for a specific platform:
-pisces-inidata platform-config --platform nord4 --export
+pisces-inidata info --platform nord4 --export
 ```
 
 To configure a new cluster or custom account, edit `platforms.yaml` or set environment variables (`SLURM_ACCOUNT`, `SLURM_PARTITION`, `PISCES_WORKSPACE`).
@@ -83,7 +83,7 @@ To configure a new cluster or custom account, edit `platforms.yaml` or set envir
 Inspect target grid resource requirements and vertical levels:
 
 ```bash
-pisces-inidata grid-config
+pisces-inidata info --grids
 ```
 
 | Grid | Description | Levels | Memory | Slurm Time | Batch Weights |

@@ -166,30 +166,30 @@ pisces-inidata verify --grid eORCA025
 pisces-inidata verify --grid eORCA1 --out-dir /path/to/output_eORCA1
 ```
 
-### `pisces-inidata grid-config`
-Inspects declarative target grid profiles from `grids.yaml` or generates shell exports:
+### `pisces-inidata info`
+Unified inspection command for system status, active source configuration, declarative target grids, and HPC platforms:
 ```bash
-# List all configured grids:
-pisces-inidata grid-config
+# 1. Full unified status (System, Sources, Target Grids, Platforms):
+pisces-inidata info
 
-# Inspect a specific grid:
-pisces-inidata grid-config --grid eORCA025
+# 2. Inspect a specific target grid:
+pisces-inidata info --grid eORCA025
 
-# Export environment variables for shell evaluation:
-pisces-inidata grid-config --grid eORCA025 --export
-```
+# 3. Export target grid environment variables for shell evaluation:
+pisces-inidata info --grid eORCA025 --export
 
-### `pisces-inidata platform-config`
-Inspects declarative HPC platform profiles from `platforms.yaml` or generates shell exports:
-```bash
-# List all configured platforms and detect current system:
-pisces-inidata platform-config
+# 4. Inspect a specific HPC platform profile:
+pisces-inidata info --platform nord4
 
-# Inspect a specific platform profile:
-pisces-inidata platform-config --platform nord4
+# 5. Export platform environment variables for shell sourcing:
+eval "$(pisces-inidata info --platform nord4 --export)"
 
-# Export platform environment variables for shell sourcing:
-eval "$(pisces-inidata platform-config --platform nord4 --export)"
+# 6. Preview configuration for a different pack:
+pisces-inidata info --pack ece3
+
+# 7. List target grids or platforms exclusively:
+pisces-inidata info --grids
+pisces-inidata info --platforms
 ```
 
 
@@ -232,14 +232,6 @@ pisces-inidata download --pack ece3
 Standalone vertical depth padding utility:
 ```bash
 pisces-inidata pad input.nc output_padded.nc --bottom-depth 6000.0
-```
-
-### `pisces-inidata info`
-Displays current environment, active pack, resolved paths, and product configurations:
-```bash
-pisces-inidata info
-# Preview configuration for a different pack:
-pisces-inidata info --pack ece3
 ```
 
 ---
