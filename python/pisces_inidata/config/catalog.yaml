@@ -17,7 +17,7 @@ packages:
     description: "Official regular unmasked NEMO/PISCES reference inputs package"
     default_dir: "official_v5.0.0"
     env_override: "OFFICIAL_INPUTS_DIR"
-    url: "https://gws-access.jasmin.ac.uk/public/nemo/SETTE/ORCA2_INPUTS_PISCES_v5.0.0.tar.gz"
+    url: "https://gws-access.jasmin.ac.uk/public/nemo/sette_inputs/extras/ORCA2_INPUTS_PISCES_v5.0.0.tar.gz"
     archive: "ORCA2_INPUTS_PISCES_v5.0.0.tar.gz"
     key_file: "data_FER_nomask.nc"
 

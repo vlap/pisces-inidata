@@ -105,7 +105,24 @@ def download_official_nemo_inputs(raw_dir: str, dry_run: bool = False):
         print(f"  [EXISTS] Official inputs already present in {target_dir}")
         return
 
-    download_file(url, tar_path, dry_run=dry_run)
+    candidate_urls = [url]
+    if OFFICIAL_JASMIN_URL not in candidate_urls:
+        candidate_urls.append(OFFICIAL_JASMIN_URL)
+
+    downloaded = False
+    last_err = None
+    for cand_url in candidate_urls:
+        try:
+            download_file(cand_url, tar_path, dry_run=dry_run)
+            downloaded = True
+            break
+        except Exception as exc:
+            last_err = exc
+            print(f"  [WARN] Download from {cand_url} failed: {exc}")
+
+    if not downloaded and not dry_run:
+        raise RuntimeError(f"Failed to download official NEMO inputs archive: {last_err}") from last_err
+
     if not dry_run and os.path.exists(tar_path):
         extract_tar(tar_path, target_dir, strip_components=1, dry_run=dry_run)
 

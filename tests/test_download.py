@@ -141,3 +141,35 @@ def test_cli_download_prepare_flag(monkeypatch):
     with pytest.raises(SystemExit) as exc:
         main()
     assert exc.value.code == 0
+
+
+def test_download_official_nemo_inputs_fallback():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        attempted_urls = []
+
+        def mock_dl(url, target, dry_run=False):
+            attempted_urls.append(url)
+            if "bad" in url:
+                raise RuntimeError("404 Not Found")
+            with open(target, "w") as f:
+                f.write("tar-content")
+            return True
+
+        with patch("pisces_inidata.download.download_file", side_effect=mock_dl), \
+             patch("pisces_inidata.download.extract_tar") as mock_extract, \
+             patch("pisces_inidata.catalog.load_catalog") as mock_cat:
+            mock_cat.return_value = {
+                "packages": {
+                    "official_nemo_inputs": {
+                        "url": "https://fail.jasmin.ac.uk/bad.tar.gz",
+                        "archive": "test.tar.gz",
+                        "key_file": "key.nc",
+                        "default_dir": "off_dir",
+                    }
+                }
+            }
+            download_official_nemo_inputs(tmpdir, dry_run=False)
+            assert len(attempted_urls) == 2
+            assert attempted_urls[0] == "https://fail.jasmin.ac.uk/bad.tar.gz"
+            assert "sette_inputs/extras" in attempted_urls[1]
+            mock_extract.assert_called_once()
