@@ -12,7 +12,7 @@ platforms:
     slurm:
       account: "bsc32"
       partition: "bsc_es"
-    module_load: "module load CDO NCO 2>/dev/null || true"
+    module_load: "module load CDO/2.3.0-gompi-2020b NCO/5.1.0-foss-2020b netcdf4-python/1.6.1-foss-2020b-Python-3.8.6 PyYAML/6.0-GCCcore-10.2.0 2>/dev/null || module load CDO NCO 2>/dev/null || true"
     scratch_root: "/gpfs/scratch/bsc32/${USER}"
     domain_dir: "/gpfs/projects/bsc32/models/ecearth/ece4-trunk/inidata/nemo/domain"
     institution: "EC-Earth Consortium"

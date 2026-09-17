@@ -10,6 +10,11 @@ import yaml
 from typing import Dict, Optional
 
 
+def get_repo_root() -> str:
+    """Returns absolute path to repository root."""
+    return os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+
+
 YAML_MAP = {
     ('tracers_3d', 'NO3'): 'PRODUCT_NO3',
     ('tracers_3d', 'PO4'): 'PRODUCT_PO4',

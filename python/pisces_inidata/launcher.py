@@ -13,6 +13,7 @@ import subprocess
 from typing import Optional, Dict, Any
 from concurrent.futures import ProcessPoolExecutor, as_completed
 
+from pisces_inidata.config import get_repo_root
 from pisces_inidata.platforms import load_platform_config
 from pisces_inidata.weights import ensure_grid_and_weights
 from pisces_inidata.etl import standardize_all_sources
@@ -71,6 +72,9 @@ def generate_slurm_array_script(
     qos_header = f"#SBATCH -q {partition}" if partition else "# (no SLURM partition/qos specified)"
     module_block = f"eval '{module_load}'" if module_load else "# (no environment module load needed)"
 
+    repo_root = get_repo_root()
+    repo_bin = os.path.join(repo_root, "bin")
+
     content = f"""#!/usr/bin/env bash
 # ==============================================================================
 # Slurm Job Array: Remap all PISCES inidata fields to {grid_name}
@@ -90,6 +94,7 @@ def generate_slurm_array_script(
 set -euo pipefail
 echo "Starting PISCES remap task $SLURM_ARRAY_TASK_ID on $(hostname) at $(date)"
 {module_block}
+export PATH="{repo_bin}:$PATH"
 
 FIELDS=({fields_str})
 VAR="${{FIELDS[$SLURM_ARRAY_TASK_ID]}}"
