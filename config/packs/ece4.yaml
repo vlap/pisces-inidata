@@ -1,0 +1,31 @@
+# ==============================================================================
+# PISCES Initial Conditions Source Configuration: EC-Earth4 (Modern Climatologies)
+# ==============================================================================
+# State-of-the-art observational and machine-learning datasets selected for
+# EC-Earth4 NEMO 4.2 / PISCES production simulations:
+#   - Nutrients & Oxygen: World Ocean Atlas 2023 (WOA23, 102 depth levels)
+#   - Carbon Chemistry:   GLODAPv2.2016b 3D mapped climatology
+#   - Dissolved Organic:  Panaïotis et al. (2024) SEANOE machine-learning DOC
+#   - Iron & Boundary:    Tagliabue (2012) & NEMO/PISCES SETTE boundary forcings
+# ==============================================================================
+
+pack: ece4
+
+tracers_3d:
+  NO3: woa23
+  PO4: woa23
+  Si: woa23
+  O2: woa23
+  TALK: glodap_v2_2016b
+  TDIC: glodap_v2_2016b
+  PiDIC: glodap_v2_2016b
+  DOC: panaiotis2024
+  Fer: sette_nomask
+
+boundary_forcings:
+  dust: sette_orca2
+  ndep: sette_orca2
+  par: sette_orca2
+  bathy: sette_orca2
+  hydrofe: sette_orca2
+  rivers: sette_orca2

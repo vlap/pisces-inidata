@@ -47,15 +47,6 @@ pisces-inidata/
 │       ├── reference.py         # Ground-truth SETTE benchmark assembly on ORCA2
 │       ├── nco_util.py          # Configured python-cdo interface with threading options
 │       ├── check.py             # Pre-flight system & data integrity verifier
-│       ├── config/              # Bundled package configurations & templates
-│       │   ├── catalog.yaml     # Metadata catalog & data conventions
-│       │   ├── grids.yaml       # Declarative target grid specifications & HPC profiles
-│       │   ├── platforms.yaml   # Declarative HPC platform profiles (Slurm accounts, scratch)
-│       │   ├── sources.yaml     # Default template source configuration
-│       │   └── packs/           # Curated source configuration packs
-│       │       ├── sources_ece4.yaml
-│       │       ├── sources_ece3.yaml
-│       │       └── sources_official_sette.yaml
 │       ├── download.py          # Selective raw dataset downloader & staging
 │       ├── glodap.py            # GLODAP vertical coordinate standardizer & padder
 │       ├── padding.py           # Abyssal depth padding algorithm (up to 6000m)
@@ -64,9 +55,17 @@ pisces-inidata/
 │       ├── scoreboard.py        # Validation scoreboard generator
 │       ├── reproduction.py      # EC-Earth3 baseline precision benchmark
 │       └── verify.py            # Non-blank output inspection & bounds checker
+├── config/                      # Declarative project configurations (primary user-facing)
+│   ├── catalog.yaml             # Metadata catalog & data conventions
+│   ├── grids.yaml               # Target grid specifications & HPC Slurm profiles
+│   ├── platforms.yaml           # HPC platform profiles (Nord4, MN5, local workstation)
+│   └── packs/                   # Curated and custom inidata source packs
+│       ├── ece4.yaml            # EC-Earth4 default (WOA23 + GLODAPv2.2016b + DOC + SETTE)
+│       ├── ece3.yaml            # EC-Earth3 baseline (WOA2009 + GLODAPv1.1 + SETTE)
+│       ├── official_sette.yaml  # Benchmark SETTE reference
+│       └── custom.yaml          # User-editable custom source configuration template
 ├── tests/                       # Unit tests (pytest)
 ├── legacy/                      # Preserved legacy Bash pipeline scripts
-├── sources.yaml                 # Active/local source dataset configuration override
 ├── pyproject.toml               # Modern PEP 517/621 package metadata
 ├── LICENSE                      # Apache-2.0 License
 ├── CITATION.cff                 # Citation metadata
@@ -115,30 +114,31 @@ Verify your installation, active configuration, target grids, and HPC platforms 
 pisces-inidata info
 ```
 
-### 2. Configure Sources & Packs (`sources.yaml`)
+### 2. Configure Sources & Packs (`config/packs/`)
 
-Choose a curated configuration pack or customize per-tracer sources:
-- **`ece4`** *(Default)*: Modern observational climatologies for **EC-Earth4** (WOA23, GLODAPv2.2016b, Panaïotis DOC).
-- **`ece3`**: Baseline observational sources originally used in **EC-Earth3** (WOA2009, GLODAPv1.1, Hansell DOC).
-- **`official_sette`**: Official regular unmasked **NEMO/PISCES SETTE** reference fields (all vars from SETTE, pure interpolation).
+All source configurations live transparently in `config/packs/`:
+- **`ece4`** *(Default, `config/packs/ece4.yaml`)*: Modern observational climatologies for **EC-Earth4** (WOA23, GLODAPv2.2016b, Panaïotis DOC).
+- **`custom`** *(`config/packs/custom.yaml`)*: User-editable template to customize individual observational sources or climatologies.
+- **`ece3`** *(`config/packs/ece3.yaml`)*: Baseline observational sources originally used in **EC-Earth3** (WOA2009, GLODAPv1.1, Hansell DOC).
+- **`official_sette`** *(`config/packs/official_sette.yaml`)*: Official regular unmasked **NEMO/PISCES SETTE** reference fields.
 
-Switch packs in `sources.yaml` (`pack: ece4`), load from `packs/`, or pass `--pack` (with `--preset` supported as an alias):
+Select a pack via `--pack` (or `--preset`):
 ```bash
 # Preview configuration for a pack:
-pisces-inidata info --pack ece3
+pisces-inidata info --pack custom
 
 # Or export bash environment variables:
-pisces-inidata config --pack ece3 --export
+pisces-inidata config --pack custom --export
 ```
 
 ### 3. Download Raw Datasets
-Fetch only the active datasets selected in `sources.yaml`:
+Fetch only the active datasets selected for the chosen pack:
 ```bash
 # Download and immediately prepare Stage 1 standardized regular files:
-pisces-inidata download --prepare
+pisces-inidata download --pack ece4 --prepare
 
 # Or dry-run preview:
-pisces-inidata download --dry-run
+pisces-inidata download --pack ece4 --dry-run
 ```
 
 ### 4. Generate Initial Conditions

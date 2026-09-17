@@ -1,23 +1,15 @@
 # ==============================================================================
-# PISCES Initial Conditions Source Configuration (sources.yaml)
+# PISCES Initial Conditions Source Configuration: Custom User Pack (custom.yaml)
+# ==============================================================================
+# Edit this file to customize individual observational climatologies or forcings.
+# Unspecified variables inherit from base_pack (default: ece4).
 #
-# Configures the input observational datasets for 3D tracers and boundary forcings.
-# Packs:
-#   - ece4           : Modern observational datasets for EC-Earth4 (Default)
-#                      (WOA23, GLODAPv2.2016b, Panaïotis et al. 2024 DOC, Tagliabue Fe)
-#   - ece3           : Observational sources originally used in EC-Earth3
-#                      (WOA2009, GLODAPv1.1, Hansell 2009 DOC, Tagliabue Fe)
-#   - official_sette : Official regular unmasked NEMO/PISCES reference (all sette)
-#   - <custom>       : Any custom pack name (e.g. my_experiment).
-#                      Unspecified tracers inherit from base_pack (default: ece4).
-#                      Standardized files are cleanly isolated in shared/standardized/<pack>/
-#
-# Pack files can also be loaded directly from the packs/ directory (e.g. packs/sources_<pack>.yaml).
-# Any explicit variable below overrides the pack default.
+# Execute pipeline with:
+#   pisces-inidata produce --pack custom --grid <GRID>
 # ==============================================================================
 
-pack: ece4
-# base_pack: ece4  # Optional: base pack to inherit defaults from when defining a custom pack name
+pack: custom
+base_pack: ece4
 
 tracers_3d:
   # Nitrate (NO3):
@@ -74,9 +66,3 @@ boundary_forcings:
 
   # River Nutrient Fluxes (Global NEWS 2):
   rivers: sette_orca2
-
-# Sub-variables contained within multi-variable forcing datasets
-sub_variables:
-  river: ["riverdin", "riverdip", "riverdon", "riverdop", "riverdoc", "riverdsi", "riverdic"]
-  dust: ["dust", "dustfer", "dustpo4", "dustsi", "solubility2"]
-  ndep: ["ndep", "ndep2"]

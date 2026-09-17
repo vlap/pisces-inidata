@@ -31,22 +31,29 @@ YAML_MAP = {
 
 def _load_packs() -> Dict[str, Dict[str, str]]:
     pkg_cfg_dir = os.path.dirname(os.path.abspath(__file__))
-    packs_dir = os.path.join(pkg_cfg_dir, "packs")
+    repo_root = os.path.dirname(os.path.dirname(os.path.dirname(pkg_cfg_dir)))
+    candidates = [
+        os.path.join(repo_root, "config", "packs"),
+        os.path.join(os.getcwd(), "config", "packs"),
+        os.path.join(pkg_cfg_dir, "packs"),
+    ]
     loaded = {}
-    if os.path.isdir(packs_dir):
-        for fname in sorted(os.listdir(packs_dir)):
-            if fname.endswith((".yaml", ".yml")):
-                pname = fname.replace("sources_", "").replace(".yaml", "").replace(".yml", "")
-                with open(os.path.join(packs_dir, fname), "r", encoding="utf-8") as f:
-                    data = yaml.safe_load(f) or {}
-                pack_dict = {}
-                for section in ("tracers_3d", "boundary_forcings"):
-                    for k, v in data.get(section, {}).items():
-                        mapped = YAML_MAP.get((section, k))
-                        if mapped:
-                            pack_dict[mapped] = v
-                if pack_dict:
-                    loaded[pname] = pack_dict
+    for packs_dir in candidates:
+        if os.path.isdir(packs_dir):
+            for fname in sorted(os.listdir(packs_dir)):
+                if fname.endswith((".yaml", ".yml")):
+                    pname = fname.replace("sources_", "").replace(".yaml", "").replace(".yml", "")
+                    if pname not in loaded:
+                        with open(os.path.join(packs_dir, fname), "r", encoding="utf-8") as f:
+                            data = yaml.safe_load(f) or {}
+                        pack_dict = {}
+                        for section in ("tracers_3d", "boundary_forcings"):
+                            for k, v in data.get(section, {}).items():
+                                mapped = YAML_MAP.get((section, k))
+                                if mapped:
+                                    pack_dict[mapped] = v
+                        if pack_dict:
+                            loaded[pname] = pack_dict
     return loaded
 
 
@@ -97,10 +104,14 @@ def find_config_file(
     custom_path: Optional[str] = None,
 ) -> Optional[str]:
     """Resolves path to a bundled or overridden configuration YAML file."""
+    repo_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     candidates = [
         custom_path,
         os.environ.get(env_var) if env_var else None,
+        os.path.join(os.getcwd(), "config", filename),
+        os.path.join(repo_root, "config", filename),
         os.path.join(os.getcwd(), filename),
+        os.path.join(repo_root, filename),
     ]
     try:
         from importlib.resources import files
@@ -108,9 +119,6 @@ def find_config_file(
         candidates.append(bundled)
     except Exception:
         pass
-
-    repo_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    candidates.append(os.path.join(repo_root, filename))
 
     for c in candidates:
         if c and os.path.exists(c) and not os.path.isdir(c):
@@ -129,15 +137,15 @@ resolve_preset_name = resolve_pack_name
 
 
 def load_config(
-    config_path: str = "sources.yaml",
+    config_path: Optional[str] = None,
     pack: Optional[str] = None,
     preset: Optional[str] = None,
 ) -> Dict[str, str]:
     """
-    Loads product configuration from inidata pack and sources.yaml or environment variables.
+    Loads product configuration from inidata pack or YAML configuration file.
     """
     pkg_config_dir = get_config_dir()
-    repo_root = os.path.dirname(os.path.dirname(pkg_config_dir))
+    repo_root = os.path.dirname(os.path.dirname(os.path.dirname(pkg_config_dir)))
     explicit_pack = (
         pack
         or preset
@@ -149,52 +157,50 @@ def load_config(
     )
     norm_explicit = resolve_pack_name(explicit_pack) if explicit_pack else None
 
-    # Check environment variable for custom config file if default is passed
-    if os.path.basename(config_path) in ("sources.yaml", ""):
+    # Check environment variable for custom config file if default/none is passed
+    if not config_path or os.path.basename(config_path) in ("sources.yaml", ""):
         env_cfg = os.environ.get("PISCES_CONFIG") or os.environ.get("CONFIG_FILE")
         if env_cfg and os.path.exists(env_cfg):
             config_path = env_cfg
 
-    # If pack is explicitly requested and default sources.yaml is used,
-    # load packs/sources_<pack>.yaml or packs/<pack>.yaml if available
-    if norm_explicit and os.path.basename(config_path) == "sources.yaml":
-        found_pack_cfg = False
-        for base_dir in [pkg_config_dir, repo_root, os.getcwd()]:
-            for cand_dir in ["packs", "presets"]:
-                for pattern in [f"sources_{norm_explicit}.yaml", f"{norm_explicit}.yaml"]:
-                    p_file = os.path.join(base_dir, cand_dir, pattern)
-                    if os.path.exists(p_file):
+    # If pack is requested, look for config/packs/<pack>.yaml
+    if norm_explicit and (not config_path or os.path.basename(config_path) in ("sources.yaml", "")):
+        search_dirs = [
+            os.path.join(repo_root, "config"),
+            repo_root,
+            os.getcwd(),
+            os.path.join(os.getcwd(), "config"),
+            pkg_config_dir,
+        ]
+        for base_dir in search_dirs:
+            for cand_dir in ["packs", "presets", ""]:
+                for pattern in [f"{norm_explicit}.yaml", f"sources_{norm_explicit}.yaml", f"{norm_explicit}.yml"]:
+                    p_file = os.path.join(base_dir, cand_dir, pattern) if cand_dir else os.path.join(base_dir, pattern)
+                    if os.path.isfile(p_file):
                         config_path = p_file
-                        found_pack_cfg = True
                         break
-                if found_pack_cfg:
+                if config_path and os.path.isfile(config_path):
                     break
-            if found_pack_cfg:
+            if config_path and os.path.isfile(config_path):
                 break
 
     resolved_path = None
-    candidates = [
-        config_path,
-        os.path.join(os.getcwd(), config_path),
-        os.path.join(repo_root, config_path),
-        os.path.join(pkg_config_dir, config_path),
-    ]
-    if not config_path.endswith((".yaml", ".yml")):
-        candidates.extend([
-            os.path.join(pkg_config_dir, "packs", f"sources_{config_path}.yaml"),
-            os.path.join(pkg_config_dir, "packs", f"{config_path}.yaml"),
-            os.path.join(repo_root, "packs", f"sources_{config_path}.yaml"),
-            os.path.join(repo_root, "packs", f"{config_path}.yaml"),
-        ])
-    candidates.extend([
-        os.path.join(os.getcwd(), "sources.yaml"),
-        os.path.join(repo_root, "sources.yaml"),
-        os.path.join(pkg_config_dir, "sources.yaml"),
-    ])
-    for c in candidates:
-        if c and os.path.exists(c) and not os.path.isdir(c):
-            resolved_path = c
-            break
+    if config_path:
+        candidates = [
+            config_path,
+            os.path.join(os.getcwd(), config_path),
+            os.path.join(os.getcwd(), "config", config_path),
+            os.path.join(os.getcwd(), "config", "packs", config_path),
+            os.path.join(repo_root, "config", config_path),
+            os.path.join(repo_root, "config", "packs", config_path),
+            os.path.join(repo_root, config_path),
+            os.path.join(pkg_config_dir, config_path),
+            os.path.join(pkg_config_dir, "packs", config_path),
+        ]
+        for c in candidates:
+            if c and os.path.isfile(c):
+                resolved_path = c
+                break
 
     data = {}
     if resolved_path:

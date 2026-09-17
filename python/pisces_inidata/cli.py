@@ -8,7 +8,7 @@ import os
 import argparse
 from typing import Optional, List
 from pisces_inidata import __version__
-from pisces_inidata.config import load_config, validate_config, export_env_commands
+from pisces_inidata.config import load_config, validate_config, export_env_commands, find_config_file
 from pisces_inidata.padding import pad_abyssal_depth
 from pisces_inidata.check import run_preflight_checks
 from pisces_inidata.scoreboard import run_validation_suite
@@ -22,7 +22,7 @@ def get_repo_root() -> str:
         if (
             os.path.exists(os.path.join(cur, 'pyproject.toml'))
             or os.path.exists(os.path.join(cur, '.git'))
-            or os.path.exists(os.path.join(cur, 'sources.yaml'))
+            or (os.path.isdir(os.path.join(cur, 'config')) and os.path.isdir(os.path.join(cur, 'python')))
         ):
             return cur
         cur = os.path.dirname(cur)
@@ -347,7 +347,6 @@ def cmd_info(args):
         load_all_platforms,
         detect_current_platform,
     )
-    from pisces_inidata.config import get_config_dir
 
     # 1. Export mode:
     if do_export:
@@ -408,22 +407,21 @@ def cmd_info(args):
         return
 
     # 6. Default: Unified Comprehensive Status
-    resolved_cfg = cfg_file or os.path.join(repo_root, 'sources.yaml')
-    config = load_config(resolved_cfg, pack=pack)
+    config = load_config(cfg_file, pack=pack)
     valid = validate_config(config)
 
     print("=================================================================")
     print(f"  pisces-inidata v{__version__} - System, Configuration & Platform Status")
     print("=================================================================")
     print(f"Repository Root:     {repo_root}")
-    try:
-        pkg_cfg_dir = get_config_dir()
-        print(f"Package Config Dir:  {pkg_cfg_dir}")
-    except Exception:
-        pass
-    print(f"Sources File:        {resolved_cfg}")
+    conf_dir = os.path.join(repo_root, "config")
+    if os.path.isdir(conf_dir):
+        print(f"Config Directory:    {conf_dir}")
     active_pack = config.get('INIDATA_PACK', config.get('INIDATA_PRESET', 'ece4'))
     print(f"Active Pack:         {active_pack}")
+    pack_path = find_config_file(f"packs/{active_pack}.yaml") or cfg_file
+    if pack_path:
+        print(f"Pack Config File:    {pack_path}")
     print(f"Configuration Valid: {'YES' if valid else 'WARNINGS DETECTED'}")
 
     print("\nConfigured Sources:")
@@ -483,8 +481,7 @@ def cmd_platform_config(args):
 
 
 def cmd_config(args):
-    repo_root = get_repo_root()
-    cfg_file = getattr(args, 'config', None) or getattr(args, 'file', None) or os.path.join(repo_root, 'sources.yaml')
+    cfg_file = getattr(args, 'config', None) or getattr(args, 'file', None)
     pack = get_pack_from_args(args, default=None)
     config = load_config(cfg_file, pack=pack)
     if args.export:
@@ -500,11 +497,7 @@ def cmd_config(args):
 def cmd_download(args):
     from pisces_inidata.download import download_sources
     repo_root = get_repo_root()
-    cfg_file = (
-        getattr(args, 'config', None)
-        or getattr(args, 'sources', None)
-        or os.path.join(repo_root, 'sources.yaml')
-    )
+    cfg_file = getattr(args, 'config', None) or getattr(args, 'sources', None)
     raw_dir = args.raw_dir
     if not raw_dir:
         workspace = os.environ.get("PISCES_WORKSPACE")
@@ -536,8 +529,7 @@ def cmd_pad(args):
 
 
 def cmd_check(args):
-    repo_root = get_repo_root()
-    cfg_file = args.config or os.path.join(repo_root, 'sources.yaml')
+    cfg_file = getattr(args, 'config', None)
     pack = get_pack_from_args(args, default=None)
     grid_name = getattr(args, 'grid', None) or getattr(args, 'orca', 'ORCA2')
     code = run_preflight_checks(

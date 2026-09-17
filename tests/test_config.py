@@ -249,3 +249,20 @@ def test_cli_legacy_aliases(capsys):
     main(["platform-config", "--platform", "nord4"])
     out, _ = capsys.readouterr()
     assert "Platform Configuration (nord4):" in out
+
+
+def test_custom_pack_config():
+    cfg = load_config(pack="custom")
+    assert cfg["INIDATA_PACK"] == "custom"
+    assert cfg["PRODUCT_NO3"] == "woa23"
+    assert validate_config(cfg) is True
+
+
+def test_find_config_file_top_level():
+    from pisces_inidata.config import find_config_file
+    catalog = find_config_file("catalog.yaml")
+    assert catalog is not None
+    assert "config/catalog.yaml" in catalog or "catalog.yaml" in catalog
+    custom = find_config_file("packs/custom.yaml")
+    assert custom is not None
+    assert "custom.yaml" in custom
