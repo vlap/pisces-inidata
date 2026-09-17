@@ -64,8 +64,9 @@ pisces-inidata/
 │       ├── ece3.yaml            # EC-Earth3 baseline (WOA2009 + GLODAPv1.1 + SETTE)
 │       ├── official_sette.yaml  # Benchmark SETTE reference
 │       └── custom.yaml          # User-editable custom source configuration template
+├── scripts/
+│   └── remap_field.sh           # Standalone pure-shell CDO/NCO remapper for HPC Slurm compute tasks
 ├── tests/                       # Unit tests (pytest)
-├── legacy/                      # Preserved legacy Bash pipeline scripts
 ├── pyproject.toml               # Modern PEP 517/621 package metadata
 ├── LICENSE                      # Apache-2.0 License
 ├── CITATION.cff                 # Citation metadata
