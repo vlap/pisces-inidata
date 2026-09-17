@@ -10,62 +10,49 @@ import yaml
 from typing import Dict, Optional
 
 
-PACKS = {
-    'ece4': {
-        'PRODUCT_NO3': 'woa23',
-        'PRODUCT_PO4': 'woa23',
-        'PRODUCT_Si': 'woa23',
-        'PRODUCT_O2': 'woa23',
-        'PRODUCT_TALK': 'glodap_v2_2016b',
-        'PRODUCT_TDIC': 'glodap_v2_2016b',
-        'PRODUCT_PiDIC': 'glodap_v2_2016b',
-        'PRODUCT_DOC': 'panaiotis2024',
-        'PRODUCT_Fer': 'sette_nomask',
-        'PRODUCT_DUST': 'sette_orca2',
-        'PRODUCT_NDEP': 'sette_orca2',
-        'PRODUCT_PAR': 'sette_orca2',
-        'PRODUCT_BATHY': 'sette_orca2',
-        'PRODUCT_HYDROFE': 'sette_orca2',
-        'PRODUCT_RIVER': 'sette_orca2',
-    },
-    'ece3': {
-        'PRODUCT_NO3': 'woa2009',
-        'PRODUCT_PO4': 'woa2009',
-        'PRODUCT_Si': 'woa2009',
-        'PRODUCT_O2': 'woa2009',
-        'PRODUCT_TALK': 'glodap_v1',
-        'PRODUCT_TDIC': 'glodap_v1',
-        'PRODUCT_PiDIC': 'glodap_v1',
-        'PRODUCT_DOC': 'sette_nomask',
-        'PRODUCT_Fer': 'sette_nomask',
-        'PRODUCT_DUST': 'sette_orca2',
-        'PRODUCT_NDEP': 'sette_orca2',
-        'PRODUCT_PAR': 'sette_orca2',
-        'PRODUCT_BATHY': 'sette_orca2',
-        'PRODUCT_HYDROFE': 'sette_orca2',
-        'PRODUCT_RIVER': 'sette_orca2',
-    },
-    'official_sette': {
-        'PRODUCT_NO3': 'sette_nomask',
-        'PRODUCT_PO4': 'sette_nomask',
-        'PRODUCT_Si': 'sette_nomask',
-        'PRODUCT_O2': 'sette_nomask',
-        'PRODUCT_TALK': 'sette_nomask',
-        'PRODUCT_TDIC': 'sette_nomask',
-        'PRODUCT_PiDIC': 'sette_nomask',
-        'PRODUCT_DOC': 'sette_nomask',
-        'PRODUCT_Fer': 'sette_nomask',
-        'PRODUCT_DUST': 'sette_orca2',
-        'PRODUCT_NDEP': 'sette_orca2',
-        'PRODUCT_PAR': 'sette_orca2',
-        'PRODUCT_BATHY': 'sette_orca2',
-        'PRODUCT_HYDROFE': 'sette_orca2',
-        'PRODUCT_RIVER': 'sette_orca2',
-    },
+YAML_MAP = {
+    ('tracers_3d', 'NO3'): 'PRODUCT_NO3',
+    ('tracers_3d', 'PO4'): 'PRODUCT_PO4',
+    ('tracers_3d', 'Si'): 'PRODUCT_Si',
+    ('tracers_3d', 'O2'): 'PRODUCT_O2',
+    ('tracers_3d', 'TALK'): 'PRODUCT_TALK',
+    ('tracers_3d', 'TDIC'): 'PRODUCT_TDIC',
+    ('tracers_3d', 'PiDIC'): 'PRODUCT_PiDIC',
+    ('tracers_3d', 'DOC'): 'PRODUCT_DOC',
+    ('tracers_3d', 'Fer'): 'PRODUCT_Fer',
+    ('boundary_forcings', 'dust'): 'PRODUCT_DUST',
+    ('boundary_forcings', 'ndep'): 'PRODUCT_NDEP',
+    ('boundary_forcings', 'par'): 'PRODUCT_PAR',
+    ('boundary_forcings', 'bathy'): 'PRODUCT_BATHY',
+    ('boundary_forcings', 'hydrofe'): 'PRODUCT_HYDROFE',
+    ('boundary_forcings', 'rivers'): 'PRODUCT_RIVER',
 }
 
+
+def _load_packs() -> Dict[str, Dict[str, str]]:
+    pkg_cfg_dir = os.path.dirname(os.path.abspath(__file__))
+    packs_dir = os.path.join(pkg_cfg_dir, "packs")
+    loaded = {}
+    if os.path.isdir(packs_dir):
+        for fname in sorted(os.listdir(packs_dir)):
+            if fname.endswith((".yaml", ".yml")):
+                pname = fname.replace("sources_", "").replace(".yaml", "").replace(".yml", "")
+                with open(os.path.join(packs_dir, fname), "r", encoding="utf-8") as f:
+                    data = yaml.safe_load(f) or {}
+                pack_dict = {}
+                for section in ("tracers_3d", "boundary_forcings"):
+                    for k, v in data.get(section, {}).items():
+                        mapped = YAML_MAP.get((section, k))
+                        if mapped:
+                            pack_dict[mapped] = v
+                if pack_dict:
+                    loaded[pname] = pack_dict
+    return loaded
+
+
+PACKS = _load_packs()
 PRESETS = PACKS
-DEFAULTS = PACKS['ece4'].copy()
+DEFAULTS = PACKS.get('ece4', {}).copy()
 
 VALID_SOURCES = {
     'PRODUCT_NO3': ['woa23', 'woa2009', 'sette_nomask'],
@@ -91,24 +78,6 @@ VALID_SOURCES = {
     'PRODUCT_RIVER': ['sette_orca2'],
 }
 
-YAML_MAP = {
-    ('tracers_3d', 'NO3'): 'PRODUCT_NO3',
-    ('tracers_3d', 'PO4'): 'PRODUCT_PO4',
-    ('tracers_3d', 'Si'): 'PRODUCT_Si',
-    ('tracers_3d', 'O2'): 'PRODUCT_O2',
-    ('tracers_3d', 'TALK'): 'PRODUCT_TALK',
-    ('tracers_3d', 'TDIC'): 'PRODUCT_TDIC',
-    ('tracers_3d', 'PiDIC'): 'PRODUCT_PiDIC',
-    ('tracers_3d', 'DOC'): 'PRODUCT_DOC',
-    ('tracers_3d', 'Fer'): 'PRODUCT_Fer',
-    ('boundary_forcings', 'dust'): 'PRODUCT_DUST',
-    ('boundary_forcings', 'ndep'): 'PRODUCT_NDEP',
-    ('boundary_forcings', 'par'): 'PRODUCT_PAR',
-    ('boundary_forcings', 'bathy'): 'PRODUCT_BATHY',
-    ('boundary_forcings', 'hydrofe'): 'PRODUCT_HYDROFE',
-    ('boundary_forcings', 'rivers'): 'PRODUCT_RIVER',
-}
-
 
 DEFAULT_TRACERS_3D = ["NO3", "PO4", "Si", "O2", "TALK", "TDIC", "PiDIC", "DOC", "Fer"]
 DEFAULT_BOUNDARY_FORCINGS = ["dust", "ndep", "par", "bathy", "hydrofe", "rivers"]
@@ -120,6 +89,33 @@ DEFAULT_NDEP_VARS = ["ndep", "ndep2"]
 def get_config_dir() -> str:
     """Returns absolute path to bundled config directory."""
     return os.path.dirname(os.path.abspath(__file__))
+
+
+def find_config_file(
+    filename: str,
+    env_var: Optional[str] = None,
+    custom_path: Optional[str] = None,
+) -> Optional[str]:
+    """Resolves path to a bundled or overridden configuration YAML file."""
+    candidates = [
+        custom_path,
+        os.environ.get(env_var) if env_var else None,
+        os.path.join(os.getcwd(), filename),
+    ]
+    try:
+        from importlib.resources import files
+        bundled = str(files("pisces_inidata.config").joinpath(filename))
+        candidates.append(bundled)
+    except Exception:
+        pass
+
+    repo_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    candidates.append(os.path.join(repo_root, filename))
+
+    for c in candidates:
+        if c and os.path.exists(c) and not os.path.isdir(c):
+            return c
+    return None
 
 
 def resolve_pack_name(pack: Optional[str]) -> str:

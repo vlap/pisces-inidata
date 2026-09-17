@@ -8,6 +8,7 @@ import os
 import socket
 import yaml
 from typing import Dict, Any, List, Optional
+from pisces_inidata.config import find_config_file
 
 GENERIC_PLATFORM_PROFILE: Dict[str, Any] = {
     "description": "Generic Linux Workstation or Cluster",
@@ -29,25 +30,7 @@ GENERIC_PLATFORM_PROFILE: Dict[str, Any] = {
 
 def _find_platforms_yaml(custom_path: Optional[str] = None) -> Optional[str]:
     """Resolves path to platforms.yaml."""
-    candidates = [
-        custom_path,
-        os.environ.get("PISCES_PLATFORMS_CONFIG"),
-        os.path.join(os.getcwd(), "platforms.yaml"),
-    ]
-    try:
-        from importlib.resources import files
-        bundled = str(files("pisces_inidata.config").joinpath("platforms.yaml"))
-        candidates.append(bundled)
-    except Exception:
-        pass
-
-    repo_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    candidates.append(os.path.join(repo_root, "platforms.yaml"))
-
-    for c in candidates:
-        if c and os.path.exists(c) and not os.path.isdir(c):
-            return c
-    return None
+    return find_config_file("platforms.yaml", env_var="PISCES_PLATFORMS_CONFIG", custom_path=custom_path)
 
 
 def load_all_platforms(config_path: Optional[str] = None) -> Dict[str, Dict[str, Any]]:

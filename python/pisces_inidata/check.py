@@ -11,8 +11,8 @@ from typing import Dict, List, Tuple, Optional
 from pisces_inidata.config import load_config, validate_config
 from pisces_inidata.grids import load_grid_config
 
-REQUIRED_BINARIES = ["cdo", "ncks", "ncap2", "ncatted"]
-OPTIONAL_BINARIES = ["sbatch", "ncdump"]
+REQUIRED_BINARIES = ["cdo"]
+OPTIONAL_BINARIES = ["sbatch", "ncdump", "ncks", "ncap2", "ncatted"]
 REQUIRED_PYTHON_PKGS = ["netCDF4", "numpy", "yaml"]
 
 
@@ -21,10 +21,6 @@ def check_binaries() -> List[Tuple[str, bool, str, bool]]:
     Checks presence and versions of required and optional command-line tools.
     Returns: list of (name, is_available, version_or_error, is_required)
     """
-    cand = os.path.expanduser("~/.local/nco-env/bin")
-    if os.path.isdir(cand) and cand not in os.environ.get("PATH", ""):
-        os.environ["PATH"] = cand + os.pathsep + os.environ.get("PATH", "")
-
     results = []
     for tool in REQUIRED_BINARIES:
         path = shutil.which(tool)

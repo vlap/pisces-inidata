@@ -18,7 +18,8 @@ import shutil
 import tempfile
 from typing import Optional, List
 
-from pisces_inidata.nco_util import get_cdo, get_nco
+import netCDF4 as nc
+from pisces_inidata.nco_util import get_cdo
 from pisces_inidata.catalog import resolve_source_field, resolve_package_dir
 from pisces_inidata.padding import pad_abyssal_depth
 from pisces_inidata.woa23 import process_tracer as process_woa23
@@ -56,21 +57,20 @@ def sanitize_source_coords(
     """
     Sanitizes coordinate attributes for 2D/surface forcing files to ensure CF compliance.
     """
-    nco = get_nco()
     if in_file != out_file:
         shutil.copyfile(in_file, out_file)
 
-    opts = ["-O"]
-    for v in vars_list:
-        opts.extend(["-a", f'coordinates,{v},c,c,"nav_lon nav_lat"'])
-    opts.extend([
-        "-a", 'coordinates,,c,c,"nav_lon nav_lat"',
-        "-a", "units,nav_lon,c,c,degrees_east",
-        "-a", "units,nav_lat,c,c,degrees_north",
-        "-a", "standard_name,nav_lon,c,c,longitude",
-        "-a", "standard_name,nav_lat,c,c,latitude"
-    ])
-    nco.ncatted(input=out_file, options=opts)
+    with nc.Dataset(out_file, "r+") as ds:
+        ds.setncattr("coordinates", "nav_lon nav_lat")
+        for v in vars_list:
+            if v in ds.variables:
+                ds.variables[v].setncattr("coordinates", "nav_lon nav_lat")
+        if "nav_lon" in ds.variables:
+            ds.variables["nav_lon"].setncattr("units", "degrees_east")
+            ds.variables["nav_lon"].setncattr("standard_name", "longitude")
+        if "nav_lat" in ds.variables:
+            ds.variables["nav_lat"].setncattr("units", "degrees_north")
+            ds.variables["nav_lat"].setncattr("standard_name", "latitude")
     return out_file
 
 
@@ -101,7 +101,6 @@ def standardize_source(
     print("========================================================================")
 
     cdo = get_cdo()
-    nco = get_nco()
     meta = resolve_source_field(var_name, pack=active_pack, raw_dir=raw_dir)
 
     handler = meta.get("handler")
@@ -113,11 +112,11 @@ def standardize_source(
     with tempfile.TemporaryDirectory(prefix=f"tmp_etl_{var_name}_") as tmp_dir:
         try:
             if handler == "woa23":
-                woa_dir = src_file or os.path.join(raw_dir or resolve_package_dir("woa23", raw_dir), "woa23")
+                woa_dir = src_file or (os.path.join(raw_dir, "woa23") if raw_dir else resolve_package_dir("woa23"))
                 tmp_combined = os.path.join(tmp_dir, f"woa_combined_{var_name}.nc")
-                print(f"Combining monthly WOA23 files for {var_name} from {woa_dir}...")
+                print(f"Combining monthly WOA23 files for {var_name} from {woa_dir}...", flush=True)
                 process_woa23(src_var, woa_dir, tmp_combined)
-                print(f"Filling missing values (cdo fillmiss) for {var_name}...")
+                print(f"Filling missing values (cdo fillmiss) for {var_name}...", flush=True)
                 cdo.fillmiss(input=tmp_combined, output=std_file)
 
             elif handler == "glodap":
@@ -130,7 +129,9 @@ def standardize_source(
                 print(f"Filling missing values (cdo fillmiss) for {var_name}...")
                 cdo.fillmiss(input=tmp_prep, output=tmp_filled)
                 if src_var != std_var:
-                    nco.ncrename(input=tmp_filled, options=["-v", f"{src_var},{std_var}"])
+                    with nc.Dataset(tmp_filled, "r+") as ds:
+                        if src_var in ds.variables:
+                            ds.renameVariable(src_var, std_var)
                 shutil.copyfile(tmp_filled, std_file)
 
             elif handler == "doc":
@@ -158,7 +159,17 @@ def standardize_source(
                 coords_file = meta.get("coords_source_file")
                 if coords_file and os.path.isfile(coords_file):
                     print(f"Appending coordinates from donor: {coords_file}...")
-                    nco.ncks(input=coords_file, output=tmp_work, options=["-A", "-v", "nav_lon,nav_lat"])
+                    with nc.Dataset(coords_file, "r") as src_ds, nc.Dataset(tmp_work, "r+") as dst_ds:
+                        for cvar in ["nav_lon", "nav_lat"]:
+                            if cvar in src_ds.variables and cvar not in dst_ds.variables:
+                                svar = src_ds.variables[cvar]
+                                for dname in svar.dimensions:
+                                    if dname not in dst_ds.dimensions:
+                                        dst_ds.createDimension(dname, src_ds.dimensions[dname].size)
+                                dvar = dst_ds.createVariable(cvar, svar.dtype, svar.dimensions)
+                                for attr in svar.ncattrs():
+                                    dvar.setncattr(attr, svar.getncattr(attr))
+                                dvar[:] = svar[:]
 
                 vars_list = meta.get("vars_list", [src_var])
                 sanitize_source_coords(tmp_work, std_file, vars_list)
@@ -179,7 +190,9 @@ def standardize_source(
                     tmp_padded = tmp_sel
 
                 if src_var != std_var:
-                    nco.ncrename(input=tmp_padded, options=["-v", f"{src_var},{std_var}"])
+                    with nc.Dataset(tmp_padded, "r+") as ds:
+                        if src_var in ds.variables:
+                            ds.renameVariable(src_var, std_var)
 
                 shutil.copyfile(tmp_padded, std_file)
 

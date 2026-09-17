@@ -82,6 +82,14 @@ def cmd_prepare_sources(args):
     force = getattr(args, 'force', False)
     var = getattr(args, 'variable', 'all')
     raw_dir = getattr(args, 'raw_dir', None)
+    if not raw_dir:
+        workspace = os.environ.get("PISCES_WORKSPACE")
+        if workspace:
+            raw_dir = os.path.join(workspace, "shared", "raw")
+        elif os.environ.get("RAW_DIR"):
+            raw_dir = os.environ["RAW_DIR"]
+        elif os.path.isdir(os.path.join(get_repo_root(), "pisces_raw_sources")):
+            raw_dir = os.path.join(get_repo_root(), "pisces_raw_sources")
 
     try:
         if var == "all":
@@ -514,9 +522,10 @@ def cmd_download(args):
         sys.exit(code)
 
     if getattr(args, 'prepare', False) and not args.dry_run:
-        print("\n=== Automatically running Stage 1 Source Standardization (hub04) ===")
+        print("\n=== Automatically running Stage 1 Source Standardization (hub04) ===", flush=True)
         args.variable = "all"
         args.config = cfg_file
+        args.raw_dir = raw_dir
         cmd_prepare_sources(args)
 
     sys.exit(0)

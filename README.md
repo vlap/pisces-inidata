@@ -45,7 +45,7 @@ pisces-inidata/
 │       ├── remap.py             # Stage 2: Target-centric vertical/horizontal remapping
 │       ├── launcher.py          # Pipeline orchestration & Slurm Job Array generator
 │       ├── reference.py         # Ground-truth SETTE benchmark assembly on ORCA2
-│       ├── nco_util.py          # python-cdo and pynco interface with netCDF4 fallback
+│       ├── nco_util.py          # Configured python-cdo interface with threading options
 │       ├── check.py             # Pre-flight system & data integrity verifier
 │       ├── config/              # Bundled package configurations & templates
 │       │   ├── catalog.yaml     # Metadata catalog & data conventions

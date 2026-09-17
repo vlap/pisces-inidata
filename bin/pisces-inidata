@@ -6,6 +6,6 @@
 set -euo pipefail
 BIN_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${BIN_DIR}/.." && pwd)"
-export PATH="${REPO_ROOT}/bin:${HOME}/.local/nco-env/bin:${HOME}/.local/bin:${PATH}"
+export PATH="${REPO_ROOT}/bin:${PATH}"
 export PYTHONPATH="${REPO_ROOT}/python:${PYTHONPATH:-}"
 exec python3 -m pisces_inidata.cli "$@"

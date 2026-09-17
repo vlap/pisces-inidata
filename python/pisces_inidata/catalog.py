@@ -10,6 +10,7 @@ import os
 import yaml
 import subprocess
 from typing import Dict, Any, List, Optional, Tuple
+from pisces_inidata.config import find_config_file
 
 
 _CATALOG_CACHE: Optional[Dict[str, Any]] = None
@@ -17,25 +18,7 @@ _CATALOG_CACHE: Optional[Dict[str, Any]] = None
 
 def find_catalog_yaml(custom_path: Optional[str] = None) -> Optional[str]:
     """Resolves path to catalog.yaml."""
-    candidates = [
-        custom_path,
-        os.environ.get("PISCES_CATALOG"),
-        os.path.join(os.getcwd(), "catalog.yaml"),
-    ]
-    try:
-        from importlib.resources import files
-        bundled = str(files("pisces_inidata.config").joinpath("catalog.yaml"))
-        candidates.append(bundled)
-    except Exception:
-        pass
-
-    repo_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    candidates.append(os.path.join(repo_root, "catalog.yaml"))
-
-    for c in candidates:
-        if c and os.path.exists(c) and not os.path.isdir(c):
-            return c
-    return None
+    return find_config_file("catalog.yaml", env_var="PISCES_CATALOG", custom_path=custom_path)
 
 
 def load_catalog(custom_path: Optional[str] = None, force_reload: bool = False) -> Dict[str, Any]:
@@ -162,7 +145,15 @@ def resolve_source_field(
 
         # Resolve file path
         if handler == "woa23":
-            src_file = os.path.join(raw_dir or resolve_package_dir("woa23", raw_dir), "woa23")
+            base_raw = raw_dir or os.environ.get("RAW_DIR")
+            if not base_raw:
+                workspace = os.environ.get("PISCES_WORKSPACE")
+                base_raw = (
+                    os.path.join(workspace, "shared", "raw")
+                    if workspace
+                    else os.path.join(os.getcwd(), "pisces_raw_sources")
+                )
+            src_file = os.path.join(base_raw, "woa23")
         elif handler == "glodap":
             from pisces_inidata.glodap import resolve_glodap_source
             param = t_meta.get("param", src_var)

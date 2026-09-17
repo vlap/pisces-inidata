@@ -1,3 +1,4 @@
+import os
 from pisces_inidata.catalog import (
     load_catalog,
     resolve_package_dir,
@@ -47,6 +48,8 @@ def test_resolve_source_field_ece4(tmp_path):
     assert no3_meta["src_var"] == "n_an"
     assert no3_meta["std_var"] == "NO3"
     assert no3_meta["fillmiss"] is True
+    assert no3_meta["src_file"] == os.path.join(raw, "woa23")
+    assert not no3_meta["src_file"].endswith("woa23/woa23")
 
     # GLODAP for TALK
     talk_meta = resolve_source_field("TALK", pack="ece4", raw_dir=raw)

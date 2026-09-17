@@ -10,7 +10,7 @@ from typing import Dict, Any, Optional, List
 import numpy as np
 import netCDF4 as nc
 from pisces_inidata.verify import find_var, VAR_ALIASES
-from pisces_inidata.diagnostics import format_markdown_table
+from pisces_inidata.diagnostics import compute_array_stats, format_markdown_table
 
 ALIASES = VAR_ALIASES
 
@@ -117,51 +117,19 @@ def evaluate_reproduction_closeness(
         if shape_test != shape_ref:
             raise ValueError(f"Shape mismatch for {var_name}: test={shape_test} vs ref={shape_ref}")
 
-        ntimes = shape_ref[0] if vref.ndim in [3, 4] and shape_ref[0] in [1, 12, 73, 365] else 1
+        data_t = vtest[:]
+        data_r = vref[:]
 
-        total_valid = 0
-        sum_diff2 = 0.0
-        sum_abs_diff = 0.0
-        sum_diff = 0.0
-        max_abs_diff = 0.0
-        sum_ref = 0.0
-        sum_ref2 = 0.0
-        sum_test = 0.0
-        sum_test2 = 0.0
-        sum_test_ref = 0.0
+        m_t = np.ma.getmaskarray(data_t) if np.ma.is_masked(data_t) else np.zeros(data_t.shape, dtype=bool)
+        m_r = np.ma.getmaskarray(data_r) if np.ma.is_masked(data_r) else np.zeros(data_r.shape, dtype=bool)
+        comb = m_t | m_r | np.isnan(data_t) | np.isnan(data_r)
 
-        for t in range(ntimes):
-            data_t = vtest[t] if (vtest.ndim in [3, 4] and ntimes > 1) else vtest[:]
-            data_r = vref[t] if (vref.ndim in [3, 4] and ntimes > 1) else vref[:]
+        if mask_2d is not None and data_t.ndim >= 2:
+            comb = comb | (~mask_2d)
 
-            m_t = np.ma.getmaskarray(data_t) if np.ma.is_masked(data_t) else np.zeros(data_t.shape, dtype=bool)
-            m_r = np.ma.getmaskarray(data_r) if np.ma.is_masked(data_r) else np.zeros(data_r.shape, dtype=bool)
-            nan_m = np.isnan(data_t) | np.isnan(data_r)
-
-            comb = m_t | m_r | nan_m
-            if mask_2d is not None and data_t.ndim >= 2:
-                comb = comb | (~mask_2d)
-
-            valid_t = np.array(data_t[~comb], dtype=np.float64)
-            valid_r = np.array(data_r[~comb], dtype=np.float64)
-
-            if len(valid_t) == 0:
-                continue
-
-            diff = valid_t - valid_r
-            abs_d = np.abs(diff)
-
-            total_valid += len(valid_t)
-            sum_diff2 += float(np.sum(diff ** 2))
-            sum_abs_diff += float(np.sum(abs_d))
-            sum_diff += float(np.sum(diff))
-            max_abs_diff = max(max_abs_diff, float(np.max(abs_d)))
-
-            sum_ref += float(np.sum(valid_r))
-            sum_ref2 += float(np.sum(valid_r ** 2))
-            sum_test += float(np.sum(valid_t))
-            sum_test2 += float(np.sum(valid_t ** 2))
-            sum_test_ref += float(np.sum(valid_t * valid_r))
+        valid_t = np.array(data_t[~comb], dtype=np.float64)
+        valid_r = np.array(data_r[~comb], dtype=np.float64)
+        total_valid = len(valid_t)
 
         if total_valid == 0:
             return {
@@ -175,37 +143,22 @@ def evaluate_reproduction_closeness(
                 'status': "FAIL"
             }
 
-        rmse = np.sqrt(sum_diff2 / total_valid)
-        mae = sum_abs_diff / total_valid
-        mbe = sum_diff / total_valid
-        mean_ref = sum_ref / total_valid
-        mean_test = sum_test / total_valid
-
-        rel_rmse = (rmse / abs(mean_ref) * 100.0) if abs(mean_ref) > 1e-12 else 0.0
-
-        var_r = (sum_ref2 / total_valid) - (mean_ref ** 2)
-        var_t = (sum_test2 / total_valid) - (mean_test ** 2)
-        cov = (sum_test_ref / total_valid) - (mean_test * mean_ref)
-
-        if var_r > 1e-12 and var_t > 1e-12:
-            r = float(cov / np.sqrt(var_r * var_t))
-            r = float(np.clip(r, -1.0, 1.0))
-        else:
-            r = 1.0 if rmse < 1e-6 else 0.0
-
-        inv_diff = ((sum_test - sum_ref) / abs(sum_ref) * 100.0) if abs(sum_ref) > 1e-12 else 0.0
+        stats = compute_array_stats(valid_t, valid_r)
+        mean_ref = stats['mean_ref']
+        mean_test = stats['mean_test']
+        inv_diff = ((mean_test - mean_ref) / abs(mean_ref) * 100.0) if abs(mean_ref) > 1e-12 else 0.0
 
         return {
             'var': var_name,
             'valid_points': total_valid,
             'mean_ref': mean_ref,
             'mean_test': mean_test,
-            'rmse': rmse,
-            'mae': mae,
-            'mbe': mbe,
-            'max_diff': max_abs_diff,
-            'rel_rmse_pct': rel_rmse,
-            'pearson_r': r,
+            'rmse': stats['rmse'],
+            'mae': stats['mae'],
+            'mbe': stats['mbe'],
+            'max_diff': stats['max_diff'],
+            'rel_rmse_pct': stats['rel_rmse_pct'],
+            'pearson_r': stats['pearson_r'],
             'inventory_diff_pct': inv_diff
         }
 
