@@ -73,12 +73,12 @@ def generate_slurm_array_script(
     module_block = f"eval '{module_load}'" if module_load else "# (no environment module load needed)"
 
     repo_root = get_repo_root()
-    repo_bin = os.path.join(repo_root, "bin")
+    remap_sh = os.path.join(repo_root, "scripts", "remap_field.sh")
 
     content = f"""#!/usr/bin/env bash
 # ==============================================================================
 # Slurm Job Array: Remap all PISCES inidata fields to {grid_name}
-# Generated automatically by pisces-inidata produce
+# Generated automatically by pisces-inidata produce (Option A: Pure Shell Compute)
 # ==============================================================================
 {account_header}
 {qos_header}
@@ -94,14 +94,12 @@ def generate_slurm_array_script(
 set -euo pipefail
 echo "Starting PISCES remap task $SLURM_ARRAY_TASK_ID on $(hostname) at $(date)"
 {module_block}
-export PATH="{repo_bin}:$PATH"
-export PYTHONPATH="{os.path.join(repo_root, 'python')}:${{PYTHONPATH:-}}"
 
 FIELDS=({fields_str})
 VAR="${{FIELDS[$SLURM_ARRAY_TASK_ID]}}"
 
-echo "Field: $VAR | Grid: {grid_name} | Pack: {active_pack} | Convention: {convention}"
-pisces-inidata remap --grid "{grid_name}" --variable "$VAR" --pack "{active_pack}" --convention "{convention}"
+echo "Field: $VAR | Grid: {grid_name} | Pack: {active_pack}"
+"{remap_sh}" "{grid_name}" "$VAR"
 
 echo "Finished task $SLURM_ARRAY_TASK_ID ($VAR) at $(date)"
 """

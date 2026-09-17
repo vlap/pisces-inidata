@@ -131,8 +131,8 @@ def test_generate_slurm_array_script():
             content = f.read()
 
         assert "#SBATCH --array=0-14%4" in content
-        assert "pisces.remap.eORCA1" in content
-        assert "pisces-inidata remap --grid \"eORCA1\"" in content
+        assert "remap_field.sh" in content
+        assert '"eORCA1"' in content
         assert "Pack: ece4" in content
         for fld in PIPELINE_FIELDS:
             assert fld in content
