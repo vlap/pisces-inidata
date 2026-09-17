@@ -71,6 +71,12 @@ def sanitize_source_coords(
         if "nav_lat" in ds.variables:
             ds.variables["nav_lat"].setncattr("units", "degrees_north")
             ds.variables["nav_lat"].setncattr("standard_name", "latitude")
+        for c_depth in ("deptht", "depth", "nav_lev"):
+            if c_depth in ds.variables:
+                ds.variables[c_depth].setncattr("units", "m")
+                ds.variables[c_depth].setncattr("positive", "down")
+                ds.variables[c_depth].setncattr("axis", "Z")
+                ds.variables[c_depth].setncattr("standard_name", "depth")
     return out_file
 
 

@@ -274,22 +274,9 @@ def remap_field(
                 print(f"Source hydrofe grid matches target {grid_name}; copying directly without re-interpolation...")
                 shutil.copyfile(std_file, final_out_file)
             else:
-                src_grid = cdo.griddes(input=std_file)
-                sx, sy = None, None
-                for line in src_grid:
-                    if "xsize" in line:
-                        sx = line.split("=")[1].strip()
-                    elif "ysize" in line:
-                        sy = line.split("=")[1].strip()
-                if sx == "360" and sy == "180":
-                    use_weights = weights_bilin
-                else:
-                    use_weights = os.path.join(effective_weights_dir, f"weights_hydrofe_to_{grid_name}.nc")
-                    if not os.path.isfile(use_weights) or os.path.getsize(use_weights) == 0:
-                        cdo.genbil(target_grid_nc, input=std_file, output=use_weights, options=cdo_opts)
-                print(f"Remapping hydrothermal iron to {grid_name}...")
-                cdo.remap(
-                    f"{target_grid_nc},{use_weights}",
+                print(f"Remapping hydrothermal iron (nearest-neighbor) to {grid_name}...")
+                cdo.remapnn(
+                    target_grid_nc,
                     input=std_file,
                     output=final_out_file,
                     options=cdo_opts,
