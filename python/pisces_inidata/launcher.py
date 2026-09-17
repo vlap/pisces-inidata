@@ -160,6 +160,7 @@ def launch_pipeline(
         print("\n--- [Step 1/3] Ensuring Target Grid and Remap Weights ---")
         if dry_run:
             print(f"[DRY-RUN] Would ensure grid coordinates and weights for {grid_name}")
+            effective_weights_dir = weights_dir
         else:
             w_info = ensure_grid_and_weights(
                 grid_name=grid_name,
@@ -168,6 +169,7 @@ def launch_pipeline(
                 raw_dir=raw_dir,
                 force=force,
             )
+            effective_weights_dir = os.path.dirname(w_info["target_grid_nc"])
             print(f"Target grid:    {w_info['target_grid_nc']}")
             print(f"Target weights: {w_info['weights_bilin_nc']}")
 
@@ -239,7 +241,7 @@ def launch_pipeline(
                 "convention": convention,
                 "force": force,
                 "domain_dir": domain_dir,
-                "weights_dir": weights_dir,
+                "weights_dir": effective_weights_dir,
                 "raw_dir": raw_dir,
                 "out_dir": out_dir,
             }
@@ -265,7 +267,7 @@ def launch_pipeline(
                 convention=convention,
                 force=force,
                 domain_dir=domain_dir,
-                weights_dir=weights_dir,
+                weights_dir=effective_weights_dir,
                 raw_dir=raw_dir,
                 out_dir=out_dir,
             )

@@ -187,7 +187,7 @@ def ensure_grid_and_weights(
     target_area_nc = os.path.join(w_dir, f"target_area_{grid_name}.nc")
 
     # 1. Target Grid Extraction
-    if force or not os.path.isfile(target_grid_nc):
+    if force or not (os.path.isfile(target_grid_nc) and os.path.getsize(target_grid_nc) > 0):
         base_domain = domain_dir or os.environ.get("DOMAIN_BASE_DIR", os.path.join(os.getcwd(), "domain"))
         domain_cfg = os.path.join(base_domain, grid_name, "domain_cfg.nc")
         maskutil = os.path.join(base_domain, grid_name, "maskutil.nc")
@@ -195,19 +195,19 @@ def ensure_grid_and_weights(
         extract_target_grid(grid_name, domain_cfg, maskutil, target_grid_nc, raw_dir=raw_dir)
 
     # 2. Cell Area
-    if force or not os.path.isfile(target_area_nc):
+    if force or not (os.path.isfile(target_area_nc) and os.path.getsize(target_area_nc) > 0):
         base_domain = domain_dir or os.environ.get("DOMAIN_BASE_DIR", os.path.join(os.getcwd(), "domain"))
         domain_cfg = os.path.join(base_domain, grid_name, "domain_cfg.nc")
         cfg_arg = domain_cfg if os.path.isfile(domain_cfg) else None
         compute_target_area(target_grid_nc, target_area_nc, domain_cfg=cfg_arg)
 
     # 3. Bilinear Weights
-    if force or not os.path.isfile(weights_bilin_nc):
+    if force or not (os.path.isfile(weights_bilin_nc) and os.path.getsize(weights_bilin_nc) > 0):
         print(f"Generating bilinear remapping weights (r360x180 -> {grid_name})...")
         generate_scrip_weights(target_grid_nc, weights_bilin_nc, method="bilinear")
 
     # 4. Distance-Weighted Weights
-    if force or not os.path.isfile(weights_dis_nc):
+    if force or not (os.path.isfile(weights_dis_nc) and os.path.getsize(weights_dis_nc) > 0):
         print(f"Generating distance-weighted weights (r360x180 -> {grid_name})...")
         generate_scrip_weights(target_grid_nc, weights_dis_nc, method="distance")
 

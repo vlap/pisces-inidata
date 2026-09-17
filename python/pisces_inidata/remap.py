@@ -52,6 +52,15 @@ def get_weights_dir(grid_name: Optional[str] = None, weights_dir: Optional[str] 
         if grid_name:
             return os.path.join(workspace, "grids", grid_name, "weights")
         return os.path.join(workspace, "shared", "weights")
+    if grid_name:
+        for cand in [
+            os.path.join(os.getcwd(), "grids", grid_name, "weights"),
+            os.path.join(os.getcwd(), "pisces_output", "weights"),
+            os.path.join(os.getcwd(), "weights"),
+        ]:
+            if os.path.isdir(cand):
+                return cand
+        return os.path.join(os.getcwd(), "grids", grid_name, "weights")
     return os.path.join(os.getcwd(), "pisces_output", "weights")
 
 
