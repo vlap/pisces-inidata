@@ -15,6 +15,7 @@ from concurrent.futures import ProcessPoolExecutor, as_completed
 
 from pisces_inidata.config import get_repo_root
 from pisces_inidata.platforms import load_platform_config
+from pisces_inidata.grids import load_grid_config
 from pisces_inidata.weights import ensure_grid_and_weights
 from pisces_inidata.etl import standardize_all_sources
 from pisces_inidata.remap import remap_field, get_output_dir
@@ -47,11 +48,14 @@ def generate_slurm_array_script(
     if custom_slurm:
         slurm_cfg.update(custom_slurm)
 
+    grid_cfg = load_grid_config(grid_name)
+    grid_res = grid_cfg.get("resources", {})
+
     account = slurm_cfg.get("account") or os.environ.get("SLURM_ACCOUNT", "")
     partition = slurm_cfg.get("partition") or os.environ.get("SLURM_PARTITION", "")
-    cpus = slurm_cfg.get("cpus_per_task", 4)
-    mem = slurm_cfg.get("mem", "16G")
-    walltime = slurm_cfg.get("time", "01:00:00")
+    cpus = grid_res.get("cpus") or slurm_cfg.get("cpus_per_task", 4)
+    mem = grid_res.get("memory") or slurm_cfg.get("mem", "16G")
+    walltime = grid_res.get("time") or slurm_cfg.get("time", "01:00:00")
     module_load = plat_cfg.get("module_load", "")
 
     workspace = os.environ.get("PISCES_WORKSPACE")
