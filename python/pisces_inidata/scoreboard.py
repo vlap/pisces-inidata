@@ -230,10 +230,89 @@ def compute_diagnostics(test_file: str, ref_file: str, var_key: str) -> Dict[str
         }
 
 
-def get_product_name(var: str, preset: str) -> str:
-    if preset == "official_sette":
+RIVER_NUTRIENTS = [
+    ('riverdin', 'Dissolved Inorganic Nitrogen (DIN)', 'MgN/m2/yr'),
+    ('riverdip', 'Dissolved Inorganic Phosphorus (DIP)', 'MgP/m2/yr'),
+    ('riverdon', 'Dissolved Organic Nitrogen (DON)', 'MgN/m2/yr'),
+    ('riverdop', 'Dissolved Organic Phosphorus (DOP)', 'MgP/m2/yr'),
+    ('riverdoc', 'Dissolved Organic Carbon (DOC)', 'MgC/m2/yr'),
+    ('riverdsi', 'Dissolved Silicate (DSi)', 'MgSi/m2/yr'),
+    ('riverdic', 'Dissolved Inorganic Carbon (DIC)', 'MgC/m2/yr'),
+]
+
+
+def compute_river_conservation(test_file: str, ref_file: str) -> List[Dict[str, Any]]:
+    """
+    Computes global integrated flux conservation for all 7 river nutrient inputs.
+    Verifies that remapping preserves total nutrient mass input into the ocean.
+    """
+    if not os.path.exists(test_file) or not os.path.exists(ref_file):
+        return []
+
+    results = []
+    with nc.Dataset(test_file, 'r') as ds_t, nc.Dataset(ref_file, 'r') as ds_r:
+        for var_name, desc, unit in RIVER_NUTRIENTS:
+            if var_name not in ds_t.variables or var_name not in ds_r.variables:
+                continue
+
+            data_t = ds_t.variables[var_name][:]
+            data_r = ds_r.variables[var_name][:]
+
+            # Average over time dimension if present
+            mean_t = np.mean(data_t, axis=0) if data_t.ndim == 3 else data_t
+            mean_r = np.mean(data_r, axis=0) if data_r.ndim == 3 else data_r
+
+            unm_t = np.ma.filled(mean_t, 0.0)
+            unm_r = np.ma.filled(mean_r, 0.0)
+
+            sum_t = float(np.sum(unm_t[unm_t > 0]))
+            sum_r = float(np.sum(unm_r[unm_r > 0]))
+
+            ratio = (sum_t / sum_r) if sum_r > 1e-12 else 1.0
+
+            # Compute spatial correlation across active river discharge cells
+            flat_t = unm_t.flatten()
+            flat_r = unm_r.flatten()
+            mask_valid = (flat_t > 0) | (flat_r > 0)
+            if np.sum(mask_valid) > 2:
+                vt = flat_t[mask_valid]
+                vr = flat_r[mask_valid]
+                if np.std(vt) > 1e-12 and np.std(vr) > 1e-12:
+                    r_val = float(np.corrcoef(vt, vr)[0, 1])
+                else:
+                    r_val = 1.0
+            else:
+                r_val = 1.0
+
+            if abs(ratio - 1.0) <= 0.02:
+                status = 'PASS'
+                issue = f'Conserved (diff: {abs(ratio - 1.0) * 100.0:.1f}%)'
+            elif abs(ratio - 1.0) <= 0.10:
+                status = 'WARN'
+                issue = f'Moderate flux shift ({ratio:.2f}x)'
+            else:
+                status = 'FAIL'
+                issue = f'Unconserved flux shift ({ratio:.2f}x)'
+
+            results.append({
+                'var': var_name,
+                'desc': desc,
+                'unit': unit,
+                'sum_test': sum_t,
+                'sum_ref': sum_r,
+                'ratio': ratio,
+                'r': r_val,
+                'status': status,
+                'issue': issue
+            })
+    return results
+
+
+def get_product_name(var: str, pack: str = "official_sette", preset: Optional[str] = None) -> str:
+    active_pack = preset if preset is not None else pack
+    if active_pack == "official_sette":
         return "SETTE nomask (pure interpolation)"
-    elif preset == "ece3":
+    elif active_pack == "ece3":
         if var in ['NO3', 'PO4', 'Si', 'O2']:
             return "WOA2009"
         elif var in ['TALK', 'TDIC', 'PiDIC']:
@@ -253,27 +332,24 @@ def get_product_name(var: str, preset: str) -> str:
 
 def generate_scoreboard(
     results: List[Dict[str, Any]],
+    river_results: Optional[List[Dict[str, Any]]] = None,
     output_md_path: Optional[str] = None,
-    preset: str = "official_sette"
+    pack: str = "official_sette",
+    preset: Optional[str] = None,
 ) -> str:
     """
     Renders diagnostic results list into a GitHub Flavored Markdown scoreboard table.
     """
+    active_pack = preset if preset is not None else pack
     lines = []
     lines.append("# PISCES Inidata Validation Scorecard (ORCA2 vs SETTE Benchmark)")
     lines.append("")
-    lines.append(f"**Configuration Preset:** `{preset}`  ")
+    lines.append(f"**Configuration Pack:** `{active_pack}`  ")
     lines.append("")
     lines.append(
         "Automated procedure validation evaluating newly generated 3D tracer initial conditions "
         "on **ORCA2** against the official **NEMO/PISCES SETTE** benchmark ground truth to detect unit errors, "
         "pipeline orientation bugs, and unphysical values."
-    )
-    lines.append("")
-    lines.append(
-        "> **Note:** Variables inherited directly from the SETTE repository (e.g. dissolved iron `Fer` "
-        "from Tagliabue et al. 2012) or static boundary forcings (`dust`, `ndep`, `bathy`, `river`, `hydrofe`, `par`) "
-        "are not benchmarked here to avoid uninformative self-comparisons."
     )
     lines.append("")
     lines.append("## Supported Products Scorecard (3D Tracers)")
@@ -304,6 +380,36 @@ def generate_scoreboard(
 
     lines.append(format_markdown_table(headers, rows, alignments))
 
+    if river_results:
+        lines.append("")
+        lines.append("## Boundary Forcing Conservation (River Nutrient Discharges)")
+        lines.append("")
+        lines.append(
+            "Evaluation of global integrated nutrient mass inputs from river discharge to ensure "
+            "nutrient inputs into the marine ecosystem remain invariant across grid remapping."
+        )
+        lines.append("")
+        r_headers = [
+            "Variable", "Description", "Unit", "Total Flux (Test)",
+            "Total Flux (Ref)", "Ratio (Test/Ref)", "Pearson $r$", "Status"
+        ]
+        r_aligns = ["left", "left", "left", "center", "center", "center", "center", "center"]
+        r_rows = []
+        for r in river_results:
+            r_val = f"**{r['r']:.4f}**" if (not np.isnan(r['r']) and r['r'] >= 0.85) else (
+                f"{r['r']:.4f}" if not np.isnan(r['r']) else "N/A"
+            )
+            ratio_str = f"{r['ratio']:.2f}x"
+            stat_str = f"**{r['status']}**" if r['status'] == 'PASS' else (
+                f"**{r['status']}**" if r['status'] == 'WARN' else f"<span style='color:red;'>**{r['status']}**</span>"
+            )
+            r_rows.append([
+                f"**{r['var']}**", r['desc'], r['unit'],
+                f"{r['sum_test']:.4e}", f"{r['sum_ref']:.4e}",
+                ratio_str, r_val, stat_str
+            ])
+        lines.append(format_markdown_table(r_headers, r_rows, r_aligns))
+
     lines.append("")
     lines.append("### Diagnostic Notes:")
     lines.append("- **Scale Sanity:** Mean ratio within $[0.2, 5.0]$ confirms unit consistency.")
@@ -311,6 +417,10 @@ def generate_scoreboard(
     lines.append(
         "- **Panaïotis 2024 DOC:** Modern machine-learning global climatology exhibits higher carbon values "
         "than the 2009 Hansell baseline used in SETTE, flagged with WARN as an expected scientific difference."
+    )
+    lines.append(
+        "- **River Nutrient Conservation:** Integrated river nutrient inputs should conserve mass within 2% "
+        "when remapped, avoiding artificial nutrient dilution or enrichment."
     )
     lines.append("")
     md_content = "\n".join(lines)
@@ -327,14 +437,16 @@ def run_validation_suite(
     ref_dir: str,
     output_md: Optional[str] = None,
     fail_on_error: bool = False,
-    preset: str = "official_sette"
+    pack: str = "official_sette",
+    preset: Optional[str] = None,
 ) -> int:
     """
     Executes product-by-product validation suite comparing test_dir against ref_dir on ORCA2.
     Returns: 0 on success, 1 on critical failure.
     """
+    active_pack = preset if preset is not None else pack
     print("=" * 80)
-    print(f" PISCES INIDATA VALIDATION SUITE (ORCA2 vs SETTE BENCHMARK, Preset: {preset})")
+    print(f" PISCES INIDATA VALIDATION SUITE (ORCA2 vs SETTE BENCHMARK, Pack: {active_pack})")
     print(f" Test Directory:      {test_dir}")
     print(f" Reference Directory: {ref_dir}")
     print("=" * 80)
@@ -346,7 +458,7 @@ def run_validation_suite(
 
     for item in SUPPORTED_PRODUCTS:
         var = item['var']
-        prod = get_product_name(var, preset)
+        prod = get_product_name(var, pack=active_pack)
         test_cands = item['test_cands']
         ref_cands = item['ref_cands']
 
@@ -392,13 +504,46 @@ def run_validation_suite(
             print(f"  [FAIL] {var:7s} ({prod}) : Error evaluating: {e}")
             n_fail += 1
 
+    # 2. Evaluate River Nutrient Mass-Flux Conservation
+    river_cands = ["river.orca.nc", "river_global_news_ORCA2.nc"]
+    test_river = None
+    for c in river_cands:
+        p = os.path.join(test_dir, c)
+        if os.path.exists(p):
+            test_river = p
+            break
+
+    ref_river = None
+    for c in river_cands:
+        p = os.path.join(ref_dir, c)
+        if os.path.exists(p):
+            ref_river = p
+            break
+
+    river_results = []
+    if test_river and ref_river:
+        print("\n--- Boundary Forcing Conservation (River Nutrient Discharges) ---")
+        river_results = compute_river_conservation(test_river, ref_river)
+        for rr in river_results:
+            stat = rr['status']
+            if stat == 'PASS':
+                n_pass += 1
+            elif stat == 'WARN':
+                n_warn += 1
+            else:
+                n_fail += 1
+            r_str = f"r={rr['r']:.4f}" if not np.isnan(rr['r']) else "r=N/A"
+            ratio_str = f"ratio={rr['ratio']:.2f}x"
+            print(f"  [{stat:4s}] {rr['var']:8s} ({rr['desc']:38s}) : {ratio_str}, {r_str} -> {rr['issue']}")
+
+    total_eval = len(results) + len(river_results)
     print("\n" + "=" * 80)
-    print(f" VALIDATION SCORECARD SUMMARY: {len(results)} Evaluated | "
+    print(f" VALIDATION SCORECARD SUMMARY: {total_eval} Evaluated | "
           f"{n_pass} PASSED | {n_warn} WARNINGS | {n_fail} FAILED")
     print("=" * 80)
 
-    if results:
-        generate_scoreboard(results, output_md_path=output_md, preset=preset)
+    if results or river_results:
+        generate_scoreboard(results, river_results=river_results, output_md_path=output_md, pack=active_pack)
         if output_md:
             print(f"Saved comprehensive scorecard to: {output_md}")
 

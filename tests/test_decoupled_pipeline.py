@@ -1,16 +1,18 @@
 """
 Tests for decoupled Stage 1 (Grid-Agnostic ETL) and Stage 2 (Remapping) architecture.
+Pure Python test suite verifying stage decoupling, CLI entrypoints, and launcher modes.
 """
 
-import os
-import subprocess
+import sys
 import pytest
-from pisces_inidata.cli import main, get_repo_root
+from pisces_inidata.cli import main
+from pisces_inidata.launcher import launch_pipeline
+from pisces_inidata.remap import get_output_dir, get_weights_dir
+from pisces_inidata.etl import get_standardized_dir
 
 
 def test_cli_subparsers_registration(monkeypatch):
-    # Test that prepare-sources and remap can be parsed by argparse
-    from pisces_inidata.cli import main
+    """Test that prepare-sources, remap, produce, and gen-weights can be parsed by argparse."""
     import sys
 
     # Test prepare-sources --help
@@ -25,73 +27,85 @@ def test_cli_subparsers_registration(monkeypatch):
         main()
     assert exc.value.code == 0
 
+    # Test produce --help
+    monkeypatch.setattr(sys, 'argv', ['pisces-inidata', 'produce', '--help'])
+    with pytest.raises(SystemExit) as exc:
+        main()
+    assert exc.value.code == 0
 
-def test_script_existence_and_executable():
-    repo_root = get_repo_root()
-    s1 = os.path.join(repo_root, 'scripts', 'prepare_standard_sources.sh')
-    s2 = os.path.join(repo_root, 'scripts', 'remap_field.sh')
-    launcher = os.path.join(repo_root, 'scripts', 'launcher_pisces_inidata.sh')
-
-    for s in [s1, s2, launcher]:
-        assert os.path.isfile(s), f"Script not found: {s}"
-        assert os.access(s, os.X_OK), f"Script is not executable: {s}"
+    # Test gen-weights --help
+    monkeypatch.setattr(sys, 'argv', ['pisces-inidata', 'gen-weights', '--help'])
+    with pytest.raises(SystemExit) as exc:
+        main()
+    assert exc.value.code == 0
 
 
 def test_launcher_dry_run_stages():
-    repo_root = get_repo_root()
-    launcher = os.path.join(repo_root, 'scripts', 'launcher_pisces_inidata.sh')
-
+    """Verify launch_pipeline cleanly executes dry-run for stage1, stage2, and all stages."""
     # Test stage 1 dry-run
-    res_stage1 = subprocess.run(
-        ["bash", launcher, "dry-run", "stage1"],
-        cwd=repo_root,
-        capture_output=True,
-        text=True
+    res_stage1 = launch_pipeline(
+        grid_name="eORCA1",
+        pack="ece4",
+        stage="stage1",
+        dry_run=True,
+        executor="local",
     )
-    assert res_stage1.returncode == 0
-    assert "Pipeline Stage: stage1" in res_stage1.stdout
-    assert "Checking / Standardizing Source Datasets" in res_stage1.stdout
-    assert "Stage 1 preparation completed. Exiting as requested." in res_stage1.stdout
-    assert "Submitting 3D Tracer Remapping Jobs" not in res_stage1.stdout
+    assert res_stage1["grid"] == "eORCA1"
+    assert res_stage1["pack"] == "ece4"
+    assert res_stage1["preset"] == "ece4"
+    assert res_stage1["stage"] == "stage1"
 
     # Test stage 2 dry-run
-    res_stage2 = subprocess.run(
-        ["bash", launcher, "dry-run", "stage2"],
-        cwd=repo_root,
-        capture_output=True,
-        text=True
+    res_stage2 = launch_pipeline(
+        grid_name="eORCA1",
+        pack="ece4",
+        stage="stage2",
+        dry_run=True,
+        executor="local",
     )
-    assert res_stage2.returncode == 0
-    assert "Pipeline Stage: stage2" in res_stage2.stdout
-    assert "Submitting 3D Tracer Remapping Jobs" in res_stage2.stdout
-    assert "Submitting River Nutrient Remapping Job" in res_stage2.stdout
-    assert "Checking / Standardizing Source Datasets" not in res_stage2.stdout
+    assert res_stage2["grid"] == "eORCA1"
+    assert res_stage2["pack"] == "ece4"
+    assert res_stage2["stage"] == "stage2"
+
+    # Test weights dry-run
+    res_weights = launch_pipeline(
+        grid_name="eORCA1",
+        pack="ece4",
+        stage="weights",
+        dry_run=True,
+        executor="local",
+    )
+    assert res_weights["grid"] == "eORCA1"
+    assert res_weights["pack"] == "ece4"
+    assert res_weights["stage"] == "weights"
 
 
 def test_cli_run_dry_run_stage1(monkeypatch):
+    """Test CLI run alias with --stage stage1 --dry-run and --pack."""
     import sys
-    monkeypatch.setattr(sys, 'argv', ['pisces-inidata', 'run', '--stage', 'stage1', '--dry-run'])
-    with pytest.raises(SystemExit) as exc:
-        main()
-    assert exc.value.code == 0
+    monkeypatch.setattr(sys, 'argv', ['pisces-inidata', 'run', '--stage', 'stage1', '--pack', 'ece4', '--dry-run'])
+    main()
 
 
 def test_cli_produce_dry_run(monkeypatch):
-    import sys
-    monkeypatch.setattr(sys, 'argv', ['pisces-inidata', 'produce', '--grid', 'eORCA1', '--dry-run'])
-    with pytest.raises(SystemExit) as exc:
-        main()
-    assert exc.value.code == 0
+    """Test CLI produce with --grid eORCA1 --pack and --preset backward compatibility."""
+    cmd_pack = ['pisces-inidata', 'produce', '--grid', 'eORCA1', '--pack', 'official_sette', '--dry-run']
+    monkeypatch.setattr(sys, 'argv', cmd_pack)
+    main()
+
+    # Verify --preset alias still works
+    cmd_preset = ['pisces-inidata', 'produce', '--grid', 'eORCA1', '--preset', 'official_sette', '--dry-run']
+    monkeypatch.setattr(sys, 'argv', cmd_preset)
+    main()
 
 
-def test_workspace_structure_config():
-    repo_root = get_repo_root()
-    cmd = [
-        "bash", "-c",
-        "source scripts/config.sh && echo WORKSPACE=$WORKSPACE && echo RAW_DIR=$RAW_DIR && "
-        "echo STANDARDIZED_DIR=$STANDARDIZED_DIR && echo OUTPUT_DIR=$OUTPUT_DIR && echo TMP_BASE=$TMP_BASE"
-    ]
-    res = subprocess.run(cmd, cwd=repo_root, capture_output=True, text=True)
-    assert res.returncode == 0
-    assert "grids/eORCA1/inidata" in res.stdout
-    assert "shared/standardized" in res.stdout
+def test_workspace_directory_resolution():
+    """Verify directory resolution for weights, standardized sources, and grid outputs."""
+    out_dir = get_output_dir("eORCA1")
+    assert "eORCA1" in out_dir
+
+    weights_dir = get_weights_dir()
+    assert "weights" in weights_dir
+
+    std_dir = get_standardized_dir()
+    assert "standardized" in std_dir

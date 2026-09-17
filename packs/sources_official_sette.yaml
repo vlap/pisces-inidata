@@ -6,7 +6,7 @@
 # applied to the target grid.
 # ==============================================================================
 
-preset: official_sette
+pack: official_sette
 
 tracers_3d:
   NO3: sette_nomask

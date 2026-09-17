@@ -132,12 +132,14 @@ def download_sources(
     config_file: Optional[str] = None,
     raw_dir: Optional[str] = None,
     dry_run: bool = False,
-    preset: Optional[str] = None
+    pack: Optional[str] = None,
+    preset: Optional[str] = None,
 ) -> int:
     """
-    Orchestrates dataset downloading according to user's sources.yaml configuration or preset.
+    Orchestrates dataset downloading according to user's sources.yaml configuration or pack.
     """
-    config = load_config(config_file or "sources.yaml", preset=preset)
+    active_pack = preset if preset is not None else pack
+    config = load_config(config_file or "sources.yaml", pack=active_pack)
     workspace = os.environ.get("PISCES_WORKSPACE")
     default_raw = (
         os.path.join(workspace, "shared", "raw")
@@ -145,14 +147,14 @@ def download_sources(
         else os.environ.get("RAW_DIR", os.path.join(os.getcwd(), "pisces_raw_sources"))
     )
     effective_raw = raw_dir or default_raw
-    active_preset = config.get("INIDATA_PRESET", "ece4")
+    pack_name = config.get("INIDATA_PACK", config.get("INIDATA_PRESET", "ece4"))
 
     print("=" * 78)
     print(" PISCES INIDATA: OBSERVATIONAL SOURCE DATASET ACQUISITION")
     print("=" * 78)
     print(f"Target Directory : {effective_raw}")
     print(f"Configuration    : {config_file or 'sources.yaml'}")
-    print(f"Active Preset    : {active_preset}")
+    print(f"Active Pack      : {pack_name}")
     print(f"Dry-run Mode     : {'ENABLED' if dry_run else 'DISABLED'}")
     print("=" * 78)
 

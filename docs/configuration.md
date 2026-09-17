@@ -1,46 +1,46 @@
 # Configuration & CLI Reference
 
-`pisces-inidata` provides a transparent, declarative configuration system through presets (`ece4`, `ece3`, `official_sette`), `sources.yaml`, and a unified command-line interface.
+`pisces-inidata` provides a transparent, declarative configuration system through inidata packs (`ece4`, `ece3`, `official_sette`), `sources.yaml`, and a unified command-line interface.
 
 ---
 
-## 1. Configuration Presets
+## 1. Configuration Packs (Inidata Packs)
 
-Instead of selecting sources variable-by-variable, users can choose curated configuration presets designed for specific modeling purposes:
+Instead of selecting sources variable-by-variable, users can choose curated configuration packs designed for specific modeling purposes:
 
-| Preset | Purpose | Nutrients & Oxygen | Carbon Chemistry | DOC | Iron & Boundary |
+| Pack | Purpose | Nutrients & Oxygen | Carbon Chemistry | DOC | Iron & Boundary |
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | **`ece4`** *(Default)* | Modern observational datasets for **EC-Earth4** production runs | WOA23 (102 levels) | GLODAPv2.2016b | Panaïotis et al. 2024 (ML) | Tagliabue (2012) & SETTE |
 | **`ece3`** | Observational sources originally used in **EC-Earth3** (baseline reproduction) | WOA2009 | GLODAPv1.1 | Hansell (2009) | Tagliabue (2012) & SETTE |
 | **`official_sette`** | Official regular unmasked **NEMO/PISCES SETTE** reference (all vars from SETTE, pure interpolation) | `sette_nomask` | `sette_nomask` | `sette_nomask` | `sette_nomask` & `sette_orca2` |
-| **`<custom>`** | Any user-defined preset name (e.g. `my_experiment`) inheriting from `base_preset` | Configurable | Configurable | Configurable | Configurable |
+| **`<custom>`** | Any user-defined pack name (e.g. `my_experiment`) inheriting from `base_pack` | Configurable | Configurable | Configurable | Configurable |
 
-Presets can be configured in multiple ways:
+Packs can be configured in multiple ways:
 
 1. **In `sources.yaml` (Built-in or Custom):**
    ```yaml
-   preset: my_experiment
-   base_preset: ece4  # Inherits unspecified defaults from ece4
+   pack: my_experiment
+   base_pack: ece4  # Inherits unspecified defaults from ece4 (legacy alias: base_preset)
 
    tracers_3d:
      DOC: sette_nomask     # Override Hansell 2009 baseline
      TALK: glodap_v2_2023  # Test modern GLODAP release
    ```
-   Each preset isolates its Stage 1 standardized files into its own directory:
-   `${WORKSPACE}/shared/standardized/${PRESET}/`
+   Each pack isolates its Stage 1 standardized files into its own directory:
+   `${WORKSPACE}/shared/standardized/${PACK}/`
    preventing cache collisions with standard baselines.
 
-2. **Via dedicated preset files:**
-   Place custom preset templates directly in `presets/sources_<name>.yaml`:
-   - `presets/sources_ece4.yaml`
-   - `presets/sources_ece3.yaml`
-   - `presets/sources_official_sette.yaml`
-   - `presets/sources_my_experiment.yaml`
+2. **Via dedicated pack files:**
+   Place custom pack templates directly in `packs/sources_<name>.yaml`:
+   - `packs/sources_ece4.yaml`
+   - `packs/sources_ece3.yaml`
+   - `packs/sources_official_sette.yaml`
+   - `packs/sources_my_experiment.yaml`
 
    And invoke by name:
    ```bash
-   pisces-inidata prepare-sources --preset my_experiment
-   pisces-inidata remap all --preset my_experiment --grid eORCA1
+   pisces-inidata prepare-sources --pack my_experiment
+   pisces-inidata remap all --pack my_experiment --grid eORCA1
    ```
 
 3. **Via explicit `--config` flag:**
@@ -50,18 +50,19 @@ Presets can be configured in multiple ways:
    pisces-inidata remap all --config path/to/my_sources.yaml --grid eORCA1
    ```
 
-4. **Via CLI `--preset` or `PRESET` environment variable:**
+4. **Via CLI `--pack` (or `--preset` alias) / `INIDATA_PACK` environment variable:**
    ```bash
-   pisces-inidata info --preset ece3
-   pisces-inidata produce --grid eORCA1 --preset my_experiment
-   pisces-inidata config --preset official_sette --export
+   pisces-inidata info --pack ece3
+   pisces-inidata produce --grid eORCA1 --pack my_experiment
+   pisces-inidata config --pack official_sette --export
    ```
+   *(Note: `--preset` and `INIDATA_PRESET` / `PRESET` are retained as fully backward-compatible aliases).*
 
 ---
 
 ## 2. Observational Source Configuration (`sources.yaml`)
 
-Individual observational source datasets can be customized on top of any preset in `sources.yaml`. Explicit variable entries in the file or environment variables (`PRODUCT_*`) override the preset defaults:
+Individual observational source datasets can be customized on top of any pack in `sources.yaml`. Explicit variable entries in the file or environment variables (`PRODUCT_*`) override the pack defaults:
 
 ```bash
 # Example overrides:
@@ -110,8 +111,8 @@ export PRODUCT_DOC="panaiotis2024"
 Runs pre-flight integrity verification before launching remapping jobs:
 ```bash
 pisces-inidata check --grid ORCA2
-# Check against specific preset:
-pisces-inidata check --grid eORCA1 --preset ece3
+# Check against specific pack:
+pisces-inidata check --grid eORCA1 --pack ece3
 ```
 - Verifies system binaries (`cdo`, `ncks`, `ncap2`, `ncatted`).
 - Confirms presence of target domain files (`domain_cfg.nc`, `maskutil.nc`).
@@ -123,8 +124,8 @@ Executes initial conditions generation pipeline (Stage 1 ETL followed by Stage 2
 # Produce inidata on eORCA1 (or ORCA2, eORCA025)
 pisces-inidata produce --grid eORCA1 --domain-dir /path/to/nemo/domain
 
-# Produce with specific preset:
-pisces-inidata produce --grid eORCA1 --preset ece3
+# Produce with specific pack:
+pisces-inidata produce --grid eORCA1 --pack ece3
 
 # Run only Stage 1 source preparation:
 pisces-inidata produce --grid eORCA1 --stage stage1
@@ -136,14 +137,14 @@ pisces-inidata produce --grid eORCA025 --dry-run
 ### `pisces-inidata prepare-sources`
 Executes Stage 1 (Grid-Agnostic ETL) to format, pad to 6000 m, fill ocean missing values (`cdo fillmiss`), and standardize observational sources into uniform regular NetCDF files:
 ```bash
-# Prepare all 15 components for active preset:
+# Prepare all 15 components for active pack:
 pisces-inidata prepare-sources
 
 # Prepare specific tracer:
 pisces-inidata prepare-sources NO3
 
 # Force regeneration:
-pisces-inidata prepare-sources TALK --preset ece4 --force
+pisces-inidata prepare-sources TALK --pack ece4 --force
 ```
 Standardized files are cached in `${STANDARDIZED_DIR}` and reused across all target resolutions.
 
@@ -197,8 +198,8 @@ eval "$(pisces-inidata platform-config --platform nord4 --export)"
 ### `pisces-inidata validate`
 Executes statistical procedure validation against official NEMO/SETTE ORCA2 benchmark:
 ```bash
-# Validate generated ORCA2 outputs (default preset: official_sette)
-pisces-inidata validate --preset official_sette --test-dir output_ORCA2 --ref-dir sette_reference_ORCA2
+# Validate generated ORCA2 outputs (default pack: official_sette)
+pisces-inidata validate --pack official_sette --test-dir output_ORCA2 --ref-dir sette_reference_ORCA2
 # Enforce non-zero exit code in CI:
 pisces-inidata validate --fail-on-error
 ```
@@ -206,11 +207,11 @@ pisces-inidata validate --fail-on-error
 ### `pisces-inidata test-reproduction`
 Executes pipeline reproduction benchmark against EC-Earth3 eORCA1 baseline:
 ```bash
-# Validate reproduction against EC-Earth3 baseline (default preset: official_sette)
-pisces-inidata test-reproduction --preset official_sette
+# Validate reproduction against EC-Earth3 baseline (default pack: official_sette)
+pisces-inidata test-reproduction --pack official_sette
 # Or with explicit paths:
 pisces-inidata test-reproduction \
-    --preset official_sette \
+    --pack official_sette \
     --test-dir output_eORCA1 \
     --ref-dir /path/to/ece3_eORCA1_reference \
     --mask domain/eORCA1/maskutil.nc
@@ -225,8 +226,8 @@ pisces-inidata download
 # Download and immediately run Stage 1 source standardization (ideal for hub04):
 pisces-inidata download --prepare
 
-# Download raw datasets for a specific preset:
-pisces-inidata download --preset ece3
+# Download raw datasets for a specific pack:
+pisces-inidata download --pack ece3
 ```
 
 ### `pisces-inidata pad`
@@ -236,11 +237,11 @@ pisces-inidata pad input.nc output_padded.nc --bottom-depth 6000.0
 ```
 
 ### `pisces-inidata info`
-Displays current environment, active preset, resolved paths, and product configurations:
+Displays current environment, active pack, resolved paths, and product configurations:
 ```bash
 pisces-inidata info
-# Preview configuration for a different preset:
-pisces-inidata info --preset ece3
+# Preview configuration for a different pack:
+pisces-inidata info --pack ece3
 ```
 
 ---
@@ -317,7 +318,7 @@ Adding a new grid requires zero changes to shell scripts or Python code. Simply 
 
 ## 5. Declarative HPC Platform Configuration (`platforms.yaml`)
 
-Cluster-specific settings (Slurm accounts, queues/partitions, environment module loading, scratch storage roots, and central model domain directories) are maintained declaratively in `platforms.yaml`. Shell scripts (`scripts/config.sh`) source these settings dynamically via `pisces-inidata platform-config --export`, isolating platform quirks from core remapping logic.
+Cluster-specific settings (Slurm accounts, queues/partitions, environment module loading, scratch storage roots, and central model domain directories) are maintained declaratively in `platforms.yaml`. The Python pipeline (`launcher.py`, `produce`) and CLI read these settings dynamically to generate Slurm Job Arrays or configure local execution, isolating platform quirks from core remapping logic.
 
 ### Structure of `platforms.yaml`
 ```yaml
@@ -365,7 +366,7 @@ All platform defaults can be overridden at runtime via standard environment vari
 
 ## 6. Declarative Metadata Catalog & Conventions (`catalog.yaml`)
 
-Rather than hardcoding raw input package paths (e.g. `official_v5.0.0`), filenames (`data_DOC_nomask.nc`), or internal NetCDF variable names (`epsdb`, `fr_par`, `Alkalini`, `DIC`) across shell scripts, `pisces-inidata` decouples data provider conventions and target model expectations in `catalog.yaml`.
+Rather than hardcoding raw input package paths (e.g. `official_v5.0.0`), filenames (`data_DOC_nomask.nc`), or internal NetCDF variable names (`epsdb`, `fr_par`, `Alkalini`, `DIC`) across codebase modules, `pisces-inidata` decouples data provider conventions and target model expectations in `catalog.yaml`.
 
 ### Decoupled Schema Architecture
 - **`packages`**: External data packages, default subdirectories, archive names, and URLs. Supports environment variable override `OFFICIAL_INPUTS_DIR`.
@@ -375,8 +376,8 @@ Rather than hardcoding raw input package paths (e.g. `official_v5.0.0`), filenam
 ### CLI Inspection & Resolution Commands
 ```bash
 # Resolve source metadata for Stage 1 standardization:
-pisces-inidata resolve-source DOC --preset ece4 --export
-pisces-inidata resolve-source hydrofe --preset ece4 --export
+pisces-inidata resolve-source DOC --pack ece4 --export
+pisces-inidata resolve-source hydrofe --pack ece4 --export
 
 # Resolve target model convention for Stage 2 remapping:
 pisces-inidata resolve-target TALK --grid eORCA1 --export

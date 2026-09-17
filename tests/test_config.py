@@ -85,22 +85,30 @@ boundary_forcings:
             os.remove(f_name)
 
 
-def test_presets():
-    # ECE4 preset (modern EC-Earth4)
-    cfg_ece4 = load_config("sources.yaml", preset="ece4")
+def test_packs_and_presets():
+    # ECE4 pack (modern EC-Earth4)
+    cfg_ece4 = load_config("sources.yaml", pack="ece4")
+    assert cfg_ece4['INIDATA_PACK'] == 'ece4'
     assert cfg_ece4['INIDATA_PRESET'] == 'ece4'
     assert cfg_ece4['PRODUCT_NO3'] == 'woa23'
     assert cfg_ece4['PRODUCT_DOC'] == 'panaiotis2024'
 
-    # ECE3 preset (observational sources used in EC-Earth3)
-    cfg_ece3 = load_config("sources.yaml", preset="ece3")
+    # Preset alias works identically
+    cfg_ece4_preset = load_config("sources.yaml", preset="ece4")
+    assert cfg_ece4_preset['INIDATA_PACK'] == 'ece4'
+    assert cfg_ece4_preset['INIDATA_PRESET'] == 'ece4'
+
+    # ECE3 pack (observational sources used in EC-Earth3)
+    cfg_ece3 = load_config("sources.yaml", pack="ece3")
+    assert cfg_ece3['INIDATA_PACK'] == 'ece3'
     assert cfg_ece3['INIDATA_PRESET'] == 'ece3'
     assert cfg_ece3['PRODUCT_NO3'] == 'woa2009'
     assert cfg_ece3['PRODUCT_TALK'] == 'glodap_v1'
     assert cfg_ece3['PRODUCT_DOC'] == 'sette_nomask'
 
-    # official_sette preset (all from SETTE with pure interpolation)
-    cfg_sette = load_config("sources.yaml", preset="official_sette")
+    # official_sette pack (all from SETTE with pure interpolation)
+    cfg_sette = load_config("sources.yaml", pack="official_sette")
+    assert cfg_sette['INIDATA_PACK'] == 'official_sette'
     assert cfg_sette['INIDATA_PRESET'] == 'official_sette'
     assert cfg_sette['PRODUCT_NO3'] == 'sette_nomask'
     assert cfg_sette['PRODUCT_TALK'] == 'sette_nomask'
@@ -109,10 +117,10 @@ def test_presets():
     assert cfg_sette['PRODUCT_RIVER'] == 'sette_orca2'
 
 
-def test_custom_preset():
+def test_custom_pack():
     content = """
-preset: my_custom_exp
-base_preset: ece4
+pack: my_custom_exp
+base_pack: ece4
 tracers_3d:
   DOC: sette_nomask
   TALK: glodap_v2_2023
@@ -123,6 +131,7 @@ tracers_3d:
 
     try:
         cfg = load_config(f_name)
+        assert cfg['INIDATA_PACK'] == 'my_custom_exp'
         assert cfg['INIDATA_PRESET'] == 'my_custom_exp'
         assert cfg['PRODUCT_DOC'] == 'sette_nomask'
         assert cfg['PRODUCT_TALK'] == 'glodap_v2_2023'
@@ -133,8 +142,9 @@ tracers_3d:
             os.remove(f_name)
 
 
-def test_custom_preset_cli_override():
-    cfg = load_config("sources.yaml", preset="exp_variant")
+def test_custom_pack_cli_override():
+    cfg = load_config("sources.yaml", pack="exp_variant")
+    assert cfg['INIDATA_PACK'] == 'exp_variant'
     assert cfg['INIDATA_PRESET'] == 'exp_variant'
     assert cfg['PRODUCT_NO3'] == 'woa23'  # inherited from default ece4 base
     assert validate_config(cfg) is True

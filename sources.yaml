@@ -2,22 +2,22 @@
 # PISCES Initial Conditions Source Configuration (sources.yaml)
 #
 # Configures the input observational datasets for 3D tracers and boundary forcings.
-# Presets:
+# Packs:
 #   - ece4           : Modern observational datasets for EC-Earth4 (Default)
 #                      (WOA23, GLODAPv2.2016b, Panaïotis et al. 2024 DOC, Tagliabue Fe)
 #   - ece3           : Observational sources originally used in EC-Earth3
 #                      (WOA2009, GLODAPv1.1, Hansell 2009 DOC, Tagliabue Fe)
 #   - official_sette : Official regular unmasked NEMO/PISCES reference (all sette)
-#   - <custom>       : Any custom preset name (e.g. my_experiment).
-#                      Unspecified tracers inherit from base_preset (default: ece4).
-#                      Standardized files are cleanly isolated in shared/standardized/<preset>/
+#   - <custom>       : Any custom pack name (e.g. my_experiment).
+#                      Unspecified tracers inherit from base_pack (default: ece4).
+#                      Standardized files are cleanly isolated in shared/standardized/<pack>/
 #
-# Preset files can also be loaded directly from the presets/ directory (e.g. presets/sources_<preset>.yaml).
-# Any explicit variable below overrides the preset default.
+# Pack files can also be loaded directly from the packs/ directory (e.g. packs/sources_<pack>.yaml).
+# Any explicit variable below overrides the pack default.
 # ==============================================================================
 
-preset: ece4
-# base_preset: ece4  # Optional: base preset to inherit defaults from when defining a custom preset name
+pack: ece4
+# base_pack: ece4  # Optional: base pack to inherit defaults from when defining a custom pack name
 
 tracers_3d:
   # Nitrate (NO3):

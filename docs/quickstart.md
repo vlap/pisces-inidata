@@ -6,7 +6,7 @@
 # 1. Ingest & standardize source data (interactive node with internet access):
 git clone https://github.com/vlap/pisces-inidata.git && cd pisces-inidata
 pip install -e .
-pisces-inidata download --preset ece4 --prepare
+pisces-inidata download --pack ece4 --prepare
 
 # 2. Produce inidata for eORCA1 in parallel via Slurm (batch cluster):
 pisces-inidata produce --grid eORCA1
@@ -51,7 +51,7 @@ pip install -e .
 pisces-inidata check --grid eORCA1
 
 # 3. Download & prepare sources
-pisces-inidata download --preset ece4 --prepare
+pisces-inidata download --pack ece4 --prepare
 
 # 4. Produce inidata
 pisces-inidata produce --grid eORCA1
@@ -95,18 +95,18 @@ pisces-inidata grid-config
 
 ---
 
-## Presets Cheatsheet (`sources.yaml`)
+## Inidata Packs Cheatsheet (`sources.yaml`)
 
-| Preset | Target Simulation | Nutrients & Oxygen | Carbon Chemistry | DOC | Iron & Surface |
+| Pack | Target Simulation | Nutrients & Oxygen | Carbon Chemistry | DOC | Iron & Surface |
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | **`ece4`** *(Default)* | EC-Earth4 Production | WOA23 (102 levels) | GLODAPv2.2016b | Panaïotis et al. 2024 (ML) | Tagliabue (2012) & SETTE |
 | **`ece3`** | EC-Earth3 Reproduction | WOA2009 | GLODAPv1.1 | Hansell (2009) | Tagliabue (2012) & SETTE |
 | **`official_sette`** | SETTE Verification Benchmark | SETTE unmasked | SETTE unmasked | SETTE unmasked | SETTE regular reference |
 
-To select a preset:
+To select a pack:
 ```bash
-pisces-inidata download --preset ece3 --prepare
-pisces-inidata produce --grid eORCA1 --preset ece3
+pisces-inidata download --pack ece3 --prepare
+pisces-inidata produce --grid eORCA1 --pack ece3
 ```
 
 ---

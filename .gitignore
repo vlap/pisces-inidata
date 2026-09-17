@@ -12,7 +12,10 @@ work_*/
 output_*/
 shared/
 grids/
+domain/
+pisces_output/
 /pisces_inidata*/
+sette_reference_*/
 
 # Temporary and log files
 *.out
@@ -20,6 +23,7 @@ grids/
 tmp_*
 fallback_tmp/
 logs/
+jobs/
 sbatch_scripts/
 scratch/
 

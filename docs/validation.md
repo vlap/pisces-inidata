@@ -86,11 +86,11 @@ Only independent observational products re-interpolated by the pipeline (WOA23, 
 
 ### Running Universal Validation (ORCA2 vs SETTE)
 ```bash
-# Step 1: Produce ORCA2 files using official_sette (or ece4) preset:
-pisces-inidata produce --grid ORCA2 --preset official_sette
+# Step 1: Produce ORCA2 files using official_sette (or ece4) pack:
+pisces-inidata produce --grid ORCA2 --pack official_sette
 
 # Step 2: Validate generated ORCA2 NetCDF files against SETTE references:
-pisces-inidata validate --preset official_sette --test-dir output_ORCA2 --ref-dir sette_reference_ORCA2
+pisces-inidata validate --pack official_sette --test-dir output_ORCA2 --ref-dir sette_reference_ORCA2
 
 # Enforce strict CI exit codes:
 pisces-inidata validate --fail-on-error
@@ -99,15 +99,15 @@ pisces-inidata validate --fail-on-error
 
 ### Running Pipeline Precision Test (eORCA1 vs EC-Earth3)
 ```bash
-# Step 1: Produce eORCA1 files using official_sette (or ece3) preset:
-pisces-inidata produce --grid eORCA1 --preset official_sette
+# Step 1: Produce eORCA1 files using official_sette (or ece3) pack:
+pisces-inidata produce --grid eORCA1 --pack official_sette
 
 # Step 2: Run baseline reproduction test on eORCA1:
-pisces-inidata test-reproduction --preset official_sette
+pisces-inidata test-reproduction --pack official_sette
 
 # Or with explicit paths:
 pisces-inidata test-reproduction \
-    --preset official_sette \
+    --pack official_sette \
     --test-dir output_eORCA1 \
     --ref-dir /path/to/ece3_eORCA1_reference \
     --mask domain/eORCA1/maskutil.nc

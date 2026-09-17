@@ -23,7 +23,7 @@ def test_stamp_provenance():
             tmp_path,
             grid_name="eORCA025",
             institution="BSC",
-            preset="ece4",
+            pack="ece4",
             git_rev="test1234",
         )
 
@@ -31,6 +31,7 @@ def test_stamp_provenance():
             assert ds.title == "PISCES Initial Conditions (eORCA025)"
             assert ds.institution == "BSC"
             assert ds.source_pipeline == "pisces-inidata (git:test1234)"
+            assert ds.inidata_pack == "ece4"
             assert ds.inidata_preset == "ece4"
             assert hasattr(ds, "generation_date")
     finally:

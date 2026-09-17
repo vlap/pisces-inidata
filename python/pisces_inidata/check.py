@@ -21,6 +21,10 @@ def check_binaries() -> List[Tuple[str, bool, str, bool]]:
     Checks presence and versions of required and optional command-line tools.
     Returns: list of (name, is_available, version_or_error, is_required)
     """
+    cand = os.path.expanduser("~/.local/nco-env/bin")
+    if os.path.isdir(cand) and cand not in os.environ.get("PATH", ""):
+        os.environ["PATH"] = cand + os.pathsep + os.environ.get("PATH", "")
+
     results = []
     for tool in REQUIRED_BINARIES:
         path = shutil.which(tool)
@@ -174,18 +178,20 @@ def run_preflight_checks(
     raw_dir: Optional[str] = None,
     domain_dir: Optional[str] = None,
     out_dir: Optional[str] = None,
-    preset: Optional[str] = None
+    pack: Optional[str] = None,
+    preset: Optional[str] = None,
 ) -> int:
     """
     Runs full preflight check suite and outputs formatted results.
     Returns 0 on success, 1 on critical failure.
     """
-    cfg = load_config(config_file or "sources.yaml", preset=preset)
+    active_pack = preset if preset is not None else pack
+    cfg = load_config(config_file or "sources.yaml", pack=active_pack)
     validate_config(cfg)
-    active_preset = cfg.get("INIDATA_PRESET", "ece4")
+    pack_name = cfg.get("INIDATA_PACK", cfg.get("INIDATA_PRESET", "ece4"))
 
     print("=" * 78)
-    print(f" PISCES INIDATA PRE-FLIGHT CHECK (Grid: {grid_name}, Preset: {active_preset})")
+    print(f" PISCES INIDATA PRE-FLIGHT CHECK (Grid: {grid_name}, Pack: {pack_name})")
     print("=" * 78)
 
     all_critical_passed = True

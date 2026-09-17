@@ -70,6 +70,7 @@ def stamp_netcdf_provenance(
     target_file: str,
     grid_name: Optional[str] = None,
     institution: Optional[str] = None,
+    pack: Optional[str] = None,
     preset: Optional[str] = None,
     git_rev: Optional[str] = None,
 ) -> None:
@@ -81,7 +82,14 @@ def stamp_netcdf_provenance(
 
     grid = grid_name or os.environ.get("GRID_NAME", "eORCA1")
     inst = institution or os.environ.get("PISCES_INSTITUTION", "EC-Earth Consortium")
-    p_name = preset or os.environ.get("INIDATA_PRESET", os.environ.get("PRESET", "custom"))
+    p_name = (
+        pack
+        or preset
+        or os.environ.get("INIDATA_PACK")
+        or os.environ.get("PACK")
+        or os.environ.get("INIDATA_PRESET")
+        or os.environ.get("PRESET", "custom")
+    )
     timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
     if not git_rev:
@@ -101,5 +109,6 @@ def stamp_netcdf_provenance(
         ds.title = f"PISCES Initial Conditions ({grid})"
         ds.institution = inst
         ds.source_pipeline = f"pisces-inidata (git:{git_rev})"
+        ds.inidata_pack = p_name
         ds.inidata_preset = p_name
         ds.generation_date = timestamp

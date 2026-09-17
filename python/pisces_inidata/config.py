@@ -10,7 +10,7 @@ import yaml
 from typing import Dict, Optional
 
 
-PRESETS = {
+PACKS = {
     'ece4': {
         'PRODUCT_NO3': 'woa23',
         'PRODUCT_PO4': 'woa23',
@@ -64,7 +64,8 @@ PRESETS = {
     },
 }
 
-DEFAULTS = PRESETS['ece4'].copy()
+PRESETS = PACKS
+DEFAULTS = PACKS['ece4'].copy()
 
 VALID_SOURCES = {
     'PRODUCT_NO3': ['woa23', 'woa2009', 'sette_nomask'],
@@ -116,20 +117,35 @@ DEFAULT_DUST_VARS = ["dust", "dustfer", "dustpo4", "dustsi", "solubility2"]
 DEFAULT_NDEP_VARS = ["ndep", "ndep2"]
 
 
-def resolve_preset_name(preset: Optional[str]) -> str:
-    """Normalizes preset name; defaults to ece4."""
-    if not preset:
+def resolve_pack_name(pack: Optional[str]) -> str:
+    """Normalizes inidata pack name; defaults to ece4."""
+    if not pack:
         return 'ece4'
-    return preset.strip().lower()
+    return pack.strip().lower()
 
 
-def load_config(config_path: str = "sources.yaml", preset: Optional[str] = None) -> Dict[str, str]:
+resolve_preset_name = resolve_pack_name
+
+
+def load_config(
+    config_path: str = "sources.yaml",
+    pack: Optional[str] = None,
+    preset: Optional[str] = None,
+) -> Dict[str, str]:
     """
-    Loads product configuration from preset and sources.yaml or environment variables.
+    Loads product configuration from inidata pack and sources.yaml or environment variables.
     """
     repo_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    explicit_preset = preset or os.environ.get('PRESET') or os.environ.get('INIDATA_PRESET')
-    norm_explicit = resolve_preset_name(explicit_preset) if explicit_preset else None
+    explicit_pack = (
+        pack
+        or preset
+        or os.environ.get('PISCES_PACK')
+        or os.environ.get('PACK')
+        or os.environ.get('INIDATA_PACK')
+        or os.environ.get('PRESET')
+        or os.environ.get('INIDATA_PRESET')
+    )
+    norm_explicit = resolve_pack_name(explicit_pack) if explicit_pack else None
 
     # Check environment variable for custom config file if default is passed
     if os.path.basename(config_path) in ("sources.yaml", ""):
@@ -137,17 +153,30 @@ def load_config(config_path: str = "sources.yaml", preset: Optional[str] = None)
         if env_cfg and os.path.exists(env_cfg):
             config_path = env_cfg
 
-    # If preset is explicitly requested and default sources.yaml is used,
-    # load presets/sources_<preset>.yaml if available
+    # If pack is explicitly requested and default sources.yaml is used,
+    # load packs/sources_<pack>.yaml or packs/<pack>.yaml if available
     if norm_explicit and os.path.basename(config_path) == "sources.yaml":
-        preset_file = os.path.join(repo_root, "presets", f"sources_{norm_explicit}.yaml")
-        if os.path.exists(preset_file):
-            config_path = preset_file
+        for cand_dir in ["packs", "presets"]:
+            for pattern in [f"sources_{norm_explicit}.yaml", f"{norm_explicit}.yaml"]:
+                p_file = os.path.join(repo_root, cand_dir, pattern)
+                if os.path.exists(p_file):
+                    config_path = p_file
+                    break
 
     resolved_path = None
     candidates = [
         config_path,
         os.path.join(repo_root, config_path),
+        (
+            os.path.join(repo_root, "packs", f"sources_{config_path}.yaml")
+            if not config_path.endswith((".yaml", ".yml"))
+            else None
+        ),
+        (
+            os.path.join(repo_root, "packs", f"{config_path}.yaml")
+            if not config_path.endswith((".yaml", ".yml"))
+            else None
+        ),
         (
             os.path.join(repo_root, "presets", f"sources_{config_path}.yaml")
             if not config_path.endswith((".yaml", ".yml"))
@@ -169,27 +198,36 @@ def load_config(config_path: str = "sources.yaml", preset: Optional[str] = None)
             print(f"Warning: Failed to parse YAML from {resolved_path}: {e}")
             data = {}
 
-    # Determine active preset
-    active_preset = preset or os.environ.get('PRESET') or os.environ.get('INIDATA_PRESET')
-    if not active_preset and isinstance(data, dict):
-        active_preset = data.get('preset')
-    norm_preset = resolve_preset_name(active_preset)
+    # Determine active inidata pack
+    active_pack = (
+        pack
+        or preset
+        or os.environ.get('PISCES_PACK')
+        or os.environ.get('PACK')
+        or os.environ.get('INIDATA_PACK')
+        or os.environ.get('PRESET')
+        or os.environ.get('INIDATA_PRESET')
+    )
+    if not active_pack and isinstance(data, dict):
+        active_pack = data.get('pack') or data.get('preset')
+    norm_pack = resolve_pack_name(active_pack)
 
-    # Base preset for inheriting defaults (e.g. 'ece4', 'ece3', 'official_sette')
+    # Base pack for inheriting defaults (e.g. 'ece4', 'ece3', 'official_sette')
     base_name = 'ece4'
-    if isinstance(data, dict) and data.get('base_preset'):
-        base_name = data.get('base_preset')
-    norm_base = resolve_preset_name(base_name)
-    if norm_base not in PRESETS:
+    if isinstance(data, dict):
+        base_name = data.get('base_pack') or data.get('base_preset') or 'ece4'
+    norm_base = resolve_pack_name(base_name)
+    if norm_base not in PACKS:
         norm_base = 'ece4'
 
-    if norm_preset in PRESETS:
-        config = PRESETS[norm_preset].copy()
+    if norm_pack in PACKS:
+        config = PACKS[norm_pack].copy()
     else:
-        # Custom user preset: inherit unspecified defaults from base_preset
-        config = PRESETS[norm_base].copy()
+        # Custom user pack: inherit unspecified defaults from base_pack
+        config = PACKS[norm_base].copy()
 
-    config['INIDATA_PRESET'] = norm_preset
+    config['INIDATA_PACK'] = norm_pack
+    config['INIDATA_PRESET'] = norm_pack
 
     # Apply per-variable overrides from YAML
     if isinstance(data, dict):
@@ -229,7 +267,7 @@ def load_config(config_path: str = "sources.yaml", preset: Optional[str] = None)
 
     # Environment variables override file
     extra_env_keys = [
-        'INIDATA_PRESET', 'TRACERS_3D_LIST', 'BOUNDARY_FORCINGS_LIST',
+        'INIDATA_PACK', 'INIDATA_PRESET', 'TRACERS_3D_LIST', 'BOUNDARY_FORCINGS_LIST',
         'RIVER_VARS_LIST', 'DUST_VARS_LIST', 'NDEP_VARS_LIST'
     ]
     for k in list(DEFAULTS.keys()) + extra_env_keys:
@@ -250,7 +288,7 @@ def validate_config(config: Dict[str, str]) -> bool:
         if val == 'ece3':
             print(
                 f"Error: '{key}' is set to 'ece3'. EC-Earth3 inidata cannot be used as an input source. "
-                "To use the EC-Earth3 baseline observational sources, set 'preset: ece3' in sources.yaml instead."
+                "To use the EC-Earth3 baseline observational sources, set 'pack: ece3' in sources.yaml instead."
             )
             all_valid = False
         elif val not in allowed:

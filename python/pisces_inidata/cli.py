@@ -6,7 +6,6 @@ Provides unified command-line commands for pipeline execution, padding, validati
 import sys
 import os
 import argparse
-import subprocess
 from typing import Optional, List
 from pisces_inidata import __version__
 from pisces_inidata.config import load_config, validate_config, export_env_commands
@@ -20,7 +19,7 @@ def get_repo_root() -> str:
     """Finds repository root path by traversing parent directories."""
     cur = os.path.dirname(os.path.abspath(__file__))
     while cur and cur != os.path.dirname(cur):
-        if os.path.exists(os.path.join(cur, 'sources.yaml')) or os.path.exists(os.path.join(cur, 'scripts')):
+        if os.path.exists(os.path.join(cur, 'catalog.yaml')) or os.path.exists(os.path.join(cur, 'pyproject.toml')):
             return cur
         cur = os.path.dirname(cur)
     return os.getcwd()
@@ -48,87 +47,151 @@ def cmd_resolve_glodap(args):
     print(str(path))
 
 
+def get_pack_from_args(args, default: Optional[str] = "ece4") -> Optional[str]:
+    """Helper to extract inidata pack with --preset and environment variable fallback."""
+    val = getattr(args, 'pack', None) or getattr(args, 'preset', None)
+    if val:
+        return val
+    return (
+        os.environ.get("INIDATA_PACK")
+        or os.environ.get("PACK")
+        or os.environ.get("INIDATA_PRESET")
+        or os.environ.get("PRESET")
+        or default
+    )
+
+
 def cmd_stamp(args):
     from pisces_inidata.provenance import stamp_netcdf_provenance
+    pack = get_pack_from_args(args, default=None)
     stamp_netcdf_provenance(
         args.file,
         grid_name=args.grid,
         institution=args.institution,
-        preset=args.preset,
+        pack=pack,
     )
 
 
 def cmd_prepare_sources(args):
-    repo_root = get_repo_root()
-    script = os.path.join(repo_root, 'scripts', 'prepare_standard_sources.sh')
-    if not os.path.exists(script):
-        print(f"Error: prepare script not found at {script}")
+    from pisces_inidata.etl import standardize_source, standardize_all_sources
+    pack = get_pack_from_args(args, default="ece4")
+    force = getattr(args, 'force', False)
+    var = getattr(args, 'variable', 'all')
+    raw_dir = getattr(args, 'raw_dir', None)
+
+    try:
+        if var == "all":
+            standardize_all_sources(pack=pack, force=force, raw_dir=raw_dir)
+        else:
+            standardize_source(var_name=var, pack=pack, force=force, raw_dir=raw_dir)
+    except Exception as exc:
+        print(f"\n[FAIL-FAST ERROR] Stage 1 source standardization failed: {exc}", file=sys.stderr)
         sys.exit(1)
-
-    env = os.environ.copy()
-    if getattr(args, 'config', None):
-        env["PISCES_CONFIG"] = os.path.abspath(args.config)
-    if getattr(args, 'preset', None):
-        env["PRESET"] = args.preset
-        env["INIDATA_PRESET"] = args.preset
-    if getattr(args, 'force', False):
-        env["FORCE"] = "1"
-
-    cmd = ["bash", script, args.variable]
-    res = subprocess.run(cmd, cwd=repo_root, env=env)
-    sys.exit(res.returncode)
 
 
 def cmd_remap(args):
-    repo_root = get_repo_root()
-    script = os.path.join(repo_root, 'scripts', 'remap_field.sh')
-    if not os.path.exists(script):
-        print(f"Error: remap script not found at {script}")
+    from pisces_inidata.remap import remap_field, remap_all_fields
+    grid_name = getattr(args, 'grid', None) or getattr(args, 'orca', None) or os.environ.get("GRID_NAME", "eORCA1")
+    var = getattr(args, 'variable', None) or getattr(args, 'var', 'all')
+    pack = get_pack_from_args(args, default="ece4")
+    convention = getattr(args, 'convention', 'nemo4_ece4')
+    force = getattr(args, 'force', False)
+    domain_dir = getattr(args, 'domain_dir', None)
+    out_dir = getattr(args, 'out_dir', None)
+    threads = getattr(args, 'threads', None)
+
+    try:
+        if var == "all":
+            remap_all_fields(
+                grid_name=grid_name,
+                pack=pack,
+                convention=convention,
+                force=force,
+                domain_dir=domain_dir,
+                out_dir=out_dir,
+                threads=threads,
+            )
+        else:
+            remap_field(
+                var_name=var,
+                grid_name=grid_name,
+                pack=pack,
+                convention=convention,
+                force=force,
+                domain_dir=domain_dir,
+                out_dir=out_dir,
+                threads=threads,
+            )
+    except Exception as exc:
+        print(f"\n[FAIL-FAST ERROR] Stage 2 remapping failed: {exc}", file=sys.stderr)
         sys.exit(1)
-
-    env = os.environ.copy()
-    grid_name = getattr(args, 'grid', None) or getattr(args, 'orca', None)
-    if grid_name:
-        env["GRID_NAME"] = grid_name
-    if args.domain_dir:
-        env["DOMAIN_BASE_DIR"] = os.path.abspath(args.domain_dir)
-    if getattr(args, 'config', None):
-        env["PISCES_CONFIG"] = os.path.abspath(args.config)
-    if getattr(args, 'preset', None):
-        env["PRESET"] = args.preset
-        env["INIDATA_PRESET"] = args.preset
-
-    cmd = ["bash", script, args.variable]
-    res = subprocess.run(cmd, cwd=repo_root, env=env)
-    sys.exit(res.returncode)
 
 
 def cmd_produce(args):
-    repo_root = get_repo_root()
-    script = os.path.join(repo_root, 'scripts', 'launcher_pisces_inidata.sh')
-    if not os.path.exists(script):
-        script = os.path.join(repo_root, 'launcher_pisces_inidata.sh')
-    if not os.path.exists(script):
-        print(f"Error: launcher script not found at {script}")
+    from pisces_inidata.launcher import launch_pipeline
+    grid_name = getattr(args, 'grid', None) or getattr(args, 'orca', None) or "eORCA1"
+    pack = get_pack_from_args(args, default="ece4")
+    convention = getattr(args, 'convention', 'nemo4_ece4')
+    stage = getattr(args, 'stage', 'stage2')
+    dry_run = getattr(args, 'dry_run', False)
+    force = getattr(args, 'force', False)
+    executor = getattr(args, 'executor', 'auto')
+    jobs = getattr(args, 'jobs', 1)
+    no_submit = getattr(args, 'no_submit', False)
+    domain_dir = getattr(args, 'domain_dir', None)
+    platform_name = getattr(args, 'platform', None)
+
+    try:
+        launch_pipeline(
+            grid_name=grid_name,
+            pack=pack,
+            convention=convention,
+            stage=stage,
+            force=force,
+            dry_run=dry_run,
+            executor=executor,
+            jobs=jobs,
+            no_submit=no_submit,
+            domain_dir=domain_dir,
+            platform_name=platform_name,
+        )
+    except Exception as exc:
+        print(f"\n[FAIL-FAST ERROR] Pipeline production failed: {exc}", file=sys.stderr)
         sys.exit(1)
 
-    grid_name = getattr(args, 'grid', None) or getattr(args, 'orca', None) or "eORCA1"
-    env = os.environ.copy()
-    env["GRID_NAME"] = grid_name
-    if getattr(args, 'domain_dir', None):
-        env["DOMAIN_BASE_DIR"] = os.path.abspath(args.domain_dir)
-    if getattr(args, 'config', None):
-        env["PISCES_CONFIG"] = os.path.abspath(args.config)
-    if getattr(args, 'preset', None):
-        env["PRESET"] = args.preset
-        env["INIDATA_PRESET"] = args.preset
 
-    submit_mode = "dry-run" if getattr(args, 'dry_run', False) else "submit"
-    stage = getattr(args, 'stage', 'stage2')
-    preset = env.get("PRESET", "ece4")
-    print(f"Producing PISCES inidata for {grid_name} (preset: {preset}, stage: {stage})...")
-    res = subprocess.run(["bash", script, submit_mode, stage], cwd=repo_root, env=env)
-    sys.exit(res.returncode)
+def cmd_gen_weights(args):
+    from pisces_inidata.weights import ensure_grid_and_weights
+    grid_name = getattr(args, 'grid', None) or getattr(args, 'orca', None) or "eORCA1"
+    domain_dir = getattr(args, 'domain_dir', None)
+    weights_dir = getattr(args, 'weights_dir', None)
+    raw_dir = getattr(args, 'raw_dir', None)
+    force = getattr(args, 'force', False)
+
+    try:
+        ensure_grid_and_weights(
+            grid_name=grid_name,
+            domain_dir=domain_dir,
+            weights_dir=weights_dir,
+            raw_dir=raw_dir,
+            force=force,
+        )
+    except Exception as exc:
+        print(f"\n[FAIL-FAST ERROR] Weights generation failed: {exc}", file=sys.stderr)
+        sys.exit(1)
+
+
+def cmd_prepare_sette_reference(args):
+    from pisces_inidata.reference import assemble_sette_reference_orca2
+    raw_dir = getattr(args, 'raw_dir', None)
+    out_dir = getattr(args, 'out_dir', None)
+    force = getattr(args, 'force', False)
+
+    try:
+        assemble_sette_reference_orca2(raw_dir=raw_dir, out_dir=out_dir, force=force)
+    except Exception as exc:
+        print(f"\n[FAIL-FAST ERROR] SETTE reference assembly failed: {exc}", file=sys.stderr)
+        sys.exit(1)
 
 
 def get_default_workspace() -> str:
@@ -194,7 +257,7 @@ def resolve_sette_ref_dir(preferred: Optional[str] = None) -> str:
 
 def cmd_validate(args):
     repo_root = get_repo_root()
-    preset = getattr(args, 'preset', 'official_sette')
+    pack = get_pack_from_args(args, default='official_sette')
     test_dir = resolve_output_dir("ORCA2", args.test_dir)
     ref_dir = resolve_sette_ref_dir(args.ref_dir)
     output_md = args.output_md or os.path.join(repo_root, "VALIDATION_SCOREBOARD_ORCA2.md")
@@ -204,14 +267,14 @@ def cmd_validate(args):
         ref_dir=ref_dir,
         output_md=output_md,
         fail_on_error=args.fail_on_error,
-        preset=preset
+        pack=pack
     )
     sys.exit(code)
 
 
 def cmd_test_reproduction(args):
     repo_root = get_repo_root()
-    preset = getattr(args, 'preset', 'official_sette')
+    pack = get_pack_from_args(args, default='official_sette')
     extra = [os.path.join(repo_root, "work_eORCA1", "reproduction_test")]
     test_dir = resolve_output_dir("eORCA1", args.test_dir, extra_candidates=extra)
     ref_dir = args.ref_dir or os.environ.get(
@@ -240,7 +303,7 @@ def cmd_test_reproduction(args):
         mask_file=mask_file,
         output_md=output_md,
         fail_on_error=args.fail_on_error,
-        preset=preset
+        pack=pack
     )
     sys.exit(code)
 
@@ -258,8 +321,8 @@ def cmd_verify(args):
 def cmd_info(args):
     repo_root = get_repo_root()
     cfg_file = getattr(args, 'config', None) or getattr(args, 'file', None) or os.path.join(repo_root, 'sources.yaml')
-    preset = getattr(args, 'preset', None)
-    config = load_config(cfg_file, preset=preset)
+    pack = get_pack_from_args(args, default=None)
+    config = load_config(cfg_file, pack=pack)
     valid = validate_config(config)
 
     print("=================================================================")
@@ -267,11 +330,12 @@ def cmd_info(args):
     print("=================================================================")
     print(f"Repository Root:     {repo_root}")
     print(f"Sources File:        {cfg_file}")
-    print(f"Active Preset:       {config.get('INIDATA_PRESET', 'ece4')}")
+    active_pack = config.get('INIDATA_PACK', config.get('INIDATA_PRESET', 'ece4'))
+    print(f"Active Pack:         {active_pack}")
     print(f"Configuration Valid: {'YES' if valid else 'WARNINGS DETECTED'}")
     print("\nConfigured Sources:")
     for k, v in sorted(config.items()):
-        if k != 'INIDATA_PRESET':
+        if k not in ('INIDATA_PACK', 'INIDATA_PRESET'):
             print(f"  {k:18s} = {v}")
     print("=================================================================")
 
@@ -279,8 +343,8 @@ def cmd_info(args):
 def cmd_config(args):
     repo_root = get_repo_root()
     cfg_file = getattr(args, 'config', None) or getattr(args, 'file', None) or os.path.join(repo_root, 'sources.yaml')
-    preset = getattr(args, 'preset', None)
-    config = load_config(cfg_file, preset=preset)
+    pack = get_pack_from_args(args, default=None)
+    config = load_config(cfg_file, pack=pack)
     if args.export:
         print(export_env_commands(config))
     else:
@@ -367,8 +431,8 @@ def cmd_download(args):
             raw_dir = os.path.join(repo_root, "pisces_raw_sources")
         else:
             raw_dir = os.path.join(repo_root, "pisces_raw_sources")
-    preset = getattr(args, 'preset', None)
-    code = download_sources(config_file=cfg_file, raw_dir=raw_dir, dry_run=args.dry_run, preset=preset)
+    pack = get_pack_from_args(args, default=None)
+    code = download_sources(config_file=cfg_file, raw_dir=raw_dir, dry_run=args.dry_run, pack=pack)
     if code != 0:
         sys.exit(code)
 
@@ -388,7 +452,7 @@ def cmd_pad(args):
 def cmd_check(args):
     repo_root = get_repo_root()
     cfg_file = args.config or os.path.join(repo_root, 'sources.yaml')
-    preset = getattr(args, 'preset', None)
+    pack = get_pack_from_args(args, default=None)
     grid_name = getattr(args, 'grid', None) or getattr(args, 'orca', 'ORCA2')
     code = run_preflight_checks(
         grid_name=grid_name,
@@ -396,20 +460,20 @@ def cmd_check(args):
         raw_dir=args.raw_dir,
         domain_dir=args.domain_dir,
         out_dir=args.out_dir,
-        preset=preset
+        pack=pack
     )
     sys.exit(code)
 
 
 def cmd_resolve_source(args):
     from pisces_inidata.catalog import resolve_source_field, export_source_env
-    preset = getattr(args, 'preset', None)
+    pack = get_pack_from_args(args, default=None)
     raw_dir = getattr(args, 'raw_dir', None)
     if getattr(args, 'export', False):
-        print(export_source_env(args.variable, preset=preset, raw_dir=raw_dir))
+        print(export_source_env(args.variable, pack=pack, raw_dir=raw_dir))
     else:
         import json
-        meta = resolve_source_field(args.variable, preset=preset, raw_dir=raw_dir)
+        meta = resolve_source_field(args.variable, pack=pack, raw_dir=raw_dir)
         print(json.dumps(meta, indent=2))
     sys.exit(0)
 
@@ -454,8 +518,9 @@ def make_config_parent():
     p = argparse.ArgumentParser(add_help=False)
     p.add_argument("--config", "--file", dest="config", help="Path to custom sources.yaml")
     p.add_argument(
-        "--preset",
-        help="Configuration preset (default: ece4; e.g. ece4, ece3, official_sette, or custom)"
+        "--pack", "--preset",
+        dest="pack",
+        help="Inidata source pack (default: ece4; e.g. ece4, ece3, official_sette, or custom)"
     )
     return p
 
@@ -514,8 +579,31 @@ def main():
     )
     add_grid_argument(produce_parser, default="eORCA1")
     produce_parser.add_argument(
-        "--stage", choices=["stage2", "all", "stage1"], default="stage2",
+        "--stage", choices=["stage2", "all", "stage1", "weights"], default="stage2",
         help="Pipeline execution stage (default: stage2 [parallel remapping])"
+    )
+    produce_parser.add_argument(
+        "--executor", choices=["auto", "slurm", "local"], default="auto",
+        help="Pipeline executor mode: auto (slurm if available, else local), slurm, or local"
+    )
+    produce_parser.add_argument(
+        "-j", "--jobs", type=int, default=1,
+        help="Number of concurrent worker processes for local execution (default: 1 [sequential])"
+    )
+    produce_parser.add_argument(
+        "--no-submit", action="store_true",
+        help="Generate Slurm job array script without submitting it to sbatch"
+    )
+    produce_parser.add_argument(
+        "--force", action="store_true",
+        help="Force regeneration of files even if they already exist"
+    )
+    produce_parser.add_argument(
+        "--convention", default="nemo4_ece4",
+        help="Target model convention (default: nemo4_ece4)"
+    )
+    produce_parser.add_argument(
+        "--platform", help="Platform profile to use for Slurm configuration (e.g. nord4, mn5)"
     )
     produce_parser.set_defaults(func=cmd_produce)
 
@@ -532,9 +620,10 @@ def main():
         help="Directory containing SETTE ORCA2 benchmark reference files (default: sette_reference_ORCA2/)"
     )
     val_parser.add_argument(
-        "--preset",
+        "--pack", "--preset",
+        dest="pack",
         default="official_sette",
-        help="Configuration preset tested in validation (default: official_sette)"
+        help="Inidata pack tested in validation (default: official_sette)"
     )
     val_parser.add_argument(
         "--output-md",
@@ -558,9 +647,10 @@ def main():
     rep_parser.add_argument("--ref-dir", help="Directory containing official EC-Earth3 eORCA1 reference files")
     rep_parser.add_argument("--mask", help="Path to land-sea mask NetCDF file (maskutil.nc)")
     rep_parser.add_argument(
-        "--preset",
+        "--pack", "--preset",
+        dest="pack",
         default="official_sette",
-        help="Configuration preset tested for reproduction (default: official_sette)"
+        help="Inidata pack tested for reproduction (default: official_sette)"
     )
     rep_parser.add_argument(
         "--output-md",
@@ -663,7 +753,7 @@ def main():
     stamp_parser.add_argument("file", help="Path to NetCDF file to stamp")
     stamp_parser.add_argument("--grid", help="Target grid name (e.g. eORCA1)")
     stamp_parser.add_argument("--institution", help="Institution name")
-    stamp_parser.add_argument("--preset", help="Configuration preset name")
+    stamp_parser.add_argument("--pack", "--preset", dest="pack", help="Inidata pack name")
     stamp_parser.set_defaults(func=cmd_stamp)
 
     # Command: prepare-sources (Stage 1 ETL)
@@ -683,6 +773,8 @@ def main():
         "--force", action="store_true",
         help="Force regeneration even if standardized source file already exists"
     )
+    prep_src_parser.add_argument("--raw-dir", help="Directory containing raw datasets")
+    prep_src_parser.add_argument("--out-dir", help="Target directory for standardized source NetCDFs")
     prep_src_parser.set_defaults(func=cmd_prepare_sources)
 
     # Command: remap (Stage 2 Remap)
@@ -698,8 +790,43 @@ def main():
         ],
         help="Variable or component to remap (default: all)"
     )
+    remap_parser.add_argument(
+        "-v", "--var", "--variable", dest="var", default=None,
+        help="Variable or component to remap (alternative flag)"
+    )
     add_grid_argument(remap_parser, default="ORCA2")
+    remap_parser.add_argument(
+        "--convention", default="nemo4_ece4",
+        help="Target model convention (default: nemo4_ece4)"
+    )
+    remap_parser.add_argument(
+        "--force", action="store_true",
+        help="Force remapping even if output file already exists"
+    )
+    remap_parser.add_argument("--out-dir", help="Path to output directory for remapped files")
+    remap_parser.add_argument("--threads", type=int, help="Number of CDO OpenMP worker threads")
     remap_parser.set_defaults(func=cmd_remap)
+
+    # Command: gen-weights
+    weights_parser = subparsers.add_parser(
+        "gen-weights", parents=[make_domain_parent()],
+        help="Generate target grid coordinates and SCRIP remapping weights"
+    )
+    add_grid_argument(weights_parser, default="eORCA1")
+    weights_parser.add_argument("--weights-dir", help="Directory to store generated weights")
+    weights_parser.add_argument("--raw-dir", help="Directory containing raw datasets")
+    weights_parser.add_argument("--force", action="store_true", help="Force regeneration of weights")
+    weights_parser.set_defaults(func=cmd_gen_weights)
+
+    # Command: prepare-sette-reference
+    sette_ref_parser = subparsers.add_parser(
+        "prepare-sette-reference",
+        help="Assemble official SETTE benchmark reference datasets on ORCA2"
+    )
+    sette_ref_parser.add_argument("--raw-dir", help="Directory containing raw datasets")
+    sette_ref_parser.add_argument("--out-dir", help="Output directory for reference dataset")
+    sette_ref_parser.add_argument("--force", action="store_true", help="Force reassembly")
+    sette_ref_parser.set_defaults(func=cmd_prepare_sette_reference)
 
     # Command: verify
     verify_parser = subparsers.add_parser(

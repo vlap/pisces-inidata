@@ -29,7 +29,7 @@ For users with access to BSC machines (or any HPC cluster), producing inidata ta
 
 1. **On `hub04` (interactive node with internet access):**
    ```bash
-   pisces-inidata download --preset ece4 --prepare
+   pisces-inidata download --pack ece4 --prepare
    ```
 2. **On `nord4` (batch Slurm cluster):**
    ```bash

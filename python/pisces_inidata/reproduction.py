@@ -213,15 +213,17 @@ def evaluate_reproduction_closeness(
 def format_reproduction_report(
     results: List[Dict[str, Any]],
     output_md_path: Optional[str] = None,
-    preset: str = "official_sette"
+    pack: str = "official_sette",
+    preset: Optional[str] = None,
 ) -> str:
     """
     Formats the evaluation results into a Markdown report table matching project documentation.
     """
+    active_pack = preset if preset is not None else pack
     lines = []
     lines.append("# PISCES Pipeline Precision Report: EC-Earth3 Baseline Reproduction")
     lines.append("")
-    lines.append(f"**Configuration Preset:** `{preset}`  ")
+    lines.append(f"**Configuration Pack:** `{active_pack}`  ")
     lines.append("")
     lines.append(
         "Quantitative precision benchmark verifying that re-interpolating original "
@@ -283,14 +285,16 @@ def run_pipeline_reproduction_test(
     mask_file: Optional[str] = None,
     output_md: Optional[str] = None,
     fail_on_error: bool = False,
-    preset: str = "official_sette"
+    pack: str = "official_sette",
+    preset: Optional[str] = None,
 ) -> int:
     """
     Executes pipeline reproduction test across all configured regular baseline fields.
     Returns: 0 on success, 1 on failure.
     """
+    active_pack = preset if preset is not None else pack
     print("=" * 80)
-    print(f" PISCES PIPELINE PRECISION TEST (EC-EARTH3 BASELINE REPRODUCTION, Preset: {preset})")
+    print(f" PISCES PIPELINE PRECISION TEST (EC-EARTH3 BASELINE REPRODUCTION, Pack: {active_pack})")
     print(f" Test Directory:      {test_dir}")
     print(f" Reference Directory: {ref_dir}")
     print("=" * 80)
@@ -359,7 +363,7 @@ def run_pipeline_reproduction_test(
     print("=" * 80)
 
     if results:
-        format_reproduction_report(results, output_md, preset=preset)
+        format_reproduction_report(results, output_md, pack=active_pack)
         if output_md:
             print(f"Saved reproduction report to: {output_md}")
 

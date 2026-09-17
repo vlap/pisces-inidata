@@ -35,16 +35,23 @@ pisces-inidata/
 │   ├── products.md              # Supported observational products catalog
 │   ├── configuration.md         # Per-variable configuration (sources.yaml) reference
 │   └── validation.md            # Statistical scoreboards and validation suites
-├── presets/                     # Curated source configuration presets
+├── packs/                       # Curated source configuration packs
 │   ├── sources_ece4.yaml        # Modern observational climatologies for EC-Earth4 [Default]
 │   ├── sources_ece3.yaml        # Baseline observational sources originally used in EC-Earth3
 │   └── sources_official_sette.yaml # Official regular unmasked NEMO/PISCES SETTE reference
 ├── python/                      # Python library and CLI package
 │   └── pisces_inidata/
 │       ├── __init__.py
-│       ├── cli.py               # CLI: pisces-inidata (check, download, run, validate, ...)
+│       ├── cli.py               # CLI: pisces-inidata (produce, remap, prepare-sources, check, ...)
+│       ├── catalog.py           # Single-source-of-truth metadata & conventions catalog
+│       ├── weights.py           # Target grid coordinates & SCRIP remapping weights
+│       ├── etl.py               # Stage 1: Grid-agnostic source data standardization
+│       ├── remap.py             # Stage 2: Target-centric vertical/horizontal remapping
+│       ├── launcher.py          # Pipeline orchestration & Slurm Job Array generator
+│       ├── reference.py         # Ground-truth SETTE benchmark assembly on ORCA2
+│       ├── nco_util.py          # python-cdo and pynco interface with netCDF4 fallback
 │       ├── check.py             # Pre-flight system & data integrity verifier
-│       ├── config.py            # Configuration parser & validator (sources.yaml, presets)
+│       ├── config.py            # Configuration parser & validator (sources.yaml, packs)
 │       ├── download.py          # Selective raw dataset downloader & staging
 │       ├── glodap.py            # GLODAP vertical coordinate standardizer & padder
 │       ├── padding.py           # Abyssal depth padding algorithm (up to 6000m)
@@ -53,17 +60,11 @@ pisces-inidata/
 │       ├── scoreboard.py        # Validation scoreboard generator
 │       ├── reproduction.py      # EC-Earth3 baseline precision benchmark
 │       └── verify.py            # Non-blank output inspection & bounds checker
-├── scripts/                     # Modular Bash execution pipeline
-│   ├── config.sh                # Environment, paths, and module configuration
-│   ├── gen_grid_and_weights.sh  # Grid description and CDO remapping weights
-│   ├── prepare_standard_sources.sh # Stage 1: Grid-agnostic source data standardization
-│   ├── remap_field.sh           # Stage 2: Pure CDO target remapping driver
-│   ├── prepare_sette_reference_orca2.sh # Ground-truth benchmark setup
-│   └── launcher_pisces_inidata.sh # End-to-end Slurm master pipeline driver
 ├── tests/                       # Unit tests (pytest)
+├── legacy/                      # Preserved legacy Bash pipeline scripts
 ├── grids.yaml                   # Declarative target grid specifications & HPC resource profiles
 ├── platforms.yaml               # Declarative HPC platform profiles (Slurm accounts, partitions, scratch)
-├── sources.yaml                 # Active source dataset configuration (preset: ece4)
+├── sources.yaml                 # Active source dataset configuration (pack: ece4)
 ├── pyproject.toml               # Modern PEP 517/621 package metadata
 ├── LICENSE                      # Apache-2.0 License
 ├── CITATION.cff                 # Citation metadata
@@ -79,7 +80,7 @@ pisces-inidata/
 pip install -e .
 
 # 2. Download and prepare standardized 1°x1° sources (~2 min)
-pisces-inidata download --preset ece4 --prepare
+pisces-inidata download --pack ece4 --prepare
 
 # 3. Produce inidata for eORCA1 (parallel Slurm batch jobs or local)
 pisces-inidata produce --grid eORCA1
@@ -114,20 +115,20 @@ pisces-inidata grid-config
 pisces-inidata platform-config
 ```
 
-### 2. Configure Sources & Presets (`sources.yaml`)
+### 2. Configure Sources & Packs (`sources.yaml`)
 
-Choose a curated configuration preset or customize per-tracer sources:
+Choose a curated configuration pack or customize per-tracer sources:
 - **`ece4`** *(Default)*: Modern observational climatologies for **EC-Earth4** (WOA23, GLODAPv2.2016b, Panaïotis DOC).
 - **`ece3`**: Baseline observational sources originally used in **EC-Earth3** (WOA2009, GLODAPv1.1, Hansell DOC).
 - **`official_sette`**: Official regular unmasked **NEMO/PISCES SETTE** reference fields (all vars from SETTE, pure interpolation).
 
-Switch presets in `sources.yaml` (`preset: ece4`), load from `presets/`, or pass `--preset`:
+Switch packs in `sources.yaml` (`pack: ece4`), load from `packs/`, or pass `--pack` (with `--preset` supported as an alias):
 ```bash
-# Preview configuration for a preset:
-pisces-inidata info --preset ece3
+# Preview configuration for a pack:
+pisces-inidata info --pack ece3
 
 # Or export bash environment variables:
-pisces-inidata config --preset ece3 --export
+pisces-inidata config --pack ece3 --export
 ```
 
 ### 3. Download Raw Datasets
@@ -166,10 +167,10 @@ pisces-inidata verify --grid eORCA025
 ### 6. Validate Against Reference
 ```bash
 # Statistical validation against SETTE ORCA2 reference:
-pisces-inidata validate --preset official_sette
+pisces-inidata validate --pack official_sette
 
 # Or reproduction verification against EC-Earth3 baseline on eORCA1:
-pisces-inidata test-reproduction --preset official_sette
+pisces-inidata test-reproduction --pack official_sette
 ```
 
 ---
@@ -208,7 +209,7 @@ On high-performance computing clusters where compute nodes lack direct internet 
 3. **Storage Hierarchy & Nord4 Guidelines:**
    - **Unified Workspace (`PISCES_WORKSPACE`):** Defaults to `/gpfs/scratch/bsc32/${USER}/pisces_inidata` or `/esarchive/scratch/${USER}/pisces_inidata`.
      - `shared/raw/`: Downloaded observational archives.
-     - `shared/standardized/<preset>/`: Stage 1 regular $1^\circ \times 1^\circ$ standardized NetCDFs.
+     - `shared/standardized/<pack>/`: Stage 1 regular $1^\circ \times 1^\circ$ standardized NetCDFs.
      - `grids/<grid>/`: Target mesh products (`weights/`, `inidata/`, `jobs/`, `logs/`).
    - **Node-Local Scratch (`$TMPDIR`):** On Nord4/MN5 compute nodes, `$TMPDIR` points to `/scratch/tmp/$SLURM_JOB_ID` (local NVMe SSD). All intermediate CDO pipeline operations execute on local NVMe and are automatically cleaned on job termination, keeping GPFS free of temporary files. System `/tmp` is strictly avoided per BSC acceptable use policy.
 

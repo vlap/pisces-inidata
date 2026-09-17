@@ -9,7 +9,7 @@
 #   - Iron & Boundary:    Tagliabue (2012) & NEMO/PISCES SETTE boundary forcings
 # ==============================================================================
 
-preset: ece3
+pack: ece3
 
 tracers_3d:
   NO3: woa2009

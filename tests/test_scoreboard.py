@@ -144,19 +144,48 @@ def test_run_validation_suite():
                 v = ds.createVariable('NO3', 'f4', ('points',))
                 v[:] = arr
 
-        code = run_validation_suite(test_dir=tmp_test, ref_dir=tmp_ref, output_md=out_md, preset="official_sette")
+        code = run_validation_suite(test_dir=tmp_test, ref_dir=tmp_ref, output_md=out_md, pack="official_sette")
         assert code == 0
         assert os.path.exists(out_md)
         with open(out_md, 'r') as f:
             content = f.read()
             assert "SETTE nomask" in content
+            assert "Configuration Pack" in content
             assert "official_sette" in content
             assert "PASS" in content
 
         out_md_ece4 = os.path.join(tmp_test, "scorecard_ece4.md")
-        code_ece4 = run_validation_suite(test_dir=tmp_test, ref_dir=tmp_ref, output_md=out_md_ece4, preset="ece4")
+        code_ece4 = run_validation_suite(test_dir=tmp_test, ref_dir=tmp_ref, output_md=out_md_ece4, pack="ece4")
         assert code_ece4 == 0
         with open(out_md_ece4, 'r') as f:
             content_ece4 = f.read()
             assert "WOA23" in content_ece4
+            assert "Configuration Pack" in content_ece4
             assert "ece4" in content_ece4
+
+
+def test_compute_river_conservation():
+    from pisces_inidata.scoreboard import compute_river_conservation
+
+    with tempfile.TemporaryDirectory() as td:
+        f_test = os.path.join(td, "river_test.nc")
+        f_ref = os.path.join(td, "river_ref.nc")
+
+        arr_ref = np.array([[1.0, 2.0], [3.0, 4.0]], dtype=np.float32)
+        # Test array with exact conservation
+        arr_test = arr_ref.copy()
+
+        for f, arr in [(f_ref, arr_ref), (f_test, arr_test)]:
+            with nc.Dataset(f, 'w') as ds:
+                ds.createDimension('x', 2)
+                ds.createDimension('y', 2)
+                v = ds.createVariable('riverdin', 'f4', ('y', 'x'))
+                v[:] = arr
+
+        res = compute_river_conservation(f_test, f_ref)
+        assert len(res) == 1
+        assert res[0]['var'] == 'riverdin'
+        assert np.isclose(res[0]['ratio'], 1.0)
+        assert np.isclose(res[0]['r'], 1.0)
+        assert res[0]['status'] == 'PASS'
+        assert 'Conserved' in res[0]['issue']

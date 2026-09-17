@@ -89,6 +89,7 @@ def resolve_package_dir(
 
 def resolve_source_field(
     var_name: str,
+    pack: Optional[str] = None,
     preset: Optional[str] = None,
     raw_dir: Optional[str] = None,
     config: Optional[Dict[str, Any]] = None,
@@ -111,13 +112,12 @@ def resolve_source_field(
     """
     cat = catalog or load_catalog()
     from pisces_inidata.config import load_config
-    cfg = config or load_config(preset=preset)
+    cfg = config or load_config(pack=pack or preset)
 
     # Determine product key from config
-    env_key = f"PRODUCT_{var_name.upper()}"
-    if var_name.lower() in ("river", "rivers"):
-        env_key = "PRODUCT_RIVER"
-    product_key = cfg.get(env_key)
+    product_key = cfg.get(f"PRODUCT_{var_name}") or cfg.get(f"PRODUCT_{var_name.upper()}")
+    if not product_key and var_name.lower() in ("river", "rivers"):
+        product_key = cfg.get("PRODUCT_RIVER")
 
     # Default product fallback if not in config
     if not product_key:
@@ -282,10 +282,18 @@ def get_target_vertical_levels(
     First checks domain_cfg.nc for nav_lev. If missing, resolves reference 3D tracer
     from catalog.yaml and extracts levels via cdo showlevel.
     """
-    base_domain = domain_dir or os.environ.get("DOMAIN_BASE_DIR")
+    base_domain = domain_dir or os.environ.get("DOMAIN_BASE_DIR") or os.path.join(os.getcwd(), "domain")
     if base_domain:
         domain_cfg = os.path.join(base_domain, grid_name, "domain_cfg.nc")
         if os.path.isfile(domain_cfg):
+            try:
+                import netCDF4 as nc
+                with nc.Dataset(domain_cfg, "r") as ds:
+                    if "nav_lev" in ds.variables:
+                        levels = [str(float(x)) for x in ds.variables["nav_lev"][:].flatten()]
+                        return ",".join(levels)
+            except Exception:
+                pass
             try:
                 res = subprocess.run(
                     ["ncks", "-s", "%f,", "-H", "-C", "-v", "nav_lev", domain_cfg],
@@ -334,9 +342,14 @@ def get_expected_products(grid_name: str, convention: str = "nemo4_ece4") -> Lis
     return results
 
 
-def export_source_env(var_name: str, preset: Optional[str] = None, raw_dir: Optional[str] = None) -> str:
+def export_source_env(
+    var_name: str,
+    pack: Optional[str] = None,
+    preset: Optional[str] = None,
+    raw_dir: Optional[str] = None
+) -> str:
     """Exports shell variable definitions for Stage 1 prepare_standard_sources.sh."""
-    meta = resolve_source_field(var_name, preset=preset, raw_dir=raw_dir)
+    meta = resolve_source_field(var_name, pack=pack or preset, raw_dir=raw_dir)
     lines = [
         f"export VAR=\"{meta['var']}\"",
         f"export PRODUCT=\"{meta['product']}\"",
